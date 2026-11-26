@@ -4,7 +4,7 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 
 ## State
 
-2026-11-27: preparation done (docs, labels, milestones, issues #1-#18). Implementation started. #1 merged (PR #19, 3107663). #4 merged (PR #20, 8dbef11). #3 merged (PR #21, 482a73b). #2 merged (PR #22, e0cbf2c).
+2026-11-27: preparation done (docs, labels, milestones, issues #1-#18). Implementation started. #1 merged (PR #19, 3107663). #4 merged (PR #20, 8dbef11). #3 merged (PR #21, 482a73b). #2 merged (PR #22, e0cbf2c). #12 merged (PR #23, fbdb64a). Session interrupted once (2026-11-27); #5, #6, #9, #10 resumed from their worktrees.
 
 ## Waiting on the user
 
@@ -18,10 +18,9 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 
 | issue | agent / model | branch or worktree | started | note |
 |---|---|---|---|---|
-| #12 | implementer / opus | claude/12-frame-audit (worktree) | 2026-11-27 | PR #23 in review |
 | #5 | implementer / sonnet | claude/5-engine-runner (worktree) | 2026-11-27 | parse import-check read-only |
 | #6 | implementer / sonnet | claude/6-intake (worktree) | 2026-11-27 | 3 real intake calls |
-| #9 | implementer / sonnet | claude/9-engine-cut-notes (worktree) | 2026-11-27 | cleared for its real runs on var/runs/e2-check |
+| #9 | implementer / sonnet | claude/9-engine-cut-notes (worktree) | 2026-11-27 | cleared for its real runs on var/runs/e2-check, e2-rounds |
 | #10 | implementer / opus | claude/10-template-store (worktree) | 2026-11-27 | |
 
 ## Real cuts (budget: 40 cuts with model calls, docs/plan.md)
@@ -30,7 +29,8 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 |---|---|---|---|---|---|---|
 | 1 | 2026-11-27 | #2 | `--until script` import check | none | 0.0289 | var/runs/import-check |
 | 2 | 2026-11-27 | #2 | full reel `--rounds 0` (resumed from script) | heygen (4.66 st) | 0.0537 (folder total 0.0826) | var/runs/import-check |
+| 3 | 2026-11-27 | #9 | `--apply-notes notes-2.json --cut 2` | heygen (4.72 st) | 0.0153 | var/runs/e2-check |
 
 ## Next action
 
-Review + merge #12, #5, #6, #9, #10 as they finish. Then #7 (after #5), #16, #8 (after #5-#7).
+Review + merge #5, #6, #9, #10 as they finish. Then #7 (after #5), #16, #8 (after #5-#7).
