@@ -1,0 +1,673 @@
+{
+ "by": "claude",
+ "shots": [
+  {
+   "id": "shot_001",
+   "time": "0.00-26.50",
+   "label_probs": {
+    "code_render": 0.85,
+    "anim_2d": 0.15
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Pure black frame edges with one soft radial light pool, perfectly stable vector shapes and a glowing white figure built from a disc and a rounded body: code-driven motion graphics, no AI warping",
+    "79% of adjacent frames are exact duplicates while only the figure, chips or a curve move: parameter-driven animation"
+   ],
+   "description": "0-26.5 s, one continuous diorama on black. A soft elliptical light pool behind a minimal level: two thin dark slabs with bright top edges at mid-frame, a dashed baseline and a thin measuring line with end ticks; a small glowing white figure (disc head, rounded bell body, arm stubs) hops along a dotted parabola and lands one step short, falling. A dark pill tag above names who plays (FRIEND, later YOU); line-art hands hold a grey device below. At 17 s the frame splits down the middle by a 2 px divider: FRIEND left, YOU right, the same failed hop replayed in both halves; under them pill chips: a bright white chip with the useful advice words on the left, a chip with the harsh words that dims to grey on the right.",
+   "narrative": {
+    "role": "hook",
+    "point": "A tiny symbolic failure shown twice: once to a friend who gets a calm instruction, once to you who gets an insult; the split replay asks why the two answers differ"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_002",
+   "time": "26.50-26.77",
+   "label_probs": {
+    "code_render": 0.85,
+    "anim_2d": 0.15
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Fade through black between two code-rendered scenes"
+   ],
+   "description": "0.3 s fade through black from the diorama to the real-life scene.",
+   "narrative": {
+    "role": "context",
+    "point": "Transition from the symbol to real life"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_003",
+   "time": "26.77-31.10",
+   "label_probs": {
+    "code_render": 0.6,
+    "anim_2d": 0.4
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat vector furniture and props with thin light grey outlines on dark fills, the same white disc-headed figure, a slow push-in camera"
+   ],
+   "description": "26.8-31.1 s: the white figure sits at a dark desk at night under a line-art desk lamp, working on a laptop; the camera pushes in from the room to the laptop screen, a dark product-editor UI with a light PUBLISH button that a cursor clicks. Props drawn as dark fills with 2 px pale outlines.",
+   "narrative": {
+    "role": "context",
+    "point": "The same pattern moves into real life: you make something and put it out"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_004",
+   "time": "31.10-38.97",
+   "label_probs": {
+    "code_render": 0.85,
+    "anim_2d": 0.15
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "A glowing line that draws itself with a counter following its tip, over a tilted grid plate: data-viz motion graphics"
+   ],
+   "description": "31.1-39.0 s: a dark pill chip with a mint dot reads EXPECTATION top-left; a tilted dark plate with a faint perspective grid; a glowing mint curve rises from the left like an exponential, small nodes along it, a bold white counter with a small grey unit word riding its tip and counting up to a big round number; then the whole curve turns red from its tip and collapses down to the floor.",
+   "narrative": {
+    "role": "turn",
+    "point": "What you imagine (a curve that keeps rising) against what happens (it collapses)"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_005",
+   "time": "38.97-41.63",
+   "label_probs": {
+    "code_render": 0.85,
+    "anim_2d": 0.15
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Line-art device UI tilting into view, outlined numeral"
+   ],
+   "description": "39.0-41.6 s: the plate tilts and turns into a dark device screen lying flat, then stands up: a huge thin-outlined numeral zero with a small uppercase unit word under it, a small header above.",
+   "narrative": {
+    "role": "proof",
+    "point": "The real result is zero"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_006",
+   "time": "41.63-45.57",
+   "label_probs": {
+    "code_render": 0.6,
+    "anim_2d": 0.4
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat 2D vector room with warm low-chroma greys, a lamp cone, a slow pull-out camera"
+   ],
+   "description": "41.6-45.6 s: the figure at the desk seen through a lit window at night, a warm desk lamp cone, shelves, pinned papers; the camera pulls out until the window is a small lit rectangle in a dark building facade with a grid of unlit windows.",
+   "narrative": {
+    "role": "turn",
+    "point": "Alone at night you give yourself the harsh verdict"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_007",
+   "time": "45.57-48.13",
+   "label_probs": {
+    "code_render": 0.85,
+    "anim_2d": 0.15
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Pure black frame edges with one soft radial light pool, perfectly stable vector shapes and a glowing white figure built from a disc and a rounded body: code-driven motion graphics, no AI warping",
+    "79% of adjacent frames are exact duplicates while only the figure, chips or a curve move: parameter-driven animation"
+   ],
+   "description": "45.6-48.1 s: a dark device screen showing the same listing as a card: a dark picture of a rolled object, its name, a small detail line; the camera pushes into the picture.",
+   "narrative": {
+    "role": "turn",
+    "point": "The same thing seen as if a friend had made it"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_008",
+   "time": "48.13-48.93",
+   "label_probs": {
+    "cg_3d": 0.6,
+    "code_render": 0.4
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Smooth shaded cylinder with a soft floor shadow and specular edge: a 3D render"
+   ],
+   "description": "48.1-48.9 s: push into the listing photo until it fills the frame: a dark rolled-up object on black.",
+   "narrative": {
+    "role": "turn",
+    "point": "Zoom into what the friend would look at"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_009",
+   "time": "48.93-55.20",
+   "label_probs": {
+    "cg_3d": 0.6,
+    "code_render": 0.4
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Shaded 3D roll unrolling across a dark floor, the reveal printed design in flat colour"
+   ],
+   "description": "48.9-55.2 s: the rolled object unrolls across the floor and reveals the reel's only full-colour image: a deep blue-teal field with off-white line waves and a warm ochre sun; corner brackets frame it.",
+   "narrative": {
+    "role": "payoff",
+    "point": "From the outside view the hidden good part is obvious: the useful advice appears"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_010",
+   "time": "55.20-55.43",
+   "label_probs": {
+    "code_render": 0.85,
+    "anim_2d": 0.15
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Pure black frame edges with one soft radial light pool, perfectly stable vector shapes and a glowing white figure built from a disc and a rounded body: code-driven motion graphics, no AI warping",
+    "79% of adjacent frames are exact duplicates while only the figure, chips or a curve move: parameter-driven animation"
+   ],
+   "description": "55.2-55.4 s: quick pull back out to the device card, its picture now the colourful reveal and a check mark line.",
+   "narrative": {
+    "role": "payoff",
+    "point": "The fix applied"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   }
+  },
+  {
+   "id": "shot_011",
+   "time": "55.43-59.87",
+   "label_probs": {
+    "code_render": 0.85,
+    "anim_2d": 0.15
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Pure black frame edges with one soft radial light pool, perfectly stable vector shapes and a glowing white figure built from a disc and a rounded body: code-driven motion graphics, no AI warping",
+    "79% of adjacent frames are exact duplicates while only the figure, chips or a curve move: parameter-driven animation"
+   ],
+   "description": "55.4-59.9 s: back in the opening diorama: the YOU tag, the figure at the start of the gap, a dark pill chip with the advice word above it; it waits, ready to try again. The reel ends on the hook's composition.",
+   "narrative": {
+    "role": "cta",
+    "point": "Say the friend's advice to yourself and try again; loops to the start"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  }
+ ],
+ "aspects": {
+  "camera": {
+   "setups": "",
+   "gear_guess": ""
+  },
+  "lighting": {
+   "lighting_overall": "One soft elliptical light pool behind the subject on a pure black frame; emissive white figure with bloom; warm lamp cone only in the room scene"
+  },
+  "grade": {
+   "grade_overall": "Near-monochrome: pure black, neutral greys and white; colour only in a mint expectation curve, its red crash, a warm lamp, and one full-colour reveal near the end"
+  },
+  "editing": {
+   "editing": "Long held scenes with slow push-ins and pull-outs, morphs (a graph plate turning into a screen), zooms into screens and pictures, fades through black between symbol and real life; ends on its own opening composition"
+  },
+  "format": {
+   "format": "Vertical 9:16 code-rendered second-person parable, TTS voice-over over a soft music bed, burned-in full-line captions under the picture"
+  },
+  "style": {
+   "render_style": "Minimal 2D motion graphics on pure black: a glowing white figure on small diorama sets, line-art props, pill chips, a glowing data curve; one shaded 3D object near the end",
+   "outline": "Props and devices: dark fills with 2 px pale grey outlines; slabs: no outline but a 3 px bright top-edge highlight; the figure has no outline, only a soft white bloom",
+   "shading": "Flat fills in 2 or 3 neutral greys; glow on the figure and the curve; one soft light pool per scene; no textures",
+   "shape_language": "Discs, rounded bells, thin bevelled slabs, dotted arcs, measuring ticks, rounded pill chips, outlined numerals",
+   "texture": "None: clean vector, faint perspective grid on the graph plate, dashed baselines",
+   "type_ui": "Small uppercase bold pill chips (dark with a grey border for who is who; white with dark text for spoken words); a large white sentence-case caption of the full spoken line centred under the picture; outlined numerals",
+   "motion_style": "Calm and slow: hops along visible dotted arcs, identical replays, chips popping in, a curve drawing itself with a counter on its tip, colour sweeping along the curve on the turn, slow camera push-ins and pull-outs",
+   "signature": "The same tiny failure shown to a FRIEND and to YOU, replayed side by side with two different chips; monochrome until one full-colour reveal; the reel returns to its first scene",
+   "do_not_copy": "The topic (self-talk after a failed jump and a failed product launch), the game controller, the platforms and jump, the desk mat, the laptop and phone UIs, the words and numbers on screen, any handle or watermark"
+  }
+ },
+ "story": {
+  "summary": "A second-person parable: your friend fails at a small thing and you give a calm, exact instruction; you fail the same way and insult yourself; replayed side by side the double standard is obvious. The same happens in real life (a launch that flops, a harsh verdict alone at night). Imagined as a friend's work, the useful advice comes at once. Ends back in the first scene: say it to yourself, then retry.",
+  "hook": "A tiny relatable failure in a symbolic scene with a direct question from a friend, in plain second person",
+  "highlights": [
+   "Side-by-side replay (17-26 s): identical failures, two different chips",
+   "Expectation curve turning red and collapsing to zero (31-39 s)",
+   "Pull-out from a lit window to a dark building (42-45 s): loneliness of the verdict",
+   "Colour reveal of the hidden good (49-55 s), the only colour in the reel",
+   "Returns to the opening scene with the advice applied (55-60 s)"
+  ]
+ },
+ "cast": {
+  "style": "Minimal glowing white figure on dark diorama sets",
+  "characters": [
+   {
+    "id": "A",
+    "name": "the figure",
+    "kind": "generic minimal figure",
+    "look": "white disc head, rounded bell body, arm stubs, no face, soft bloom",
+    "role": "both FRIEND and YOU (told apart only by a pill tag)",
+    "voice": "narrator only",
+    "shots": [
+     1,
+     3,
+     6,
+     11
+    ]
+   }
+  ],
+  "scenes": [
+   {
+    "id": "S1",
+    "where": "a minimal symbolic level on black",
+    "when": "timeless",
+    "look": "light pool, dark slabs with bright top edges, dotted arcs",
+    "shots": [
+     1,
+     11
+    ]
+   },
+   {
+    "id": "S2",
+    "where": "a desk in a room at night, seen through a window",
+    "when": "night",
+    "look": "warm grey flat vector, lamp cone, dark facade",
+    "shots": [
+     3,
+     6
+    ]
+   },
+   {
+    "id": "S3",
+    "where": "a data plate and screens on black",
+    "when": "",
+    "look": "mint curve, red crash, outlined numeral",
+    "shots": [
+     4,
+     5,
+     7,
+     8,
+     9,
+     10
+    ]
+   }
+  ],
+  "props": [
+   {
+    "name": "the made object",
+    "note": "grey roll that unrolls into the colour reveal",
+    "shots": [
+     8,
+     9
+    ]
+   }
+  ]
+ },
+ "packaging": {
+  "stickers": [
+   {
+    "id": "sticker_01",
+    "is_overlay": false,
+    "what": "part of the drawn scene (figure, tag chip or slab), not a sticker"
+   },
+   {
+    "id": "sticker_02",
+    "is_overlay": false,
+    "what": "part of the drawn scene (figure, tag chip or slab), not a sticker"
+   },
+   {
+    "id": "sticker_03",
+    "is_overlay": false,
+    "what": "part of the drawn scene (figure, tag chip or slab), not a sticker"
+   },
+   {
+    "id": "sticker_04",
+    "is_overlay": false,
+    "what": "part of the drawn scene (figure, tag chip or slab), not a sticker"
+   },
+   {
+    "id": "sticker_05",
+    "is_overlay": false,
+    "what": "part of the drawn scene (figure, tag chip or slab), not a sticker"
+   },
+   {
+    "id": "sticker_06",
+    "is_overlay": false,
+    "what": "part of the drawn scene (figure, tag chip or slab), not a sticker"
+   },
+   {
+    "id": "sticker_07",
+    "is_overlay": false,
+    "what": "part of the drawn scene (figure, tag chip or slab), not a sticker"
+   }
+  ],
+  "text": [
+   {
+    "id": "text_020",
+    "kind": "label"
+   },
+   {
+    "id": "text_024",
+    "kind": "scene"
+   },
+   {
+    "id": "text_025",
+    "kind": "scene"
+   },
+   {
+    "id": "text_026",
+    "kind": "scene"
+   },
+   {
+    "id": "text_027",
+    "kind": "scene"
+   },
+   {
+    "id": "text_029",
+    "kind": "scene"
+   },
+   {
+    "id": "text_030",
+    "kind": "scene"
+   },
+   {
+    "id": "text_033",
+    "kind": "label"
+   },
+   {
+    "id": "text_035",
+    "kind": "label"
+   },
+   {
+    "id": "text_036",
+    "kind": "label"
+   },
+   {
+    "id": "text_039",
+    "kind": "scene"
+   },
+   {
+    "id": "text_040",
+    "kind": "scene"
+   },
+   {
+    "id": "text_051",
+    "kind": "scene"
+   },
+   {
+    "id": "text_052",
+    "kind": "scene"
+   },
+   {
+    "id": "text_054",
+    "kind": "scene"
+   },
+   {
+    "id": "text_055",
+    "kind": "scene"
+   },
+   {
+    "id": "text_056",
+    "kind": "scene"
+   },
+   {
+    "id": "text_057",
+    "kind": "scene"
+   },
+   {
+    "id": "text_058",
+    "kind": "scene"
+   },
+   {
+    "id": "text_060",
+    "kind": "scene"
+   },
+   {
+    "id": "text_067",
+    "kind": "scene"
+   },
+   {
+    "id": "text_068",
+    "kind": "scene"
+   },
+   {
+    "id": "text_073",
+    "kind": "scene"
+   }
+  ],
+  "missed": []
+ }
+}

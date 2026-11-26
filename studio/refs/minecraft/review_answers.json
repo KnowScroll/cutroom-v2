@@ -1,0 +1,151 @@
+{
+ "by": "claude",
+ "shots": [
+  {
+   "id": "shot_001",
+   "time": "0.00-4.00",
+   "label_probs": {
+    "cg_3d": 0.8,
+    "code_render": 0.18,
+    "ai_video": 0.01,
+    "live_action": 0.01
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Every surface is a unit cube with a 16x16 texel texture magnified with nearest-neighbour filtering: texels read as crisp square pixels on grass, dirt, cobblestone, planks, logs and leaves",
+    "Geometry is perfectly stable from frame to frame; blocks drop in on a schedule with an identical bounce and squash, no morphing, no texture boiling",
+    "Real-time look: one directional sun with soft shadow maps, hemisphere fill, distance fog to a flat sky gradient; no global illumination or depth of field",
+    "Title is a webfont pixel typeface composited on top with a hard offset drop shadow; letters drop in one by one with stepped positions",
+    "The tool read sensor noise; it is the dense per-texel colour variation of the procedural textures and the grass tufts, not noise"
+   ],
+   "description": "One continuous real-time voxel scene (three.js, procedurally textured cubes). A terraced grassy hill of block steps (green speckled tops, brown speckled dirt sides with a jagged green fringe) in a flat grass field dotted with crossed-quad grass tufts and tiny pixel flowers (red, yellow, blue), blocky oak trees (log trunk, cube-cluster leaf crowns) near and far, a sky that is a vertical gradient from a horizon blue-white to a mid blue at the top, distance fog, flat white blocky cloud slabs drifting. A small building assembles itself block by block in the centre: a grey cobblestone foundation ring sweeps round, then a plank floor, then three courses of plank walls with dark log corner posts, glass window panes and a door gap, then a stepped gable roof of dark red-brown planks sweeping left and right row by row, then a cobblestone chimney; the last chimney block slams down from high up at 2.7 s with a puff of about 36 small grey-white dust cubes, a small camera shake, the windows and doorway light up warm orange in three quick steps, and grey smoke cubes rise and drift from the chimney. Each block falls about 2.4 block heights, scaling from 0.5 to 1 with a small spin, then lands with a squash-and-stretch wobble. Camera orbits about 57 degrees round the build while craning down from about 29 to 11 degrees elevation and pushing in, then settles. Text: a lowercase white pixel-font line at the top (y about 345, 92 px) whose letters drop in one by one with a stepped bounce, fading out at 2.6 s; a second, bigger one-word line (150 px) slams in with a scale overshoot at the same moment as the last block.",
+   "narrative": {
+    "role": "payoff",
+    "point": "A thing assembles itself piece by piece in layers, from foundation to the last piece, and the last piece landing lights it up as the one-word payoff lands."
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "Vertical 9:16, high three-quarter aerial view at about 30 degrees elevation of a blocky voxel world: a terraced grass hill of textured cubes, blocky oak trees, crossed grass tufts and pixel flowers, a ring of grey cobblestone cubes on the flat top in the middle, pale green fog to the horizon, soft sun from the upper left.",
+    "video_prompt": "Vertical 9:16, the camera slowly orbits and cranes down from a high three-quarter view to a low front view while a small structure builds itself from textured cubes that drop in with a bounce: foundation ring, floor, walls with corner posts and windows, a stepped roof row by row, then the last chimney block slams in with a puff of dust cubes, warm light turns on in the windows and smoke cubes rise; blocky clouds drift in a blue sky.",
+    "video_prompt_en": "Vertical 9:16, the camera slowly orbits and cranes down from a high three-quarter view to a low front view while a small structure builds itself from textured cubes that drop in with a bounce: foundation ring, floor, walls with corner posts and windows, a stepped roof row by row, then the last chimney block slams in with a puff of dust cubes, warm light turns on in the windows and smoke cubes rise; blocky clouds drift in a blue sky."
+   },
+   "aspects": {
+    "framing": {
+     "shot_size": "full shot of the build in its landscape (wide)",
+     "camera_angle": "high angle at first (about 30 degrees down), ending slightly high (about 11 degrees down)",
+     "composition": "build centred a touch left and low (x about 500), sky and title in the top third, terraces filling the bottom third; vertical"
+    },
+    "camera": {
+     "camera_support": "virtual camera (code)",
+     "lens": "virtual 45 degree vertical field of view",
+     "speed": "normal; one continuous eased orbit, crane down and push-in, with a short shake on the last block"
+    },
+    "lighting": {
+     "location": "outdoor, daytime, virtual grassy hill",
+     "key_light": "one sun from the upper left and in front (warm white)",
+     "light_quality": "soft-edged shadow maps",
+     "fill_light": "hemisphere sky fill, bright; shadow sides only a little darker",
+     "rim_light": "none",
+     "catchlight": "not applicable",
+     "practicals": "the windows and doorway glow warm orange at the end",
+     "color_temp": "neutral daylight, warm interior glow at the payoff",
+     "lighting_setup": "sun plus sky hemisphere light, distance fog"
+    },
+    "grade": {
+     "color_grade": "natural, saturated greens, lifted fog toward the horizon"
+    }
+   },
+   "performance": null
+  }
+ ],
+ "aspects": {
+  "camera": {
+   "setups": "one virtual camera, one continuous move (orbit + crane down + push-in)",
+   "gear_guess": "three.js WebGL in headless Chrome, rendered frame by frame"
+  },
+  "lighting": {
+   "lighting_overall": "daylight sun from the upper left with soft shadows and strong sky fill; the payoff turns on warm interior light"
+  },
+  "grade": {
+   "grade_overall": "natural, bright, saturated grass greens, blue sky, fog toward the horizon"
+  },
+  "editing": {
+   "editing": "no cuts: one 4 s build; the payoff (last block, lights, smoke, second title line) lands at 2.7 s and holds 1.3 s"
+  },
+  "format": {
+   "format": "vertical 1080x1920, 30 fps, silent"
+  },
+  "style": {
+   "render_style": "Blocky voxel world in the look of a block-building game: every object is built from unit cubes, each face carrying a 16x16 pixel texture drawn in code and magnified without smoothing; real-time lighting with a sun, sky fill, fog and soft shadows",
+   "outline": "none: cube edges read by the value step between faces (top lightest, sides darker)",
+   "shading": "per-face flat lighting: top faces lightest, sun-facing side mid, the far side darkest, plus soft cast shadows; texture texels vary brightness by about +-10% inside each face",
+   "shape_language": "strictly cubic and grid-aligned: terraces stepping by one block, trees as a log column with a cross-shaped cluster of leaf cubes, clouds as flat slabs on a coarse grid, smoke and dust as small tumbling cubes",
+   "texture": "procedural 16x16 texels: grass top speckled 6 greens, grass side dirt with a jagged green drip fringe 3 to 5 texels deep, cobblestone as irregular grey stones with dark mortar, planks as 4 horizontal boards with darker seams and staggered butt joints, logs as vertical bark stripes with ring end grain, leaves dark speckled greens with see-through holes, glass a pale frame with diagonal glints",
+   "type_ui": "one lowercase white pixel-font line at the top centre (92 px, letters dropping in with 6 px steps), then a one-word payoff line at 150 px slamming in with a scale overshoot; each with a hard dark-brown drop shadow offset 7 to 10 px down-right; no panels or boxes",
+   "motion_style": "blocks fall about 2.4 block heights in 0.2 s, scale 0.5 to 1, a small spin, then squash and stretch on landing (exponentially damped); builds in layers in sweeping order; a slow eased camera orbit and crane; the last piece slams from higher with a camera shake and a dust puff; lights switch on in steps",
+   "signature": "The thing builds itself block by block, layer by layer, and the last block landing turns on the warm light and the payoff word",
+   "do_not_copy": "the topic and objects (a house or cottage with a chimney and smoke), the words \"block by block\" and \"home.\"; Mojang textures, logos and characters; there is no watermark or handle"
+  }
+ },
+ "story": {
+  "summary": "A 4 s satisfying build: a small structure assembles itself block by block on a grassy voxel hill while the camera orbits, and lands on a one-word payoff when the last block slams in and the lights come on.",
+  "hook": "0 to 0.5 s: the first stone blocks are already dropping into a ring on an empty hilltop, so the eye locks on the build; the title letters start dropping in at 0.3 s.",
+  "highlights": [
+   "Every block lands with a bounce and squash (0 to 2.5 s): the build itself is the motion, so the frame is never still and the progress is visible at a glance.",
+   "Layer order (foundation, floor, walls, roof, last block) makes the build read as a process the viewer can predict and enjoy completing.",
+   "The last block is staged as an event at 2.7 s (dropped from twice as high, camera shake, dust puff) and triggers the payoff: lights on, smoke, a big one-word title.",
+   "The orbiting, craning camera turns a top-down view into a front portrait of the finished build, so the end frame is a hero shot."
+  ]
+ },
+ "cast": {
+  "style": "Blocky voxel world with procedural 16x16 pixel textures, daylight, saturated greens, blue sky with slab clouds, white pixel-font titles with hard dark shadows.",
+  "characters": [],
+  "scenes": [
+   {
+    "id": "S1",
+    "where": "a terraced grassy hill in a wide grass field with blocky trees",
+    "when": "daytime",
+    "look": "grass-block terraces stepping down toward the viewer, tufts and pixel flowers, trees near and far, fog to a pale horizon, blue sky with flat blocky clouds",
+    "shots": [
+     1
+    ]
+   }
+  ],
+  "props": [
+   {
+    "name": "the build",
+    "note": "a small building assembled from cobblestone, plank, log, glass and roof-plank blocks (the reference topic: do not copy)",
+    "shots": [
+     1
+    ]
+   },
+   {
+    "name": "dust and smoke cubes",
+    "note": "small grey-white tumbling cubes: a radial dust puff on the last block, rising smoke after",
+    "shots": [
+     1
+    ]
+   }
+  ]
+ },
+ "packaging": {
+  "stickers": [],
+  "text": [
+   {
+    "id": "text_001",
+    "kind": "title"
+   },
+   {
+    "id": "text_002",
+    "kind": "title"
+   },
+   {
+    "id": "text_003",
+    "kind": "scene"
+   }
+  ],
+  "missed": []
+ }
+}

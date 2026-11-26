@@ -1,0 +1,1015 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>fastreel asset stage</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script src="world.js"></script>
+<script>
+'use strict';
+// Generic host for model-made reels: a model-written style kit, model-drawn assets and model-animated shots.
+// The host adds only neutral craft (camera drift, cut transitions), captions and bubbles, and runs the validators.
+const W = 1080, H = 1920, cv = document.getElementById('c'); let ctx = cv.getContext('2d', location.search.includes('cpu') ? { willReadFrequently: true } : undefined); // let: h.cache points the helpers at an offscreen canvas while it draws // validation pages (?cpu) use a CPU canvas from the start: Chrome otherwise switches GPU to CPU after a few readbacks mid-validation and the anti-aliasing change looked like randomness. The video render keeps the faster GPU canvas.
+CanvasRenderingContext2D.prototype.beezierCurveTo = CanvasRenderingContext2D.prototype.bezierCurveTo; // a typo M3 keeps writing
+let TL = null, KIT = null, ASSETS = {}, SHOTS = {}, SPECS = {}, CUR = { sh: null, lt: 0 }, ANCH = {}, TRACK = null, STRICT = false;
+
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const easeOut = t => 1 - Math.pow(1 - clamp(t), 3);
+const easeIn = t => Math.pow(clamp(t), 3);
+const easeInOut = t => { t = clamp(t); return t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; };
+const easeBack = t => { t = clamp(t); const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+function rng(seed) { let s = (seed * 2654435761) >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function hexRgb(c) { c = String(c || '#000000').trim(); const m = c.match(/^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/i); if (m) return [m[1], m[2], m[3]].map(v => Math.round(+v)); c = c.replace('#', ''); if (c.length === 3) c = c.split('').map(x => x + x).join(''); return [parseInt(c.slice(0, 2), 16) || 0, parseInt(c.slice(2, 4), 16) || 0, parseInt(c.slice(4, 6), 16) || 0]; }
+function rgba(c, a) { if (typeof c !== 'string') return c; const [r, g, b] = hexRgb(c); return `rgba(${r},${g},${b},${clamp(a)})`; }
+// colour strings only (hex, rgb, rgba); a gradient or pattern passes through unchanged instead of turning into garbage colour
+function mix(a, b, t) { if (typeof a !== 'string') return a; if (typeof b !== 'string') return b; const A = hexRgb(a), B = hexRgb(b); return '#' + A.map((v, i) => Math.round(lerp(v, B[i], clamp(t))).toString(16).padStart(2, '0')).join(''); }
+function rr(x, y, w, hh, r) { ctx.beginPath(); ctx.roundRect(x, y, w, hh, r); }
+function poly(pts) { ctx.beginPath(); pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.closePath(); }
+function wrap(text, maxW) { const ws = String(text).split(/\s+/).filter(Boolean), out = []; let cur = ''; for (const w of ws) { const t = cur ? cur + ' ' + w : w; if (ctx.measureText(t).width > maxW && cur) { out.push(cur); cur = w; } else cur = t; } if (cur) out.push(cur); return out; }
+const L = (sh, i) => sh.lines[i] || { start: 1e9, end: 1e9 };
+// each whitespace word of a line with the moment it is spoken (shot seconds): the voice's word timings (timeline lines[i].words),
+// else the word's share of the line's letters
+function lineToks(ln) {
+  const toks = String(ln.text).split(/\s+/).filter(Boolean);
+  if (Array.isArray(ln.words) && ln.words.length === toks.length) return toks.map((t, i) => ({ t, s: ln.words[i].start, e: ln.words[i].end }));
+  const tot = toks.reduce((a, t) => a + t.length + 1, 0) || 1, dur = Math.max(0.3, ln.end - ln.start); let acc = 0;
+  return toks.map(t => { const s = ln.start + dur * acc / tot; acc += t.length + 1; return { t, s, e: ln.start + dur * (acc - 1) / tot }; });
+}
+// h.cue(word, n): the moment (seconds into the shot) the lines say that word or phrase (the n-th time, default the first);
+// plurals and endings match ("lung" finds "lungs"). While a shot is validated, a word its lines never say is an error.
+const cueNorm = s => String(s).toLowerCase().replace(/[’‘]/g, "'").replace(/[^\p{L}\p{N}'\s-]/gu, ' ').replace(/-/g, ' ').split(/\s+/).filter(Boolean);
+function cueTime(sh, word, n = 1) {
+  const want = cueNorm(word), all = [];
+  for (const ln of sh.lines) for (const x of lineToks(ln)) for (const p of cueNorm(x.t)) all.push({ p, s: x.s });
+  const same = (a, b) => a === b || (b.length >= 4 && (a.startsWith(b) || b.startsWith(a)) && Math.abs(a.length - b.length) <= 3);
+  let hit = 0;
+  if (want.length) for (let i = 0; i + want.length <= all.length; i++) if (want.every((w, k) => same(all[i + k].p, w)) && ++hit === Math.max(1, n)) return all[i].s;
+  if (STRICT) throw new Error(`h.cue(${JSON.stringify(word)}${n > 1 ? `, ${n}` : ''}): this shot's lines never say "${word}"${n > 1 ? ` ${n} times` : ''}; cue a word they say: ${sh.lines.map(l => `"${l.text}"`).join(' ')}`);
+  return sh.lines[0] ? sh.lines[0].start : 0;
+}
+function mouth(sh, who, lt) { for (const ln of sh.lines) if (ln.who === who && lt >= ln.start && lt < ln.end) return (ln.env || [])[Math.floor((lt - ln.start) * 30)] || 0; return 0; }
+function speedlines(cx, cy, lt, col = 'rgba(255,255,255,0.35)') { const R = rng(Math.floor(lt * 12)); ctx.save(); ctx.strokeStyle = col; for (let k = 0; k < 50; k++) { const a = R() * 6.283, r0 = 260 + R() * 200; ctx.lineWidth = 2 + R() * 5; ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); ctx.lineTo(cx + Math.cos(a) * 1600, cy + Math.sin(a) * 1600); ctx.stroke(); } ctx.restore(); }
+// ---------- geography (map templates): Natural Earth land, coasts, borders and countries (engine/world.js) ----------
+// v = {x, y, r, lon0, lat0}: the globe's centre and radius in the current coordinates and the place facing the viewer (degrees).
+// zoom = the scale the map is drawn at on screen (picks 1:110m or 1:50m data and culls parts outside the frame).
+// A FLAT map: v = {proj: 'merc', x, y, r, lon0, lat0}: north-up Mercator, (lon0, lat0) lands on (x, y), r = pixels per radian of
+// longitude (r 500: the frame's width spans about 124 degrees at the equator). Every point faces the viewer (z = 1).
+const D2R = Math.PI / 180;
+const mercY = lat => Math.log(Math.tan(Math.PI / 4 + clamp(lat, -85, 85) * D2R / 2));
+const isFlat = v => !!v && v.proj === 'merc';
+function geo(lon, lat, v) {
+  if (isFlat(v)) { const dl = lon - v.lon0 - 360 * Math.round((lon - v.lon0) / 360); return [v.x + v.r * dl * D2R, v.y - v.r * (mercY(lat) - mercY(v.lat0)), 1]; }
+  const dl = (lon - v.lon0) * D2R, p = lat * D2R, p0 = v.lat0 * D2R, cp = Math.cos(p), sp = Math.sin(p), c0 = Math.cos(p0), s0 = Math.sin(p0), cd = Math.cos(dl);
+  return [v.x + v.r * cp * Math.sin(dl), v.y - v.r * (c0 * sp - s0 * cp * cd), s0 * sp + c0 * cp * cd]; }
+function geoDist(lon1, lat1, lon2, lat2) { const a = Math.sin((lat2 - lat1) * D2R / 2) ** 2 + Math.cos(lat1 * D2R) * Math.cos(lat2 * D2R) * Math.sin((lon2 - lon1) * D2R / 2) ** 2; return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(a))); }
+const GEO = {};
+// a ring crossing longitude 180 jumps by 360 degrees in the data; unwrapped once so its longitudes run on (180, 181 ...)
+function unwrapRing(f0) { for (let i = 2; i < f0.length; i += 2) if (Math.abs(f0[i] - f0[i - 2]) > 180) { const f = f0.slice(); let off = 0;
+  for (let j = 2; j < f0.length; j += 2) { const d = f0[j] - f0[j - 2]; if (d > 180) off -= 360; else if (d < -180) off += 360; f[j] = f0[j] + off; } return f; } return f0; }
+const onSeam = lo => Math.abs((((lo % 360) + 360) % 360) - 180) < 0.01; // a point on longitude 180 (the data's cut)
+function partsOf(key, rings) { // each part's bounding cap (centre unit vector, angular radius) and lon / lat box, once
+  if (GEO[key]) return GEO[key];
+  return (GEO[key] = (rings || []).map(unwrapRing).map(f => {
+    let X = 0, Y = 0, Z = 0, lo0 = 1e9, lo1 = -1e9, la0 = 1e9, la1 = -1e9;
+    for (let i = 0; i < f.length; i += 2) { const lo = f[i] * D2R, la = f[i + 1] * D2R, c = Math.cos(la); X += c * Math.cos(lo); Y += c * Math.sin(lo); Z += Math.sin(la);
+      lo0 = Math.min(lo0, f[i]); lo1 = Math.max(lo1, f[i]); la0 = Math.min(la0, f[i + 1]); la1 = Math.max(la1, f[i + 1]); }
+    const m = Math.hypot(X, Y, Z) || 1; X /= m; Y /= m; Z /= m; let rad = 0;
+    for (let i = 0; i < f.length; i += 2) { const lo = f[i] * D2R, la = f[i + 1] * D2R, c = Math.cos(la); rad = Math.max(rad, Math.acos(clamp(X * c * Math.cos(lo) + Y * c * Math.sin(lo) + Z * Math.sin(la), -1, 1))); }
+    return { f, X, Y, Z, rad, lo0, lo1, la0, la1 }; }));
+}
+const geoParts = key => partsOf(key, window.WORLD && window.WORLD[key]);
+function capVisible(parts, v, zoom) {
+  const lo0 = v.lon0 * D2R, la0 = v.lat0 * D2R, c0 = Math.cos(la0), CX = c0 * Math.cos(lo0), CY = c0 * Math.sin(lo0), CZ = Math.sin(la0), rs = v.r * (zoom || 1);
+  const lim = (rs > 1150 ? Math.asin(1150 / rs) : Math.PI / 2) + 5 * D2R; // the frame's half diagonal is about 1100 px
+  return parts.filter(q => Math.acos(clamp(q.X * CX + q.Y * CY + q.Z * CZ, -1, 1)) - q.rad < lim);
+}
+const geoVisible = (key, v, zoom) => capVisible(geoParts(key), v, zoom);
+const geoKey = (kind, v, zoom) => kind + (v.r * (zoom || 1) >= 900 ? '50' : '110');
+// flat maps: the part of the current coordinates the canvas shows (inverse of the current transform), plus 10% on each side
+function viewRect() {
+  const m = ctx.getTransform().inverse(), cw = ctx.canvas.width, ch = ctx.canvas.height; let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+  for (const [sx, sy] of [[0, 0], [cw, 0], [0, ch], [cw, ch]]) { const x = m.a * sx + m.c * sy + m.e, y = m.b * sx + m.d * sy + m.f; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+  const px = (x1 - x0) * 0.1, py = (y1 - y0) * 0.1; return [x0 - px, y0 - py, x1 + px, y1 + py];
+}
+// a whole part is shifted by a multiple of 360 degrees to the side of lon0 (the data is already cut at longitude 180), then culled
+function flatVisible(parts, v) {
+  const [x0, y0, x1, y1] = viewRect(), m0 = mercY(v.lat0), out = [];
+  for (const q of parts) {
+    const sh = -360 * Math.round(((q.lo0 + q.lo1) / 2 - v.lon0) / 360), ax = v.x + v.r * (q.lo0 + sh - v.lon0) * D2R, bx = v.x + v.r * (q.lo1 + sh - v.lon0) * D2R;
+    const ay = v.y - v.r * (mercY(q.la1) - m0), by = v.y - v.r * (mercY(q.la0) - m0);
+    if (bx >= x0 && ax <= x1 && by >= y0 && ay <= y1) out.push([q, sh]);
+  }
+  return out;
+}
+// flat-map paths: mode 'fill' (closed rings), 'coast' (open, without the seams at longitude 180 and the South Pole), 'line'
+function flatPath(parts, v, mode, path = new Path2D()) {
+  const m0 = mercY(v.lat0);
+  for (const [q, sh] of flatVisible(parts, v)) {
+    const f = q.f, n = f.length / 2, X = i => v.x + v.r * (f[i] + sh - v.lon0) * D2R, Y = i => v.y - v.r * (mercY(f[i + 1]) - m0);
+    if (mode === 'coast') { for (let k = 0; k <= n; k++) { const i = (k % n) * 2, j = ((k + n - 1) % n) * 2, seam = !k || (onSeam(f[i]) && onSeam(f[j])) || f[i + 1] <= -89.9 || f[j + 1] <= -89.9; if (seam) path.moveTo(X(i), Y(i)); else path.lineTo(X(i), Y(i)); } continue; }
+    for (let k = 0; k < n; k++) { if (k) path.lineTo(X(k * 2), Y(k * 2)); else path.moveTo(X(0), Y(0)); }
+    if (mode === 'fill') path.closePath();
+  }
+  return path;
+}
+// globe fill: points behind the globe are pushed out to its rim, so a landmass crossing the edge closes along the rim
+function globeFill(parts, v, zoom, path = new Path2D()) {
+  for (const q of capVisible(parts, v, zoom)) {
+    const f = q.f, pts = []; let any = false;
+    for (let i = 0; i < f.length; i += 2) { const p = geo(f[i], f[i + 1], v); if (p[2] > 0) any = true; else { const dx = p[0] - v.x, dy = p[1] - v.y, d = Math.hypot(dx, dy) || 1; p[0] = v.x + dx / d * v.r; p[1] = v.y + dy / d * v.r; } pts.push(p); }
+    if (!any) continue;
+    pts.forEach((p, i) => (i ? path.lineTo(p[0], p[1]) : path.moveTo(p[0], p[1]))); path.closePath();
+  }
+  return path;
+}
+// land as ONE Path2D: ctx.fill(path, 'evenodd') (lakes such as the Caspian are holes); on a globe, inside a clip to its disc
+function landPath(v, zoom = 1) {
+  return isFlat(v) ? flatPath(geoParts(geoKey('land', v, zoom)), v, 'fill') : globeFill(geoParts(geoKey('land', v, zoom)), v, zoom);
+}
+// ---------- countries: h.countryPath(names, v, zoom) fills one country or several (a historic union by its member states) ----------
+// Natural Earth's short names (as of 2020): 'Russia', 'United Kingdom', 'United States of America', 'Czechia', 'Bosnia and Herz.' ...
+const COUNTRY_GROUPS = {
+  'ussr': ['Russia', 'Ukraine', 'Belarus', 'Moldova', 'Estonia', 'Latvia', 'Lithuania', 'Georgia', 'Armenia', 'Azerbaijan', 'Kazakhstan', 'Uzbekistan', 'Turkmenistan', 'Kyrgyzstan', 'Tajikistan'],
+  'yugoslavia': ['Slovenia', 'Croatia', 'Bosnia and Herz.', 'Serbia', 'Montenegro', 'Kosovo', 'Macedonia'],
+  'czechoslovakia': ['Czechia', 'Slovakia'],
+  'baltic states': ['Estonia', 'Latvia', 'Lithuania'],
+};
+COUNTRY_GROUPS['soviet union'] = COUNTRY_GROUPS['ussr'];
+const COUNTRY_ALIAS = {
+  'usa': 'United States of America', 'us': 'United States of America', 'united states': 'United States of America', 'america': 'United States of America',
+  'uk': 'United Kingdom', 'britain': 'United Kingdom', 'great britain': 'United Kingdom', 'russian federation': 'Russia',
+  'czech republic': 'Czechia', 'north macedonia': 'Macedonia', 'bosnia and herzegovina': 'Bosnia and Herz.', 'bosnia': 'Bosnia and Herz.',
+  'democratic republic of the congo': 'Dem. Rep. Congo', 'dr congo': 'Dem. Rep. Congo', 'republic of the congo': 'Congo', 'central african republic': 'Central African Rep.',
+  'south sudan': 'S. Sudan', 'dominican republic': 'Dominican Rep.', 'ivory coast': "Cote d'Ivoire", 'swaziland': 'eSwatini', 'burma': 'Myanmar',
+  'east timor': 'Timor-Leste', 'western sahara': 'W. Sahara', 'equatorial guinea': 'Eq. Guinea', 'solomon islands': 'Solomon Is.', 'falkland islands': 'Falkland Is.',
+  'holland': 'Netherlands', 'the netherlands': 'Netherlands', 'persia': 'Iran', 'south korea': 'South Korea', 'north korea': 'North Korea', 'cape verde': 'Cabo Verde',
+};
+function countryList(names) {
+  const all = (window.WORLD && window.WORLD.countries50) || {}, lower = {}; for (const n in all) lower[n.toLowerCase()] = n;
+  const out = [];
+  for (const raw of [].concat(names || [])) {
+    const k = String(raw).trim().toLowerCase().replace(/^the\s+/, '');
+    if (COUNTRY_GROUPS[k]) { out.push(...COUNTRY_GROUPS[k]); continue; }
+    const n = lower[k] || lower[(COUNTRY_ALIAS[k] || '').toLowerCase()];
+    if (n) { out.push(n); continue; }
+    if (STRICT) throw new Error(`unknown country "${raw}"; use Natural Earth's names, for example: ${Object.keys(all).filter(x => x[0].toLowerCase() === k[0]).slice(0, 12).join(', ')}; a union by its members (or 'USSR', 'Yugoslavia', 'Czechoslovakia')`);
+  }
+  return [...new Set(out)];
+}
+const countryParts = (key, n) => partsOf(key + ':' + n, ((window.WORLD && window.WORLD[key]) || {})[n]);
+function countryPath(names, v, zoom = 1) {
+  const key = geoKey('countries', v, zoom), path = new Path2D();
+  for (const n of countryList(names)) { const parts = countryParts(key, n); if (isFlat(v)) flatPath(parts, v, 'fill', path); else globeFill(parts, v, zoom, path); }
+  return path;
+}
+// the main body of one or several countries: parts at least 4% of the biggest part's area (far islands and exclaves left out)
+function countryMain(names) {
+  const ps = []; for (const n of countryList(names)) for (const q of countryParts('countries50', n)) {
+    const f = q.f; let a = 0, cx = 0, cy = 0;
+    for (let i = 0; i < f.length; i += 2) { const j = (i + 2) % f.length, c = f[i] * f[j + 1] - f[j] * f[i + 1]; a += c; cx += (f[i] + f[j]) * c; cy += (f[i + 1] + f[j + 1]) * c; }
+    if (Math.abs(a) > 1e-9) ps.push({ q, a: Math.abs(a / 2), cx: cx / (3 * a), cy: cy / (3 * a) });
+  }
+  const big = Math.max(0, ...ps.map(p => p.a)); return ps.filter(p => p.a >= big * 0.04).sort((p, r) => r.a - p.a);
+}
+// h.countryCentre(names) -> [lon, lat]: the centre of the biggest part (where a country's character or label sits)
+function countryCentre(names) { const m = countryMain(names)[0]; return m ? [+m.cx.toFixed(2), +m.cy.toFixed(2)] : [0, 0]; }
+// h.countryView(names, x, y, w, hgt, pad = 0.08) -> a flat-map view {proj: 'merc', x, y, r, lon0, lat0} that fits the countries'
+// main body inside the box w x hgt centred on (x, y), with pad (share of the box) left free on each side
+function countryView(names, x = W / 2, y = H / 2, w = 960, hgt = 1100, pad = 0.08) {
+  const ms = countryMain(names); if (!ms.length) return { proj: 'merc', x, y, r: 500, lon0: 0, lat0: 0 };
+  const c0 = (ms[0].q.lo0 + ms[0].q.lo1) / 2; let lo0 = 1e9, lo1 = -1e9, la0 = 1e9, la1 = -1e9;
+  for (const { q } of ms) { const sh = -360 * Math.round(((q.lo0 + q.lo1) / 2 - c0) / 360); lo0 = Math.min(lo0, q.lo0 + sh); lo1 = Math.max(lo1, q.lo1 + sh); la0 = Math.min(la0, q.la0); la1 = Math.max(la1, q.la1); }
+  const dy = mercY(la1) - mercY(la0), r = Math.min(w * (1 - 2 * pad) / Math.max(1e-6, (lo1 - lo0) * D2R), hgt * (1 - 2 * pad) / Math.max(1e-6, dy));
+  const my = (mercY(la1) + mercY(la0)) / 2, lat0 = (2 * Math.atan(Math.exp(my)) - Math.PI / 2) / D2R;
+  return { proj: 'merc', x, y, r: +r.toFixed(2), lon0: +((lo0 + lo1) / 2).toFixed(3), lat0: +lat0.toFixed(3) };
+}
+// coastlines as one Path2D of open lines, only where they face the viewer, without the data's seams at longitude 180 and the South Pole
+function coastPath(v, zoom = 1) {
+  if (isFlat(v)) return flatPath(geoParts(geoKey('land', v, zoom)), v, 'coast');
+  const path = new Path2D();
+  for (const q of geoVisible(geoKey('land', v, zoom), v, zoom)) {
+    const f = q.f, n = f.length / 2; let prev = null, pl = null;
+    for (let k = 0; k <= n; k++) { const i = (k % n) * 2, lo = f[i], la = f[i + 1], p = geo(lo, la, v), ok = p[2] > 0.01;
+      const seam = pl && ((onSeam(lo) && onSeam(pl[0])) || (la <= -89.9 || pl[1] <= -89.9));
+      if (ok && prev && !seam) path.lineTo(p[0], p[1]); else if (ok) path.moveTo(p[0], p[1]);
+      prev = ok ? p : null; pl = [lo, la]; }
+  }
+  return path;
+}
+// country borders as one Path2D of open lines (land borders between two countries), only where they face the viewer
+function borderPath(v, zoom = 1) {
+  if (isFlat(v)) return flatPath(geoParts(geoKey('borders', v, zoom)), v, 'line');
+  const path = new Path2D();
+  for (const q of geoVisible(geoKey('borders', v, zoom), v, zoom)) {
+    const f = q.f; let down = false;
+    for (let i = 0; i < f.length; i += 2) { const p = geo(f[i], f[i + 1], v); if (p[2] > 0.01) { if (down) path.lineTo(p[0], p[1]); else path.moveTo(p[0], p[1]); down = true; } else down = false; }
+  }
+  return path;
+}
+function burst(x, y, k, col = '#ffffff') { if (k < 0 || k > 0.8) return; const R = rng(7); ctx.save(); ctx.globalAlpha = 1 - k / 0.8; ctx.strokeStyle = col; ctx.lineCap = 'round'; for (let j = 0; j < 18; j++) { const a = R() * 6.283, d = 260 * easeOut(k / 0.8) * (0.6 + R() * 0.6); ctx.lineWidth = 4 + 4 * R(); ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * d * 0.55, y + Math.sin(a) * d * 0.55); ctx.lineTo(x + Math.cos(a) * d, y + Math.sin(a) * d); ctx.stroke(); } ctx.restore(); }
+
+// h.cache(key, w, hgt, draw): draws draw(g) ONCE into a w x hgt offscreen canvas and returns it for ctx.drawImage (static layers
+// that are slow to draw: a textured world, a big block build, a dense pattern). While draw runs, every h helper (h.rr, h.poly,
+// h.stick ...) draws on g, not on the frame. Cleared whenever a kit is compiled, so one reel's cache never leaks into another's.
+const CACHE = {};
+function cache(key, w, hgt, draw) {
+  const k = String(key); if (CACHE[k]) return CACHE[k];
+  const c = new OffscreenCanvas(Math.max(1, Math.round(+w) || W), Math.max(1, Math.round(+hgt) || H)), g = c.getContext('2d'), main = ctx;
+  ctx = g; try { if (typeof draw === 'function') draw(g); } finally { ctx = main; }
+  return (CACHE[k] = c);
+}
+
+// ---------- stick people: h.stick ----------
+// Ported from claude-animation-skills' stick-figure engine (chars.js, lib.js): MIT License, Copyright (c) 2026 Artem Novitckii,
+// https://github.com/artemnovitckii/claude-animation-skills. Body units: the figure stands on (0, 0), its head top is at y -0.955.
+const STICK_INK = '#221c22', TAU = Math.PI * 2;
+const sCircle = (x, y, r) => { ctx.beginPath(); ctx.arc(x, y, Math.max(0.001, r), 0, TAU); };
+const sEllipse = (x, y, rx, ry, rot = 0) => { ctx.beginPath(); ctx.ellipse(x, y, Math.max(0.001, rx), Math.max(0.001, ry), rot, 0, TAU); };
+function sFillStroke(fill, lw, ink) { if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (lw > 0) { ctx.lineWidth = lw; ctx.strokeStyle = ink; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke(); } }
+function sLine(x1, y1, x2, y2, lw, col) { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineWidth = lw; ctx.strokeStyle = col; ctx.lineCap = 'round'; ctx.stroke(); }
+function sLimb(ox, oy, side, a1, a2, l1, l2) { const ex = ox + side * Math.sin(a1) * l1, ey = oy + Math.cos(a1) * l1, b = a1 + a2; return [[ox, oy], [ex, ey], [ex + side * Math.sin(b) * l2, ey + Math.cos(b) * l2], b]; }
+function sIk(side, sx, sy, tx, ty, l1, l2, bend = 1) {
+  const vx = tx - sx, vy = ty - sy; let d = Math.hypot(vx, vy); d = Math.max(Math.min(d, (l1 + l2) * 0.999), Math.abs(l1 - l2) + 1e-4);
+  const at = Math.atan2(side * vx, vy), al = Math.acos(clamp((l1 * l1 + d * d - l2 * l2) / (2 * l1 * d), -1, 1)), be = Math.acos(clamp((l1 * l1 + l2 * l2 - d * d) / (2 * l1 * l2), -1, 1));
+  return [at + bend * al, -bend * (Math.PI - be)];
+}
+// poses: arm and leg angle pairs [upper, lower] per side (0 = hanging down, positive = outward), or {ik: [x, y]} to reach a point.
+// w(): a swing seen from the side (both limbs move toward +x for a positive angle), for walking, running and sitting.
+function stickPose(name, t) {
+  const w = (th, be) => ({ L: [-th[0], -be[0]], R: [th[1], be[1]] }), idleA = { L: [0.3, -0.1], R: [0.3, -0.1] }, idleL = { L: [0.1, -0.04], R: [0.1, -0.04] };
+  switch (name) {
+    case 'walk': case 'run': {
+      const run = name === 'run', f = run ? 2.6 : 1.6, s = Math.sin(t * TAU * f), A = run ? 0.75 : 0.42, K = run ? 1.2 : 0.55, sw = run ? 0.9 : 0.45, fb = run ? 1.3 : 0.35;
+      // legs swing opposite each other, the knee bends back on the trailing leg; arms swing against the legs, forearms forward
+      return { legs: w([-A * s, A * s], [-(0.1 + K * Math.max(0, s)), -(0.1 + K * Math.max(0, -s))]), arms: w([sw * s, -sw * s], [fb, fb]), bob: -(run ? 0.025 : 0.012) * (1 - Math.abs(s)), lean: run ? 0.12 : 0.03, turn: 0.6 };
+    }
+    case 'sit': return { legs: w([Math.PI / 2, Math.PI / 2], [-Math.PI / 2, -Math.PI / 2]), arms: { L: [0.5, -0.4], R: [0.5, -0.4] }, drop: 0.145, turn: 0.4 };
+    case 'point': return { arms: { L: idleA.L, R: [1.45, 0.1] }, legs: { L: [0.14, -0.04], R: [0.14, -0.04] }, turn: 0.3 };
+    case 'wave': return { arms: { L: idleA.L, R: [2.3, 0.55 + 0.35 * Math.sin(t * 9)] }, legs: idleL };
+    case 'handsUp': return { arms: { L: [2.5, 0.3], R: [2.5, 0.3] }, legs: { L: [0.2, -0.1], R: [0.2, -0.1] } };
+    case 'cheer': return { arms: { L: [2.6, 0.2], R: [2.6, 0.2] }, legs: { L: [0.2, -0.1], R: [0.2, -0.1] }, bob: -0.04 * Math.abs(Math.sin(t * 6)) };
+    case 'hips': return { arms: { L: [0.9, -2.2], R: [0.9, -2.2] }, legs: { L: [0.14, -0.04], R: [0.14, -0.04] } };
+    case 'shrug': return { arms: { L: [0.75, 1.5], R: [0.75, 1.5] }, legs: idleL, tilt: 0.12 };
+    case 'think': return { arms: { L: [0.6, -1.9], R: { ik: [0.05, -0.64] } }, legs: idleL, turn: -0.3 };
+    case 'facepalm': return { arms: { L: idleA.L, R: { ik: [0.02, -0.8] } }, legs: idleL, tilt: 0.15 };
+    default: return { arms: idleA, legs: idleL };
+  }
+}
+const STICK_FACES = {
+  neutral: { mouth: 'flat' }, smile: { mouth: 'smile' }, happy: { eyes: 'happy', mouth: 'grin', browUp: 0.6 }, laughing: { eyes: 'squint', mouth: 'grin', browUp: 0.5 },
+  sad: { mouth: 'frown', browAng: 0.35, look: [0, 0.6] }, angry: { mouth: 'frown', browAng: -0.45 }, surprised: { eyes: 'wide', mouth: 'o', browUp: 1 },
+  scared: { eyes: 'wide', mouth: 'teeth', browUp: 1, browAng: 0.3 }, smug: { eyes: 'smug', mouth: 'smirk', browOne: 1 }, thinking: { mouth: 'smirk', look: [0.6, -0.7], browOne: -1 },
+  confused: { mouth: 'flat', browOne: 1, look: [-0.5, -0.3] }, determined: { eyes: 'half', mouth: 'flat', browAng: -0.25 }, dizzy: { eyes: 'spiral', mouth: 'o' }, ko: { eyes: 'x', mouth: 'o' },
+};
+function stickFace(hx, hy, hr, f, o, ink, skin, sil) {
+  const turn = f.turn || 0, ex = 0.072, ey = hy - 0.005, er = f.eyeR || 0.042, look = f.look || [0, 0], kind = f.eyes || 'normal', glow = sil && o.eyesGlow;
+  if (sil && !glow) return;
+  for (const side of [-1, 1]) {
+    const x = hx + side * ex + turn * 0.06, y = ey, blink = f.blink || 0;
+    ctx.lineWidth = 0.015; ctx.strokeStyle = glow ? '#fff' : ink; ctx.lineCap = 'round';
+    if (kind === 'squint') { ctx.beginPath(); ctx.moveTo(x - side * 0.035, y - 0.03); ctx.lineTo(x + side * 0.03, y); ctx.lineTo(x - side * 0.035, y + 0.03); ctx.stroke(); continue; }
+    if (kind === 'happy') { ctx.beginPath(); ctx.arc(x, y + 0.015, 0.032, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); continue; }
+    if (kind === 'spiral') { ctx.beginPath(); const rot = (o.t || 0) * 9 * side; for (let a = 0; a < 14; a += 0.3) { const r = 0.004 + a * 0.0032, px = x + Math.cos(a + rot) * r, py = y + Math.sin(a + rot) * r; a ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.lineWidth = 0.011; ctx.stroke(); continue; }
+    if (kind === 'x') { const xc = glow ? '#fff' : ink; sLine(x - 0.03, y - 0.03, x + 0.03, y + 0.03, 0.018, xc); sLine(x + 0.03, y - 0.03, x - 0.03, y + 0.03, 0.018, xc); continue; }
+    const r = kind === 'wide' ? er * 1.3 : er, pr = kind === 'wide' ? r * 0.3 : (f.pupil || 0.45) * r;
+    ctx.save();
+    sEllipse(x, y, r, r * (1 - blink * 0.92)); ctx.fillStyle = '#fff'; ctx.fill();
+    if (!glow) { ctx.lineWidth = 0.013; ctx.strokeStyle = ink; ctx.stroke(); }
+    sEllipse(x, y, r, r * (1 - blink * 0.92)); ctx.clip();
+    const px = x + look[0] * r * 0.45, py = y + look[1] * r * 0.45;
+    sCircle(px, py, pr); ctx.fillStyle = ink; ctx.fill();
+    if (pr > 0.012) { sCircle(px - pr * 0.35, py - pr * 0.35, pr * 0.3); ctx.fillStyle = '#fff'; ctx.fill(); }
+    if (kind === 'smug' || kind === 'half') { ctx.fillStyle = sil || skin; ctx.fillRect(x - r - 0.01, y - r - 0.01, r * 2 + 0.02, r * (kind === 'half' ? 0.9 : 1.05)); sLine(x - r, y - r * (kind === 'half' ? 0.1 : -0.05), x + r, y - r * (kind === 'half' ? 0.1 : -0.05), 0.014, ink); }
+    ctx.restore();
+  }
+  if (glow) return;
+  if (f.brow !== false) {
+    const by = ey - 0.07 - (f.browUp || 0) * 0.03, ba = f.browAng || 0;
+    for (const side of [-1, 1]) {
+      const x = hx + side * ex + turn * 0.06, up = (f.browOne && side === f.browOne) ? 0.03 : 0;
+      ctx.save(); ctx.translate(x, by - up); ctx.rotate(side * ba);
+      ctx.beginPath(); ctx.moveTo(-0.03, 0.006); ctx.quadraticCurveTo(0, -0.01, 0.03, 0.006); ctx.lineWidth = 0.014; ctx.strokeStyle = ink; ctx.lineCap = 'round'; ctx.stroke(); ctx.restore();
+    }
+  }
+  const mx = hx + turn * 0.06, my = hy + 0.085, talk = clamp(+o.mouth || 0), m = talk > 0.1 ? 'talk' : (f.mouth || 'smile');
+  ctx.lineWidth = 0.014; ctx.strokeStyle = ink; ctx.lineCap = 'round';
+  if (m === 'talk') { sEllipse(mx, my + 0.005, 0.026, 0.008 + 0.024 * talk); sFillStroke('#5a1e24', 0.012, ink); }
+  else if (m === 'smile') { ctx.beginPath(); ctx.arc(mx, my - 0.04, 0.045, 0.5, Math.PI - 0.5); ctx.stroke(); }
+  else if (m === 'flat') sLine(mx - 0.03, my, mx + 0.03, my, 0.014, ink);
+  else if (m === 'frown') { ctx.beginPath(); ctx.arc(mx, my + 0.04, 0.04, Math.PI + 0.6, -0.6); ctx.stroke(); }
+  else if (m === 'smirk') { ctx.beginPath(); ctx.moveTo(mx - 0.035, my + 0.005); ctx.quadraticCurveTo(mx + 0.01, my + 0.02, mx + 0.045, my - 0.02); ctx.stroke(); }
+  else if (m === 'o') { sEllipse(mx, my + 0.005, 0.02, 0.026); sFillStroke('#5a1e24', 0.012, ink); }
+  else if (m === 'grin' || m === 'teeth') {
+    const w = m === 'teeth' ? 0.06 : 0.058, hh = m === 'teeth' ? 0.045 : 0.042;
+    const mp = () => { ctx.beginPath(); if (m === 'grin') { ctx.moveTo(mx - w, my - 0.015); ctx.quadraticCurveTo(mx, my - 0.005, mx + w, my - 0.015); ctx.quadraticCurveTo(mx + w * 0.8, my + hh * 1.5, mx, my + hh * 1.3); ctx.quadraticCurveTo(mx - w * 0.8, my + hh * 1.5, mx - w, my - 0.015); ctx.closePath(); } else ctx.roundRect(mx - w / 2 * 1.4, my - hh / 2, w * 1.4, hh, 0.012); };
+    mp(); ctx.fillStyle = m === 'grin' ? '#7a2630' : '#fff'; ctx.fill(); ctx.save(); mp(); ctx.clip();
+    if (m === 'teeth') { sLine(mx - w, my, mx + w, my, 0.008, ink); for (let i = -2; i <= 2; i++) sLine(mx + i * 0.017, my - hh, mx + i * 0.017, my + hh, 0.008, ink); }
+    else { ctx.fillStyle = '#fff'; ctx.fillRect(mx - w, my - 0.03, w * 2, 0.03); sEllipse(mx, my + hh * 1.25, w * 0.5, hh * 0.45); ctx.fillStyle = '#e8707a'; ctx.fill(); }
+    ctx.restore(); mp(); ctx.lineWidth = 0.013; ctx.strokeStyle = ink; ctx.stroke();
+  }
+}
+function stickHat(kind, hx, hy, hr, col, lw, ink) {
+  if (kind === 'hair' || kind === 'cap') {
+    ctx.beginPath(); ctx.arc(hx, hy, hr + 0.006, Math.PI + 0.3, -0.3); ctx.closePath(); sFillStroke(col, lw, ink);
+    if (kind === 'cap') { ctx.beginPath(); ctx.roundRect(hx + hr * 0.2, hy - hr * 0.36, hr * 1.05, 0.032, 0.014); sFillStroke(col, lw, ink); }
+    else { ctx.beginPath(); ctx.moveTo(hx - hr * 0.6, hy - hr * 0.62); ctx.quadraticCurveTo(hx - hr * 0.2, hy - hr * 0.35, hx + hr * 0.1, hy - hr * 0.62); ctx.lineWidth = lw * 0.8; ctx.strokeStyle = ink; ctx.stroke(); }
+  } else if (kind === 'bandana') {
+    const cut = hy - hr * 0.18, shape = () => { ctx.beginPath(); ctx.arc(hx, hy, hr + 0.006, Math.PI + 0.52, -0.52); ctx.quadraticCurveTo(hx + hr * 0.2, cut + 0.05, hx, cut + 0.03); ctx.quadraticCurveTo(hx - hr * 0.5, cut + 0.02, hx - hr * 0.86, cut + 0.02); ctx.closePath(); };
+    ctx.beginPath(); ctx.moveTo(hx - hr * 0.85, cut - 0.01); ctx.quadraticCurveTo(hx - hr * 1.35, cut + 0.02, hx - hr * 1.32, cut + 0.12); ctx.lineTo(hx - hr * 1.12, cut + 0.05); ctx.closePath(); sFillStroke(col, lw, ink);
+    ctx.beginPath(); ctx.moveTo(hx - hr * 0.85, cut - 0.01); ctx.quadraticCurveTo(hx - hr * 1.45, cut - 0.06, hx - hr * 1.5, cut + 0.03); ctx.lineTo(hx - hr * 1.2, cut + 0.01); ctx.closePath(); sFillStroke(col, lw, ink);
+    shape(); ctx.fillStyle = col; ctx.fill(); ctx.save(); shape(); ctx.clip(); ctx.fillStyle = '#fff';
+    for (let i = -3; i <= 3; i++) for (let j = 0; j < 3; j++) { sCircle(hx + i * 0.055 + (j % 2) * 0.027, hy - hr + 0.03 + j * 0.045, 0.012); ctx.fill(); }
+    ctx.fillStyle = 'rgba(40,0,30,.18)'; ctx.fillRect(hx + hr * 0.35, hy - hr - 0.02, hr, hr); ctx.restore();
+    shape(); sFillStroke(null, lw, ink); sCircle(hx - hr * 0.9, cut, 0.03); sFillStroke(col, lw, ink);
+  } else if (kind === 'sailor') {
+    const top = hy - hr * 0.78;
+    ctx.beginPath(); ctx.moveTo(hx - hr * 0.85, top + 0.02); ctx.quadraticCurveTo(hx - hr * 0.75, top - 0.2, hx, top - 0.21); ctx.quadraticCurveTo(hx + hr * 0.75, top - 0.2, hx + hr * 0.85, top + 0.02); ctx.closePath(); sFillStroke('#f8f8f6', lw, ink);
+    ctx.beginPath(); ctx.roundRect(hx - hr * 0.95, top - 0.015, hr * 1.9, 0.05, 0.02); sFillStroke(col, lw, ink);
+  } else if (kind === 'captain') {
+    const top = hy - hr * 0.7;
+    ctx.beginPath(); ctx.moveTo(hx - hr * 1.35, top + 0.02); ctx.quadraticCurveTo(hx - hr * 0.6, top - 0.2, hx, top - 0.07); ctx.quadraticCurveTo(hx + hr * 0.6, top - 0.2, hx + hr * 1.35, top + 0.02); ctx.quadraticCurveTo(hx, top + 0.06, hx - hr * 1.35, top + 0.02); sFillStroke(col, lw, ink);
+    ctx.beginPath(); ctx.moveTo(hx - hr * 1.2, top); ctx.quadraticCurveTo(hx, top + 0.04, hx + hr * 1.2, top); ctx.lineWidth = 0.012; ctx.strokeStyle = '#e8c04a'; ctx.stroke();
+  }
+}
+// h.stick(x, y, size, o): a stick person standing with its feet at (x, y), size px tall. Returns where its head and hands are,
+// in the caller's coordinates, so a shot can anchor a speech bubble or put something in a hand.
+function stick(x, y, size = 400, o = {}) {
+  o = o && typeof o === 'object' ? o : {};
+  // pose and face names in any case or spacing ('hands_up', 'Hands Up', 'face-palm' -> handsUp, facepalm)
+  const norm = v => String(v || '').toLowerCase().replace(/[^a-z]/g, ''), PN = { handsup: 'handsUp', facepalm: 'facepalm' };
+  const pn = norm(o.pose), t = +o.t || 0, pz = stickPose(PN[pn] || pn || 'idle', t), s = +size || 400;
+  o = { ...o, face: norm(o.face) };
+  const flip = o.flip ? -1 : 1, ink = o.ink || STICK_INK, sil = o.silhouette, line = sil || ink;
+  const skin = o.skin || '#f6f2ea', skinSh = mix(skin, '#000000', 0.1), lw = 0.017, limbW = 0.028, base = ctx.getTransform();
+  const f = { ...(STICK_FACES[o.face] || STICK_FACES.smile), ...(o.look ? { look: o.look } : {}) };
+  f.turn = (f.turn || 0) + (pz.turn || 0) * (o.turn == null ? 1 : 0) + (+o.turn || 0);
+  if (o.blink != null) f.blink = +o.blink; else f.blink = ((t + (+o.seed || 0) * 0.77) % 3.4) < 0.12 ? 1 : 0;
+  const out = { head: [x, y - s * 0.765], top: y - s * 0.955, handL: [x, y - s * 0.4], handR: [x, y - s * 0.4], feet: [x, y] };
+  const at = (px, py) => { const p = base.inverse().multiply(ctx.getTransform()).transformPoint(new DOMPoint(px, py)); return [p.x, p.y]; };
+  ctx.save(); ctx.translate(x, y); if (o.alpha != null) ctx.globalAlpha *= clamp(+o.alpha);
+  if (o.shadow !== false && !sil) { ctx.save(); ctx.scale(s, s); sEllipse(0, 0, 0.2, 0.035); ctx.fillStyle = 'rgba(40,20,30,.22)'; ctx.fill(); ctx.restore(); }
+  ctx.scale(s * flip, s * (o.squash || 1)); ctx.rotate((+o.lean || 0) + (pz.lean || 0)); ctx.translate(0, (pz.drop || 0) + (pz.bob || 0));
+  const legs = o.legs || pz.legs, arms = { ...(o.arms || pz.arms) }, hipY = -0.3, shY = -0.535;
+  // o.reachL / o.reachR = [dx, dy] px from the feet: that hand reaches there (to hold or touch something)
+  for (const k of ['L', 'R']) { const r = o['reach' + k]; if (Array.isArray(r) && Number.isFinite(+r[0]) && Number.isFinite(+r[1])) arms[k] = { ik: [r[0] / s * flip, r[1] / s / (o.squash || 1) - (pz.drop || 0) - (pz.bob || 0)] }; }
+  for (const [k, side] of [['L', -1], ['R', 1]]) {
+    const [a1, a2] = legs[k], p = sLimb(side * 0.055, hipY, side, a1, a2, 0.155, 0.155);
+    ctx.beginPath(); ctx.moveTo(...p[0]); ctx.lineTo(...p[1]); ctx.lineTo(...p[2]); ctx.lineWidth = limbW; ctx.strokeStyle = line; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+    sEllipse(p[2][0] + side * 0.022, p[2][1] + 0.004, 0.042, 0.022); ctx.fillStyle = line; ctx.fill();
+  }
+  const tw = 0.25, tTop = -0.62, tBot = -0.27, torso = () => { ctx.beginPath(); ctx.roundRect(-tw / 2, tTop, tw, tBot - tTop, [0.1, 0.1, 0.12, 0.12]); };
+  if (sil) { torso(); ctx.fillStyle = sil; ctx.fill(); }
+  else {
+    const shirt = o.shirt || '#e0392f';
+    torso(); ctx.fillStyle = shirt; ctx.fill();
+    if (o.stripe) { ctx.save(); torso(); ctx.clip(); ctx.fillStyle = o.stripe; for (let i = 0; i < 6; i++) ctx.fillRect(-tw, tTop + 0.035 + i * 0.07, tw * 2, 0.035); ctx.restore(); }
+    if (o.belt) { ctx.save(); torso(); ctx.clip(); ctx.fillStyle = o.belt; ctx.fillRect(-tw, -0.34, tw * 2, 0.035); ctx.restore(); }
+    ctx.save(); torso(); ctx.clip(); ctx.fillStyle = 'rgba(30,10,40,0.18)'; ctx.fillRect(tw / 2 - tw * 0.38, tTop, tw * 0.38 + 0.01, tBot - tTop); ctx.restore();
+    torso(); sFillStroke(null, lw, ink);
+  }
+  const drawArm = p => { ctx.beginPath(); ctx.moveTo(...p[0]); ctx.lineTo(...p[1]); ctx.lineTo(...p[2]); ctx.lineWidth = limbW; ctx.strokeStyle = line; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke(); sCircle(p[2][0], p[2][1], 0.03); ctx.fillStyle = line; ctx.fill(); };
+  const front = []; // arms that reach a point (ik: chin, face, an object) are drawn over the head
+  for (const [k, side] of [['L', -1], ['R', 1]]) {
+    const al = o.armLen || 1, arm = arms[k] || [0.3, -0.1], [a1, a2] = arm.ik ? sIk(side, side * 0.1, shY, arm.ik[0], arm.ik[1], 0.14 * al, 0.13 * al, arm.bend || 1) : arm;
+    const p = sLimb(side * 0.1, shY, side, a1, a2, 0.14 * al, 0.13 * al);
+    if (arm.ik) front.push(p); else drawArm(p);
+    out['hand' + k] = at(p[2][0], p[2][1]);
+  }
+  const hr = 0.19, hx = 0, hy = -0.765;
+  out.head = at(hx, hy); out.top = at(hx, hy - hr)[1];
+  ctx.save(); ctx.translate(hx, hy); ctx.rotate((+o.headTilt || 0) + (pz.tilt || 0)); ctx.translate(-hx, -hy);
+  if (sil) { sCircle(hx, hy, hr); ctx.fillStyle = sil; ctx.fill(); }
+  else {
+    sCircle(hx, hy, hr); ctx.fillStyle = skin; ctx.fill();
+    ctx.save(); sCircle(hx, hy, hr); ctx.clip(); ctx.beginPath(); ctx.arc(hx, hy, hr + 0.01, 0, TAU); ctx.arc(hx - 0.045, hy - 0.04, hr, 0, TAU, true); ctx.fillStyle = skinSh; ctx.fill(); ctx.restore();
+    if (o.blush) { sEllipse(hx - 0.1, hy + 0.06, 0.035, 0.02); ctx.fillStyle = 'rgba(240,120,120,.35)'; ctx.fill(); sEllipse(hx + 0.1, hy + 0.06, 0.035, 0.02); ctx.fill(); }
+    if (o.hat && o.hat !== 'none') stickHat(o.hat, hx, hy, hr, o.hatColour || o.hatColor || '#3a2a22', lw, ink);
+    sCircle(hx, hy, hr); sFillStroke(null, lw, ink);
+    if (o.hat === 'cap' || o.hat === 'hair' || o.hat === 'bandana') { ctx.save(); sCircle(hx, hy, hr); ctx.clip(); stickHat(o.hat, hx, hy, hr, o.hatColour || o.hatColor || '#3a2a22', lw, ink); ctx.restore(); }
+  }
+  stickFace(hx, hy, hr, f, { ...o, t }, ink, skin, sil);
+  ctx.restore(); front.forEach(drawArm); ctx.restore();
+  return out;
+}
+
+// ---------- data helpers: h.graph, h.route, h.fmt ----------
+// After claude-animation-skills' /graph (Catmull-Rom line that draws itself while the count follows its tip): MIT, Copyright (c) 2026 Artem Novitckii.
+function fmt(v, o = {}) { const d = Math.max(0, Math.min(4, +o.decimals || 0)), n = Number.isFinite(+v) ? +v : 0; return (o.prefix || '') + n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }) + (o.suffix || ''); }
+function smoothPts(P, seg = 20) { // one smooth Catmull-Rom curve through every point, as a dense polyline with its running length
+  const out = [P[0]];
+  for (let i = 0; i < P.length - 1; i++) {
+    const p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(P.length - 1, i + 2)], k = 0.5 / 3;
+    const c1 = [p1[0] + (p2[0] - p0[0]) * k, p1[1] + (p2[1] - p0[1]) * k], c2 = [p2[0] - (p3[0] - p1[0]) * k, p2[1] - (p3[1] - p1[1]) * k];
+    for (let j = 1; j <= seg; j++) { const u = j / seg, v = 1 - u; out.push([v * v * v * p1[0] + 3 * v * v * u * c1[0] + 3 * v * u * u * c2[0] + u * u * u * p2[0], v * v * v * p1[1] + 3 * v * v * u * c1[1] + 3 * v * u * u * c2[1] + u * u * u * p2[1]]); }
+  }
+  const cum = [0]; for (let i = 1; i < out.length; i++) cum.push(cum[i - 1] + Math.hypot(out[i][0] - out[i - 1][0], out[i][1] - out[i - 1][1]));
+  return { pts: out, cum, len: cum[cum.length - 1] };
+}
+function strokeTo(sp, d) { // strokes the first d px of a smoothPts path; returns the point there and the direction of travel
+  const n = sp.pts.length; ctx.beginPath(); ctx.moveTo(sp.pts[0][0], sp.pts[0][1]); let i = 1;
+  for (; i < n && sp.cum[i] <= d; i++) ctx.lineTo(sp.pts[i][0], sp.pts[i][1]);
+  let end = sp.pts[i - 1], a = sp.pts[Math.max(0, i - 2)], b = sp.pts[i - 1];
+  if (i < n) { a = sp.pts[i - 1]; b = sp.pts[i]; const f = (d - sp.cum[i - 1]) / ((sp.cum[i] - sp.cum[i - 1]) || 1); end = [lerp(a[0], b[0], f), lerp(a[1], b[1], f)]; ctx.lineTo(end[0], end[1]); }
+  ctx.stroke(); return { x: end[0], y: end[1], angle: Math.atan2(b[1] - a[1], b[0] - a[0]) };
+}
+// h.graph(x, y, w, hgt, values, k, o): a line graph in the box (x, y, w, hgt); k = seconds since it started. Gridlines slide in,
+// labels fade up, then the line draws itself over o.dur s; the returned value / text is the count under the tip (lands on o.final).
+function graph(x, y, w, hgt, values, k, o = {}) {
+  o = o && typeof o === 'object' ? o : {}; k = +k;
+  const V = (Array.isArray(values) ? values : []).map(Number).filter(Number.isFinite);
+  if (V.length < 2 || !Number.isFinite(k)) return { x, y: y + hgt, value: 0, text: fmt(0, o), done: false };
+  const vmax = Math.max(...V) > 0 ? Math.max(...V) : 1, last = V[V.length - 1] || 1, fin = o.final != null && Number.isFinite(+o.final) ? +o.final : last, sc = fin / last;
+  const Y0 = y + hgt, col = o.colour || o.color || '#111111', grid = o.grid || rgba(col, 0.16), tc = o.text || col, lw = +o.width || 9, dur = +o.dur || 2.7;
+  const P = V.map((v, i) => [x + i * w / (V.length - 1), Y0 - Math.max(0, v) / vmax * hgt]), sp = smoothPts(P);
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (let j = 0; j < 3; j++) { const g = easeOut((k - j * 0.06) / 0.45); if (g <= 0) continue; ctx.strokeStyle = grid; ctx.lineWidth = j ? 2 : 3; ctx.beginPath(); ctx.moveTo(x, Y0 - j * hgt / 2); ctx.lineTo(x + w * g, Y0 - j * hgt / 2); ctx.stroke(); }
+  const labs = Array.isArray(o.labels) ? o.labels : [], every = Math.max(1, Math.ceil(labs.length / 7));
+  if (labs.length) { ctx.font = o.font || '600 38px "Segoe UI", Arial'; ctx.fillStyle = tc; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    labs.forEach((m, i) => { if (i >= V.length || (i % every && i !== V.length - 1)) return; const a = clamp((k - 0.1 - i * 0.03) / 0.3); if (a <= 0) return; ctx.globalAlpha = a * 0.7; ctx.fillText(String(m), P[i][0], Y0 + 26); });
+    ctx.globalAlpha = 1; }
+  const p = easeInOut((k - 0.3) / dur); let tip = { x: P[0][0], y: P[0][1] };
+  if (p > 0) { ctx.strokeStyle = col; ctx.lineWidth = lw; tip = strokeTo(sp, p * sp.len); sCircle(tip.x, tip.y, lw * 1.3); ctx.fillStyle = col; ctx.fill(); }
+  const kl = k - 0.3 - dur;
+  if (kl >= 0) {
+    const e = easeOut(kl / 0.7); if (kl < 0.7) { sCircle(tip.x, tip.y, (13 + 47 * e) * lw / 9); ctx.fillStyle = rgba(col, 0.18 * (1 - kl / 0.7)); ctx.fill(); }
+    const dy = easeInOut((kl - 0.05) / 0.45); if (dy > 0) { ctx.setLineDash([2, 14]); ctx.strokeStyle = rgba(col, 0.5); ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(tip.x, tip.y + 22); ctx.lineTo(tip.x, lerp(tip.y + 22, Y0, dy)); ctx.stroke(); }
+  }
+  ctx.restore();
+  const d = Math.max(0, Math.min(4, +o.decimals || 0)), raw = p <= 0 ? 0 : p >= 1 ? fin : Math.max(0, (Y0 - tip.y) / hgt * vmax * sc), value = p >= 1 ? fin : Math.round(raw * 10 ** d) / 10 ** d;
+  return { x: tip.x, y: tip.y, value, text: fmt(value, o), done: p >= 1 };
+}
+// h.route(pts, k, o): a smooth route through [[x, y], ...] that draws itself over o.dur s (k = seconds since it started),
+// with a cased line, a start ring, a travelling head and a pin that drops on the end. Returns the head {x, y, angle, done}.
+function route(pts, k, o = {}) {
+  o = o && typeof o === 'object' ? o : {}; k = +k;
+  const Q = (Array.isArray(pts) ? pts : []).map(q => [+q[0], +q[1]]).filter(q => Number.isFinite(q[0]) && Number.isFinite(q[1]));
+  if (Q.length < 2 || !Number.isFinite(k)) return { x: Q[0] ? Q[0][0] : 0, y: Q[0] ? Q[0][1] : 0, angle: 0, done: false };
+  const sp = smoothPts(Q), dur = +o.dur || 2.5, p = easeInOut(k / dur), col = o.colour || o.color || '#2f7bf6', lw = +o.width || 14;
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (o.ghost) { ctx.setLineDash([lw * 0.2, lw * 1.6]); ctx.strokeStyle = rgba(col, 0.35); ctx.lineWidth = lw * 0.6; strokeTo(sp, sp.len); ctx.setLineDash([]); }
+  let hd = { x: Q[0][0], y: Q[0][1], angle: 0 };
+  if (p > 0) { ctx.strokeStyle = o.casing || 'rgba(255,255,255,0.9)'; ctx.lineWidth = lw * 1.7; strokeTo(sp, p * sp.len); ctx.strokeStyle = col; ctx.lineWidth = lw; hd = strokeTo(sp, p * sp.len); }
+  sCircle(Q[0][0], Q[0][1], lw * 0.9); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.lineWidth = lw * 0.45; ctx.strokeStyle = col; ctx.stroke();
+  if (p > 0 && p < 1) { sCircle(hd.x, hd.y, lw * (1.6 + 0.5 * Math.sin(k * 8))); ctx.fillStyle = rgba(col, 0.25); ctx.fill(); sCircle(hd.x, hd.y, lw * 0.85); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.lineWidth = lw * 0.4; ctx.strokeStyle = col; ctx.stroke(); }
+  const kp = k - dur;
+  if (kp >= 0) {
+    const e = easeBack(kp / 0.35), [ex, ey] = Q[Q.length - 1], R = lw * 2.2, py = ey - (1 - e) * 80, cy = py - R * 2;
+    sEllipse(ex, ey + 2, R * 0.9 * clamp(e), R * 0.3 * clamp(e)); ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(ex, py); ctx.arc(ex, cy, R, Math.PI * 5 / 6, Math.PI / 6); ctx.closePath(); ctx.fillStyle = o.pin || '#e5484d'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = rgba('#000000', 0.25); ctx.stroke();
+    sCircle(ex, cy, R * 0.4); ctx.fillStyle = '#ffffff'; ctx.fill();
+  }
+  ctx.restore();
+  return { x: hd.x, y: hd.y, angle: hd.angle, done: p >= 1 };
+}
+
+// ---------- real photos, reference quotes and footnotes (templates with "photos: commons", engine/photos.mjs) ----------
+// Photos arrive as JPEG bytes (window.loadPhotos, awaited by the host before validating or rendering), so the stage stays off
+// the network. Their credit lines, the quotes' sources and the footnotes are small print drawn by the host (untracked text:
+// the 36 px minimum is for M3's own labels, not for credits).
+const PHOTOS = {}, QUOTES = {};
+async function loadPhotos(list) {
+  await Promise.all((list || []).map(async p => {
+    if (!p || !p.id || !p.b64 || (PHOTOS[p.id] && PHOTOS[p.id].n === p.b64.length)) return;
+    const bin = atob(p.b64), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    try { PHOTOS[p.id] = { id: p.id, credit: p.credit || '', focus: p.focus || [0.5, 0.5], n: p.b64.length, bmp: await createImageBitmap(new Blob([u8], { type: 'image/jpeg' })) }; } catch { }
+  }));
+  return Object.keys(PHOTOS).length;
+}
+window.loadPhotos = loadPhotos;
+const smallFont = (size, weight = 400) => `${weight} ${size}px "Segoe UI", Arial, sans-serif`;
+function smallLines(text, maxW, max = 2) { const ls = wrap(text, maxW); if (ls.length > max) { ls.length = max; ls[max - 1] = ls[max - 1].replace(/\s*\S*$/, '') + '...'; } return ls; }
+const kOf = o => (o.k == null || !Number.isFinite(+o.k) ? 10 : +o.k);
+// h.photo(id, x, y, w, hgt, o): the real photo cover-cropped into the box (x, y is its TOP-LEFT), in a paper frame with a drop
+// shadow, its credit line under it. o: {k: seconds since it appeared (rises and fades in over 0.45 s; negative hides it; leave it
+// out to simply show it), grey: 0 to 1 (black and white), zoom: slow push-in over 8 s (default 0.06), focus: [fx, fy] the crop
+// centre (default: the subject's centre), fit: 'contain' to show the whole photo, frame: border px (default 10), credit: false
+// hides the credit (only when the same photo is still on screen from the shot before), alpha}. Returns its box {x0, y0, x1, y1, bottom}.
+function photo(id, x, y, w, hgt, o = {}) {
+  o = o && typeof o === 'object' ? o : {};
+  const P = PHOTOS[id];
+  if (!P) { if (STRICT) throw new Error(`unknown photo "${id}"; this reel's photos are: ${Object.keys(PHOTOS).map(k => `"${k}"`).join(', ') || 'none (draw it yourself)'}`); return null; }
+  x = +x; y = +y; w = +w; hgt = +hgt;
+  if (![x, y, w, hgt].every(Number.isFinite) || w < 20 || hgt < 20) { if (STRICT) throw new Error(`h.photo("${id}", x, y, w, hgt): x, y, w and hgt must be numbers (w and hgt at least 20; x, y is the top-left corner)`); return null; }
+  if (STRICT && (w < 360 || hgt < 200)) throw new Error(`h.photo("${id}") is ${Math.round(w)} x ${Math.round(hgt)} px: a real photo must read at a glance, so give it at least 360 x 200 px (420 to 560 wide is right)`);
+  const k = kOf(o), fr = o.frame == null ? 10 : Math.max(0, +o.frame || 0);
+  // the box is returned even before the photo appears (k < 0), so code that draws a leader line to it never meets null
+  const hidden = { x0: x - fr, y0: y - fr, x1: x + w + fr, y1: y + hgt + fr, bottom: y + hgt + fr + 94, shown: false };
+  if (k < 0) return hidden;
+  const e = easeOut(k / 0.45), a = clamp(k / 0.3) * (o.alpha == null ? 1 : clamp(+o.alpha));
+  if (a <= 0) return hidden;
+  ctx.save(); ctx.globalAlpha *= a; ctx.translate(x + w / 2, y + hgt / 2 + (1 - e) * 36); const s = 0.96 + 0.04 * e; ctx.scale(s, s); ctx.translate(-w / 2, -hgt / 2);
+  ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = 34; ctx.shadowOffsetY = 12;
+  ctx.fillStyle = o.frameColour || o.frameColor || '#ebe8e1'; rr(-fr, -fr, w + 2 * fr, hgt + 2 * fr, 2); ctx.fill();
+  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, w, hgt); ctx.clip();
+  const iw = P.bmp.width, ih = P.bmp.height, contain = o.fit === 'contain', fit = contain ? Math.min(w / iw, hgt / ih) : Math.max(w / iw, hgt / ih);
+  const z = fit * (1 + (o.zoom == null ? 0.06 : +o.zoom || 0) * clamp(k / 8)), dw = iw * z, dh = ih * z;
+  const f = Array.isArray(o.focus) && o.focus.length === 2 ? o.focus.map(Number) : P.focus;
+  let dx = w / 2 - f[0] * dw, dy = hgt / 2 - f[1] * dh;
+  if (contain) { ctx.fillStyle = '#16161a'; ctx.fillRect(0, 0, w, hgt); dx = (w - dw) / 2; dy = (hgt - dh) / 2; } else { dx = clamp(dx, w - dw, 0); dy = clamp(dy, hgt - dh, 0); }
+  const g = o.grey === true ? 1 : clamp(+o.grey || 0); if (g > 0) ctx.filter = `grayscale(${g}) contrast(1.05)`;
+  ctx.drawImage(P.bmp, dx, dy, dw, dh); ctx.filter = 'none';
+  ctx.restore();
+  ctx.restore();
+  let bottom = y + hgt + fr;
+  if (o.credit !== false && P.credit) {
+    ctx.save(); ctx.globalAlpha *= a; ctx.font = smallFont(28); ctx.textBaseline = 'alphabetic';
+    const right = x + w / 2 > W / 2, maxW = Math.min(940, Math.max(w + 2 * fr, 840)), ls = smallLines(P.credit, maxW);
+    ctx.textAlign = right ? 'right' : 'left'; ctx.fillStyle = 'rgba(214,212,206,0.88)';
+    const ax = right ? Math.min(W - 60, x + w + fr) : Math.max(60, x - fr);
+    ls.forEach((l, i) => _fillText.call(ctx, l, right ? Math.max(ax, 60 + ctx.measureText(l).width) : Math.min(ax, W - 60 - ctx.measureText(l).width), y + hgt + fr + 38 + i * 36));
+    bottom += 22 + ls.length * 36; ctx.restore();
+  }
+  if (TRACK) { const tf = ctx.getTransform(), pts = [[x - fr, y - fr], [x + w + fr, bottom]].map(([px, py]) => [tf.a * px + tf.c * py + tf.e, tf.b * px + tf.d * py + tf.f]);
+    (TRACK.photos = TRACK.photos || []).push({ id, w: w * Math.hypot(tf.a, tf.b), alpha: ctx.globalAlpha * a, x0: Math.min(pts[0][0], pts[1][0]), x1: Math.max(pts[0][0], pts[1][0]), y0: Math.min(pts[0][1], pts[1][1]), y1: Math.max(pts[0][1], pts[1][1]) }); }
+  return { x0: x - fr, y0: y - fr, x1: x + w + fr, y1: y + hgt + fr, bottom, shown: true };
+}
+// h.quote(id, x, y, w, o): a clipping of the reference: one or two sentences in a serif on paper, the marked words dark and
+// underlined (the underline draws itself), the rest faded; the source ("Wikipedia: <article>") under it. x, y is the TOP-LEFT.
+// o: {k: seconds since it appeared, size: text px (default 32), lines: at most this many lines (default 3, a window around the
+// marked words)}. Returns its box {x0, y0, x1, y1}.
+function quote(id, x, y, w, o = {}) {
+  o = o && typeof o === 'object' ? o : {};
+  const Q = QUOTES[id];
+  if (!Q) { if (STRICT) throw new Error(`unknown quote "${id}"; this reel's quotes are: ${Object.keys(QUOTES).map(k => `"${k}"`).join(', ') || 'none'}`); return null; }
+  x = +x; y = +y; w = +w;
+  if (![x, y, w].every(Number.isFinite) || w < 300) { if (STRICT) throw new Error(`h.quote("${id}", x, y, w): x, y and w must be numbers, w at least 300 (x, y is the top-left corner)`); return null; }
+  const k = kOf(o); if (k < 0) return { x0: x, y0: y, x1: x + w, y1: y + 230, shown: false };
+  const size = clamp(+o.size || 32, 26, 44), lh = Math.round(size * 1.55), pad = 24, maxL = Math.max(1, Math.min(5, +o.lines || 3));
+  ctx.save(); ctx.font = `400 ${size}px Georgia, "Times New Roman", serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  const m0 = Q.text.toLowerCase().indexOf(String(Q.mark).toLowerCase()), m1 = m0 < 0 ? -1 : m0 + String(Q.mark).length;
+  const toks = []; for (const mm of Q.text.matchAll(/\S+/g)) toks.push({ t: mm[0], m: m0 >= 0 && mm.index < m1 && mm.index + mm[0].length > m0 });
+  const sp = ctx.measureText(' ').width, maxW = w - 2 * pad, rows = [[]]; let cw = 0;
+  for (const t of toks) { const tw = ctx.measureText(t.t).width; if (cw && cw + sp + tw > maxW) { rows.push([]); cw = 0; } rows[rows.length - 1].push({ ...t, w: tw }); cw += (cw ? sp : 0) + tw; }
+  const firstMark = Math.max(0, rows.findIndex(r => r.some(t => t.m))), start = clamp(firstMark - (rows.length - firstMark < maxL ? maxL - (rows.length - firstMark) : 1), 0, Math.max(0, rows.length - maxL));
+  const shown = rows.slice(start, start + maxL), hh = shown.length * lh + pad * 1.1;
+  const e = easeOut(k / 0.4); ctx.globalAlpha *= clamp(k / 0.25); ctx.translate(0, (1 - e) * -24);
+  ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 26; ctx.shadowOffsetY = 8; ctx.fillStyle = o.paper || '#ebe8e1'; rr(x, y, w, hh, 3); ctx.fill();
+  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  const runs = [];
+  shown.forEach((r, i) => { let cx = x + pad; const by = y + pad * 0.55 + i * lh + size * 1.08;
+    r.forEach((t, j) => { ctx.fillStyle = t.m ? '#1a1a1a' : 'rgba(46,46,46,0.45)'; _fillText.call(ctx, t.t, cx, by); if (t.m) runs.push({ x: cx, y: by + 7, w: t.w + (r[j + 1] && r[j + 1].m ? sp : 0) }); cx += t.w + sp; }); });
+  const total = runs.reduce((s2, r2) => s2 + r2.w, 0); let left = total * easeInOut((k - 0.4) / 1.0);
+  ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 2.6; ctx.lineCap = 'butt';
+  for (const r2 of runs) { if (left <= 0) break; const d = Math.min(r2.w, left); ctx.beginPath(); ctx.moveTo(r2.x, r2.y); ctx.lineTo(r2.x + d, r2.y); ctx.stroke(); left -= d; }
+  ctx.font = smallFont(28); ctx.fillStyle = 'rgba(214,212,206,0.88)'; _fillText.call(ctx, smallLines(Q.source, Math.max(300, w), 1)[0], x, y + hh + 38);
+  ctx.restore();
+  return { x0: x, y0: y, x1: x + w, y1: y + hh + 50, shown: true };
+}
+// h.note(lines, source): the small print of a documentary frame: up to 2 short honesty notes ("Cut-away view, illustration",
+// "Sizes not to scale") at the bottom-left of the picture (y 1400 to 1440) and, optionally, the source of this shot's facts
+// under the picture (y 1512). Call it every frame, last.
+function note(lines, source) {
+  const L = (Array.isArray(lines) ? lines : [lines]).filter(x => x != null && String(x).trim()).slice(0, 2).map(String);
+  ctx.save(); ctx.font = smallFont(28); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.globalAlpha = 1; ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 6;
+  L.forEach((t, i) => { ctx.fillStyle = 'rgba(206,204,198,0.8)'; _fillText.call(ctx, smallLines(t, 900, 1)[0], 60, 1440 - (L.length - 1 - i) * 38); });
+  if (source) { ctx.fillStyle = 'rgba(214,212,206,0.9)'; _fillText.call(ctx, smallLines(String(source), 960, 1)[0], 60, 1512); }
+  ctx.restore();
+}
+
+// Instrumentation for craft checks: every fillText/strokeText call and every asset placement is recorded while TRACK is on.
+const _fillText = CanvasRenderingContext2D.prototype.fillText, _strokeText = CanvasRenderingContext2D.prototype.strokeText;
+function trackText(c, text, x, y, mw) {
+  if (!TRACK) return;
+  if (!Number.isFinite(+x) || !Number.isFinite(+y)) { (TRACK.nan = TRACK.nan || []).push(String(text)); return; } // drawn at NaN: never shows
+  const m = c.measureText(String(text)), tf = c.getTransform(), size = parseFloat((c.font.match(/(\d+(?:\.\d+)?)px/) || [0, 0])[1]) * Math.hypot(tf.a, tf.b);
+  const al = c.textAlign, w = m.width, x0 = al === 'center' ? x - w / 2 : (al === 'right' || al === 'end') ? x - w : x;
+  const pts = [[x0, y - size * 0.8], [x0 + w, y - size * 0.8], [x0, y + size * 0.3], [x0 + w, y + size * 0.3]].map(([px, py]) => [tf.a * px + tf.c * py + tf.e, tf.b * px + tf.d * py + tf.f]);
+  TRACK.texts.push({ text: String(text), size, scale: Math.hypot(tf.a, tf.b), squeeze: mw > 0 && m.width > mw ? m.width / mw : 1,x0: Math.min(...pts.map(p => p[0])), x1: Math.max(...pts.map(p => p[0])), y0: Math.min(...pts.map(p => p[1])), y1: Math.max(...pts.map(p => p[1])), alpha: c.globalAlpha });
+}
+// pixel mode (template check "pixel grid: N"): the shot's artwork is pixelated to N art pixels across, but its text is
+// held back while the shot draws and replayed crisp on top, so words stay readable at any size
+let PIXEL = 0, DEFER = null;
+const TEXT_STATE = ['font', 'fillStyle', 'strokeStyle', 'lineWidth', 'lineJoin', 'globalAlpha', 'textAlign', 'textBaseline', 'letterSpacing', 'shadowColor', 'shadowBlur', 'shadowOffsetX', 'shadowOffsetY', 'globalCompositeOperation', 'filter'];
+const deferText = (c, kind, t, x, y, mw) => DEFER.push({ kind, t, x, y, mw, tf: c.getTransform(), st: Object.fromEntries(TEXT_STATE.map(k => [k, c[k]])) });
+ctx.fillText = function (t, x, y, mw) { trackText(this, t, x, y, mw); if (DEFER) return deferText(this, 'fill', t, x, y, mw); return mw === undefined ? _fillText.call(this, t, x, y) : _fillText.call(this, t, x, y, mw); };
+ctx.strokeText = function (t, x, y, mw) { trackText(this, t, x, y, mw); if (DEFER) return deferText(this, 'stroke', t, x, y, mw); return mw === undefined ? _strokeText.call(this, t, x, y) : _strokeText.call(this, t, x, y, mw); };
+const pix = document.createElement('canvas'), pctx = pix.getContext('2d');
+function pixelate(n) { // nearest-neighbour shrink to n art pixels across, then blow back up: hard 1080/n px pixels, palette colours kept
+  const gw = n, gh = Math.round(n * H / W); if (pix.width !== gw || pix.height !== gh) { pix.width = gw; pix.height = gh; }
+  pctx.imageSmoothingEnabled = false; pctx.clearRect(0, 0, gw, gh); pctx.drawImage(cv, 0, 0, W, H, 0, 0, gw, gh);
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.filter = 'none'; ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(pix, 0, 0, gw, gh, 0, 0, W, H); ctx.restore();
+}
+function replayText(jobs) {
+  for (const j of jobs) { ctx.save(); ctx.setTransform(j.tf); for (const k of TEXT_STATE) try { ctx[k] = j.st[k]; } catch { }
+    const f = j.kind === 'fill' ? _fillText : _strokeText; if (j.mw === undefined) f.call(ctx, j.t, j.x, j.y); else f.call(ctx, j.t, j.x, j.y, j.mw); ctx.restore(); }
+}
+
+function placeAsset(id, x, y, s = 1, params = {}) {
+  const fn = ASSETS[id], spec = SPECS[id] || { w: 300, h: 300 };
+  if (!fn) { if (STRICT) throw new Error(`unknown asset "${id}"; available: ${Object.keys(ASSETS).join(', ')}`); return; }
+  if (STRICT && spec.poses && spec.poses.length && !spec.poses.includes(params.pose)) throw new Error(`asset "${id}" has no pose "${params.pose}"; its poses are: ${spec.poses.join(', ')} (pick the closest one; expression, eyes and mouth are separate params)`);
+  ctx.save(); ctx.translate(x, y); ctx.scale(s * (params.flip ? -1 : 1), s);
+  if (TRACK) { const tf = ctx.getTransform(), sx = Math.hypot(tf.a, tf.b), sy = Math.hypot(tf.c, tf.d); TRACK.assets.push({ id, w: spec.w * sx, h: spec.h * sy, cx: tf.e, cy: tf.f, alpha: ctx.globalAlpha, act: JSON.stringify(Object.fromEntries(Object.entries(params || {}).filter(([k, v]) => typeof v === 'string' && k !== 'mouth'))) }); }
+  try { fn(ctx, { ...params, t: CUR.lt + (params.dt || 0) }, HK, KIT); } catch (e) { if (STRICT) { ctx.restore(); throw e; } }
+  ctx.restore();
+}
+const HK = {
+  W, H, clamp, lerp, easeOut, easeIn, easeInOut, easeBack, rng, rgba, mix, rr, poly, wrap, speedlines, burst, geo, geoDist, landPath, coastPath, borderPath, countryPath, countryCentre, countryView, stick, graph, route, fmt, cache, photo, quote, note,
+  asset: placeAsset, anchor: (who, x, y) => { ANCH[who] = [x, y]; },
+  mouth: who => mouth(CUR.sh, who, CUR.lt), talking: who => CUR.sh.lines.some(l => l.who === who && CUR.lt >= l.start && CUR.lt < l.end), line: i => L(CUR.sh, i), cue: (w, n) => cueTime(CUR.sh, w, n),
+  get kit() { return KIT; }, get palette() { return KIT && KIT.palette; }, // M3 sometimes reaches the kit through h
+};
+// M3's function is called with arguments matched by parameter NAME when it uses the standard names, so a swapped order still works
+const argsFor = (code, fname, std) => { const m = code.match(new RegExp(`function\\s+${fname}\\s*\\(([^)]*)\\)`)); if (!m || /[{[]/.test(m[1])) return std.join(', '); return m[1].split(',').map(s => s.split('=')[0].trim()).map((n, i) => (std.includes(n) ? n : std[i] || 'undefined')).join(', '); };
+// a shot that paints a big solid rectangle over the kit's room (seen: a flat grey wall over the office)
+let BG_DONE = false, IN_SHOT = false;
+{ const fr0 = ctx.fillRect; ctx.fillRect = function (x, y, w, h) {
+  if (TRACK && IN_SHOT && BG_DONE && this.globalAlpha > 0.6 && typeof this.fillStyle === 'string' && !/rgba?([^)]*,s*0?.[0-5]d*s*)/.test(this.fillStyle)) {
+    const tf = this.getTransform(), area = Math.abs(w * h * (tf.a * tf.d - tf.b * tf.c));
+    if (area > W * H * 0.3) TRACK.cover = Math.max(TRACK.cover || 0, area / (W * H));
+  }
+  return fr0.call(this, x, y, w, h); }; }
+// count save/restore while M3's draw() runs (balanced code nets 0)
+let SAVES = 0; { const s0 = ctx.save, r0 = ctx.restore; ctx.save = function () { SAVES++; return s0.call(this); }; ctx.restore = function () { SAVES--; return r0.call(this); }; }
+// a name declared twice in the same scope (M3 repeats this, e.g. 'shoe'): list every line that declares it
+const dupHint = (code, m) => {
+  const d = String(m).match(/Identifier '([\w$]+)' has already been declared/); if (!d) return '';
+  const re = new RegExp('\\b(const|let|var|function|class)\\s+' + d[1] + '\\b|[,{]\\s*' + d[1] + '\\s*[,}=]');
+  const at = String(code).split('\n').map((l, i) => (re.test(l) ? i + 1 : 0)).filter(Boolean);
+  return at.length ? `. It is declared on lines ${at.join(', ')}: rename one of them (for example ${d[1]}2) or merge them` : '';
+};
+// point M3 at the exact line of ITS code that crashed (new Function adds 3 lines before the code)
+const at = (e, code) => { const m = String(e && e.stack || '').match(/<anonymous>:(\d+):\d+/); if (!m) return ''; const n = +m[1] - 3, src = String(code).split('\n')[n - 1]; return src ? ' (your code line ' + n + ': `' + src.trim().slice(0, 160) + '`)' : ''; };
+const hint = m => /non-finite/.test(m) ? '. A number passed here is NaN or Infinity: look for a division by zero, a param or kit field that is undefined, or a misspelt variable' : /reading '\d+'/.test(m) ? '. You indexed into something that is undefined: check that the array or object exists (and has that many items) before indexing it' : '';
+const compileKit = code => { const f = new Function('h', `"use strict";\n${code}\nreturn makeKit(h);`); return hk => { for (const k in CACHE) delete CACHE[k]; return f(hk); }; };
+const compileAsset = code => new Function('ctx', 'p', 'h', 'kit', `"use strict";\n${code}\nreturn drawAsset(${argsFor(code, 'drawAsset', ['ctx', 'p', 'h', 'kit'])});`);
+const compileShot = code => new Function('ctx', 'lt', 'sh', 'h', 'kit', `"use strict";\n${code}\nreturn draw(${argsFor(code, 'draw', ['ctx', 'lt', 'sh', 'h', 'kit'])});`);
+const kfont = (size, weight = 800) => { try { return KIT.font(size, weight); } catch { return `${weight} ${size}px "Segoe UI", Arial`; } };
+
+// ---------- captions and bubbles (host) ----------
+function bubble(text, ax, ay, k) {
+  ctx.font = kfont(42, 800); const lines = wrap(text, 560), lw = Math.max(...lines.map(l => ctx.measureText(l).width)), bw = lw + 56, bh = lines.length * 52 + 34;
+  const bx = clamp(ax - bw / 2, 30, W - 30 - bw), by = Math.max(250, ay - 30 - bh), e = easeBack(k / 0.22);
+  ctx.save(); ctx.translate(ax, ay); ctx.scale(e, e); ctx.translate(-ax, -ay);
+  ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#111111'; ctx.lineWidth = 5; rr(bx, by, bw, bh, 26); ctx.fill(); ctx.stroke();
+  const tx = clamp(ax, bx + 36, bx + bw - 36); ctx.beginPath(); ctx.moveTo(tx - 16, by + bh - 3); ctx.lineTo(ax, ay - 4); ctx.lineTo(tx + 16, by + bh - 3); ctx.fill(); ctx.stroke(); ctx.fillRect(tx - 13, by + bh - 8, 26, 9);
+  ctx.fillStyle = '#111111'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; lines.forEach((l, i) => _fillText.call(ctx, l, bx + bw / 2, by + 17 + 26 + i * 52));
+  ctx.restore();
+}
+function caption(text, k, kout) {
+  ctx.font = kfont(48, 800); const lines = wrap(text, 900), bh = lines.length * 58 + 38, y = 1600 - bh / 2, a = Math.min(clamp(k / 0.12), clamp(1 - kout / 0.15));
+  if (a <= 0) return;
+  const acc = (KIT && KIT.palette && (KIT.palette.accent || KIT.palette.accent1)) || '#ffcc00';
+  ctx.save(); ctx.globalAlpha = a; ctx.translate(0, (1 - easeOut(k / 0.2)) * 30);
+  ctx.fillStyle = 'rgba(8,8,12,0.82)'; rr(50, y, 980, bh, 18); ctx.fill(); ctx.fillStyle = acc; ctx.fillRect(50, y, 10, bh);
+  ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; lines.forEach((l, i) => _fillText.call(ctx, l, W / 2 + 5, y + 19 + 29 + i * 58));
+  ctx.restore();
+}
+// word captions (template check "captions: words"), after claude-animation-skills' stick-figure captions: the narrator's line in
+// chunks of 1 or 2 words, lowercase, no punctuation (digits and % stay), each popping in when its first word is spoken
+// (lineToks: the voice's word timings, else the word's share of the line's letters)
+function wordChunks(ln) {
+  const ws = []; for (const { t, s } of lineToks(ln)) for (const w of t.toLowerCase().replace(/[^\p{L}\p{N}%'\s-]/gu, ' ').split(/\s+/)) if (w && w !== '-') ws.push({ w, s });
+  const out = [];
+  for (let i = 0; i < ws.length;) { const a = ws[i], b = ws[i + 1]; if (b && a.w.length <= 6 && a.w.length + b.w.length <= 11) { out.push({ text: a.w + ' ' + b.w, s: a.s }); i += 2; } else { out.push({ text: a.w, s: a.s }); i++; } }
+  return out;
+}
+function wordCaption(ln, lt) {
+  const chunks = wordChunks(ln); if (!chunks.length) return;
+  let i = 0; while (i < chunks.length - 1 && lt >= chunks[i + 1].s) i++;
+  const t0 = i ? chunks[i].s : ln.start, ch = chunks.map(c => c.text);
+  const e = easeBack(clamp((lt - t0) / 0.14)), fade = clamp(1 - (lt - ln.end - 0.1) / 0.15);
+  ctx.save(); ctx.globalAlpha = fade; ctx.font = kfont(96, 800); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const s = Math.min(1, 940 / Math.max(1, ctx.measureText(ch[i]).width)) * (0.7 + 0.3 * e);
+  ctx.translate(540, 1560); ctx.scale(s, s); ctx.lineJoin = 'round'; ctx.lineWidth = 16; ctx.strokeStyle = '#111111'; _strokeText.call(ctx, ch[i], 0, 0); ctx.fillStyle = '#ffffff'; _fillText.call(ctx, ch[i], 0, 0);
+  ctx.restore();
+}
+// plain captions (template check "captions: plain"): the whole line in the kit's font at 46 px, no panel, light grey, fading in and out
+function plainCaption(text, k, kout) {
+  const a = Math.min(clamp(k / 0.25), clamp(1 - kout / 0.2)); if (a <= 0) return;
+  ctx.save(); ctx.globalAlpha = a * 0.88; ctx.font = kfont(46, 400); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#f2f2f2';
+  const lines = wrap(String(text).toLowerCase(), 880); lines.forEach((l, i) => _fillText.call(ctx, l, W / 2, 1600 - (lines.length - 1) * 30 + i * 60));
+  ctx.restore();
+}
+// line captions (template check "captions: line"), after claude-animation-skills' /low-poly: the whole line lowercase, 46 px bold in
+// the palette's accent colour with a dark outline, no panel, low in the frame but inside Instagram's safe area
+function lineCaption(text, k, kout) {
+  const a = Math.min(clamp(k / 0.15), clamp(1 - kout / 0.2)); if (a <= 0) return;
+  const col = (KIT && KIT.palette && (KIT.palette.accent || KIT.palette.accent1)) || '#ffd23f';
+  ctx.save(); ctx.globalAlpha = a; ctx.font = kfont(46, 700); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = 9; ctx.strokeStyle = '#111111'; ctx.fillStyle = col;
+  const lines = wrap(String(text).toLowerCase(), 900); lines.forEach((l, i) => { const y = 1500 - (lines.length - 1) * 29 + i * 58; _strokeText.call(ctx, l, W / 2, y); _fillText.call(ctx, l, W / 2, y); });
+  ctx.restore();
+}
+
+// phrase captions (template check "captions: phrases"), after countryball map stories: the narrator's line in chunks of up to 4 words
+// (at most 24 letters), white, bold, a dark outline and soft shadow, number words and digits in the palette's accent colour
+const NUMWORD = /^(\d[\d,.%]*|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|half|first|second|third|last)$/i;
+function phraseChunks(ln) {
+  const ws = []; for (const { t, s } of lineToks(ln)) for (const w of t.replace(/[—–]/g, ' ').split(/\s+/)) if (w) ws.push({ w, s });
+  const out = []; let cur = [];
+  const push = () => { out.push({ words: cur.map(x => x.w), s: cur[0].s }); cur = []; };
+  for (const x of ws) { if (cur.length && (cur.length >= 4 || (cur.map(c => c.w).join(' ') + ' ' + x.w).length > 24)) push(); cur.push(x); if (/[.,;:!?]$/.test(x.w) && cur.length >= 2) push(); }
+  if (cur.length) push(); return out;
+}
+function phraseCaption(ln, lt) {
+  const chunks = phraseChunks(ln); if (!chunks.length) return;
+  let i = 0; while (i < chunks.length - 1 && lt >= chunks[i + 1].s) i++;
+  const t0 = i ? chunks[i].s : ln.start, ch = chunks.map(c => c.words);
+  const a = Math.min(clamp((lt - t0) / 0.08), clamp(1 - (lt - ln.end - 0.1) / 0.15)); if (a <= 0) return;
+  const acc2 = (KIT && KIT.palette && (KIT.palette.accent || KIT.palette.accent1)) || '#f0b040';
+  ctx.save(); ctx.globalAlpha = a; ctx.font = kfont(58, 900); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+  const words = ch[i].map(w => w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}%.,!?']+$/gu, '')).filter(Boolean), sp = ctx.measureText(' ').width, ws = words.map(w => ctx.measureText(w).width);
+  const total = ws.reduce((x, y) => x + y, 0) + sp * (words.length - 1), s = Math.min(1, 940 / Math.max(1, total)); let x = 540 - total * s / 2;
+  ctx.translate(0, 1500); ctx.scale(s, s); x /= s;
+  words.forEach((w, j) => { ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 4; ctx.lineWidth = 10; ctx.strokeStyle = '#141414'; _strokeText.call(ctx, w, x, 0);
+    ctx.shadowColor = 'transparent'; ctx.fillStyle = w.replace(/[.,!?']+$/, '').split('-').every(p => NUMWORD.test(p)) ? acc2 : '#ffffff'; _fillText.call(ctx, w, x, 0); x += ws[j] + sp; });
+  ctx.restore();
+}
+// select captions (template check "captions: select"), after documentary explainers: the narrator's words appear one by one at
+// the TOP of the frame (y 360) in chunks of up to 4 words; spoken words dim to grey, the newest is white, and one word per chunk
+// (the shot's cue word, else a number, else its longest word) sits in a blue text-selection box with two round handles
+const CAP_STOP = new Set('the a an and or but so of to in on at by for from with into onto over under that this these those is are was were be been being it its they them their you your we our he she his her as than then there here what which who whom how why when where not no do does did can will would could should just very too also has have had'.split(' '));
+function selectChunks(ln) {
+  const ws = lineToks(ln).map(x => ({ w: x.t.replace(/[—–]/g, ' ').trim(), s: x.s })).filter(x => x.w), out = []; let cur = [];
+  const len = c => c.map(x => x.w).join(' ').length;
+  // a spoken number stays in one chunk ("forty four point two", "eighty one"): never break between two number words
+  const numw = w => /^(\d[\d,.%]*|point|and|hundred|thousand|million|billion|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)$/i.test(w.replace(/[^\p{L}\p{N}%.,]/gu, '').replace(/[.,]+$/, ''));
+  for (const x of ws) { const glued = cur.length && numw(cur[cur.length - 1].w) && numw(x.w) && !/[.,;:!?]$/.test(cur[cur.length - 1].w) && cur.length < 6; if (cur.length && !glued && (cur.length >= 4 || len(cur) + 1 + x.w.length > 26)) { out.push(cur); cur = []; } cur.push(x); if (/[.,;:!?]$/.test(x.w) && cur.length >= 2) { out.push(cur); cur = []; } }
+  if (cur.length) out.push(cur); return out;
+}
+function selectCaption(ln, lt, cue) {
+  const chunks = selectChunks(ln); if (!chunks.length) return;
+  let i = 0; while (i < chunks.length - 1 && lt >= chunks[i + 1][0].s) i++;
+  const ch = chunks[i], fade = clamp(1 - (lt - ln.end - 0.15) / 0.15); if (fade <= 0) return;
+  const bare = w => w.toLowerCase().replace(/[^\p{L}\p{N}'%]/gu, '');
+  const cw = cue ? cueNorm(cue) : [], isCue = w => cw.length && cw.some(c => { const b = bare(w); return b === c || (c.length >= 4 && b.startsWith(c) && b.length - c.length <= 3); });
+  let box = ch.findIndex(x => isCue(x.w));
+  if (box < 0) box = ch.findIndex(x => /\d/.test(x.w) || NUMWORD.test(bare(x.w)) && !/^(first|second|third|last|one)$/.test(bare(x.w)));
+  if (box < 0) { let best = -1; ch.forEach((x, j) => { const b = bare(x.w); if (b.length >= 5 && !CAP_STOP.has(b) && (best < 0 || b.length > bare(ch[best].w).length)) best = j; }); box = best; }
+  ctx.save(); ctx.globalAlpha = fade; ctx.font = kfont(62, 700); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  let newest = 0; ch.forEach((c, j) => { if (j === 0 || lt >= c.s - 0.02) newest = j; });
+  const sp = ctx.measureText(' ').width * 1.15, ws = ch.map(x => ctx.measureText(x.w).width), wsum = n => ws.slice(0, n).reduce((a, b) => a + b, 0) + sp * (n - 1);
+  const s = Math.min(1, 920 / Math.max(1, wsum(ch.length))); ctx.translate(540, 360); ctx.scale(s, s);
+  // the visible words stay centred: the line grows from the middle as words are said (eased over 0.12 s)
+  const prev = newest ? wsum(newest) : wsum(1), grow = clamp((lt - ch[newest].s) / 0.12), total = lerp(prev, wsum(newest + 1), newest ? easeOut(grow) : 1);
+  let x = -total / 2;
+  ch.forEach((c, j) => {
+    if (j > newest) { x += ws[j] + sp; return; }
+    const age = lt - Math.max(ln.start, c.s), a = clamp(age / 0.08);
+    if (j === box) { const e = easeBack(clamp(age / 0.16)), bx = x - 12, by = -42, bw = ws[j] + 24, bh = 84;
+      ctx.save(); ctx.globalAlpha = fade * a; ctx.translate(bx + bw / 2, 0); ctx.scale(0.9 + 0.1 * e, 0.9 + 0.1 * e); ctx.translate(-(bx + bw / 2), 0);
+      ctx.fillStyle = 'rgba(24,42,72,0.92)'; ctx.fillRect(bx, by, bw, bh); ctx.lineWidth = 3; ctx.strokeStyle = '#4b8df8'; ctx.strokeRect(bx, by, bw, bh);
+      for (const [hx, hy] of [[bx, by], [bx + bw, by + bh]]) { ctx.beginPath(); ctx.arc(hx, hy, 9, 0, TAU); ctx.fillStyle = '#4b8df8'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = '#e8eefc'; ctx.stroke(); }
+      ctx.fillStyle = '#ffffff'; _fillText.call(ctx, c.w, x, 2); ctx.restore(); }
+    else { ctx.globalAlpha = fade * a; ctx.fillStyle = j === newest ? '#ffffff' : '#8e8e8e'; _fillText.call(ctx, c.w, x, 2); }
+    x += ws[j] + sp;
+  });
+  ctx.restore();
+}
+// ---------- frame ----------
+const tmp = document.createElement('canvas'); tmp.width = W; tmp.height = H; const tctx = tmp.getContext('2d');
+function render(t, opts = {}) {
+  const shots = TL.shots; let i = shots.findIndex(s => t >= s.start && t < s.start + s.dur); if (i < 0) i = shots.length - 1;
+  const sh = shots[i], lt = t - sh.start; CUR = { sh, lt }; ANCH = {};
+  // fresh canvas state every frame: an unbalanced ctx.restore() in M3's code once leaked its zoom into the next frame and compounded (x8 over a shot)
+  if (ctx.reset) ctx.reset(); else ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.save(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+  const z = opts.still || (TL.d3 && TL.d3.mode === 'lowpoly') ? 1 : 1 + 0.03 * lt / sh.dur; // neutral camera drift (none in low-poly reels: it would resample their hard 4 x 4 pixels)
+  ctx.translate(W / 2, 960); ctx.scale(z, z); ctx.translate(-W / 2, -960);
+  const fn = SHOTS[i];
+  SAVES = 0; BG_DONE = false; IN_SHOT = true; DEFER = PIXEL ? [] : null;
+  if (fn) { try { fn(ctx, lt, sh, HK, KIT); } catch (e) { DEFER = null; if (STRICT) { ctx.restore(); throw e; } } }
+  IN_SHOT = false; const unbalanced = SAVES; ctx.restore();
+  if (DEFER) { const jobs = DEFER; DEFER = null; pixelate(PIXEL); replayText(jobs); }
+  if (STRICT && unbalanced) throw new Error(`draw() calls ctx.save() ${Math.abs(unbalanced)} time(s) ${unbalanced > 0 ? 'more' : 'less'} than ctx.restore() in this frame, so the canvas state leaks into the next frame and the zoom builds up: every ctx.save() needs exactly one ctx.restore() after it (count them, including inside if blocks, loops and early returns)`); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.setLineDash([]); ctx.shadowBlur = 0;
+  for (const ln of sh.lines) if (ln.who !== 'narrator' && lt >= ln.start - 0.05 && lt < ln.end + 0.3 && ANCH[ln.who]) bubble(ln.text, ANCH[ln.who][0], ANCH[ln.who][1], lt - ln.start + 0.05);
+  if (KIT && KIT.post) { ctx.save(); try { KIT.post(ctx, t); } catch (e) { if (STRICT) { ctx.restore(); throw e; } } ctx.restore(); }
+  for (const ln of sh.lines) if (ln.who === 'narrator' && lt >= ln.start - 0.1 && lt < ln.end + 0.25) { if (TL.captions === 'words') wordCaption(ln, lt); else if (TL.captions === 'select') selectCaption(ln, lt, sh.cue); else if (TL.captions === 'phrases') phraseCaption(ln, lt); else if (TL.captions === 'line') lineCaption(ln.text, lt - ln.start + 0.1, lt - ln.end - 0.1); else if (TL.captions === 'plain') plainCaption(ln.text, lt - ln.start + 0.1, lt - ln.end - 0.1); else caption(ln.text, lt - ln.start + 0.1, lt - ln.end - 0.1); }
+  if (!opts.still) { // neutral cut transition: a short horizontal motion smear entering each shot
+    const k = i ? lt / 0.2 : 1;
+    if (k < 1) { tctx.clearRect(0, 0, W, H); tctx.drawImage(cv, 0, 0); const d = (1 - easeOut(k)) * 140; ctx.globalAlpha = 0.25; for (let s = 1; s <= 4; s++) ctx.drawImage(tmp, d * s / 4, 0); ctx.globalAlpha = 1; } // no white flash: it read as a grey frame at every cut
+  }
+}
+
+function setupCode(tl) {
+  TL = tl; SPECS = {}; ASSETS = {}; SHOTS = {}; PIXEL = Math.max(0, Math.round(+tl.pixel || 0));
+  if (tl.d3 && typeof D3 !== 'undefined' && D3) D3.setup(tl.d3); // 3D reels (renderer: three or lowpoly): sets, cast and props for h.d3 (engine/stage3d.js, stage3d_lowpoly.js); before the kit, which comes from h.d3.kit()
+  for (const k in QUOTES) delete QUOTES[k]; (tl.quotes || []).forEach(q => { if (q && q.id && q.text) QUOTES[q.id] = q; }); // reference quotes (h.quote); photos load separately (loadPhotos)
+  (tl.assets || []).forEach(a => { SPECS[a.id] = a; if (a.code) try { ASSETS[a.id] = compileAsset(a.code); } catch { } });
+  KIT = null; if (tl.kit) try { KIT = compileKit(tl.kit)(HK); } catch { }
+  if (KIT && KIT.bg) { const bg0 = KIT.bg; KIT.bg = function (...a) { const r = bg0.apply(this, a); BG_DONE = true; return r; }; }
+  // kit.title's opts.k is seconds since the text appeared; M3 has passed words ("bold") there, which made every position NaN and hid the text
+  // a missing k means "simply shown" (some kits default it to 0 = opacity 0); a non-number k is treated the same
+  if (KIT && KIT.title) { const t0 = KIT.title; KIT.title = function (c, text, x, y, o, ...r) { o = o && typeof o === 'object' ? o : {}; o = { ...o, k: o.k == null || !Number.isFinite(+o.k) ? 10 : +o.k }; return t0.call(this, c, text, x, y, o, ...r); }; }
+  // record every panel a shot draws, so a panel left without its words can be rejected (validateShot)
+  if (KIT && KIT.panel) { const p0 = KIT.panel; KIT.panel = function (c, x, y, w, hgt, o = {}, ...r) {
+    if (TRACK && IN_SHOT && c && c.getTransform) { const tf = c.getTransform(), pts = [[x, y], [x + w, y], [x, y + hgt], [x + w, y + hgt]].map(([px, py]) => [tf.a * px + tf.c * py + tf.e, tf.b * px + tf.d * py + tf.f]);
+      (TRACK.panels = TRACK.panels || []).push({ x0: Math.min(...pts.map(p => p[0])), x1: Math.max(...pts.map(p => p[0])), y0: Math.min(...pts.map(p => p[1])), y1: Math.max(...pts.map(p => p[1])), alpha: c.globalAlpha * (o && o.alpha != null ? +o.alpha : 1) }); }
+    return p0.call(this, c, x, y, w, hgt, o, ...r); }; }
+  tl.shots.forEach((s, i) => { if (s.code) try { SHOTS[i] = compileShot(s.code); } catch { } });
+}
+window.setup = async tl => { if (tl.photos) await loadPhotos(tl.photos); setupCode(tl); return true; };
+window.frame = t => { render(t); return cv.toDataURL('image/jpeg', 0.9); };
+
+// ---------- validators ----------
+const small = document.createElement('canvas'); small.width = 108; small.height = 192; const sctx = small.getContext('2d', { willReadFrequently: true });
+const snap = () => { sctx.drawImage(cv, 0, 0, 108, 192); return sctx.getImageData(0, 0, 108, 192).data; };
+const diff = (a, b) => { let s = 0; for (let i = 0; i < a.length; i += 4) s += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]); return s / (a.length * 0.75); };
+// detail: mean brightness step between neighbouring pixels of the 108x192 thumbnail (a smooth gradient is near 0; a drawn room with furniture and outlines is far higher)
+const detail = a => { let d = 0, n = 0; for (let y = 0; y < 191; y++) for (let x = 0; x < 107; x++) { const i = (y * 108 + x) * 4, l = (a[i] + a[i + 1] + a[i + 2]) / 3, r = (a[i + 4] + a[i + 5] + a[i + 6]) / 3, b = (a[i + 432] + a[i + 433] + a[i + 434]) / 3; d += Math.abs(l - r) + Math.abs(l - b); n += 2; } return d / n; };
+const spread = a => { let m = 0, n = a.length / 4; for (let i = 0; i < a.length; i += 4) m += a[i] + a[i + 1] + a[i + 2]; m /= n * 3; let v = 0; for (let i = 0; i < a.length; i += 4) v += Math.pow((a[i] + a[i + 1] + a[i + 2]) / 3 - m, 2); return Math.sqrt(v / n); };
+function sheet(images, w, hgt) { const c = document.createElement('canvas'); c.width = w * images.length; c.height = hgt; const g = c.getContext('2d'); images.forEach((im, k) => g.drawImage(im, k * w, 0, w, hgt)); return c.toDataURL('image/jpeg', 0.85); }
+function grab(w, hgt) { const c = document.createElement('canvas'); c.width = w; c.height = hgt; c.getContext('2d').drawImage(cv, 0, 0, w, hgt); return c; }
+
+window.validateKit = (code, style, ck = {}) => { // ck.bgDetail: minimum detail() of every background (template check)
+  const errors = []; let kit;
+  try { kit = compileKit(code)(HK); } catch (e) { return { ok: false, errors: [`makeKit failed: ${e.message}`] }; }
+  for (const k of ['palette', 'font', 'bg', 'panel', 'title']) if (!kit || !kit[k]) errors.push(`makeKit must return "${k}"`);
+  if (errors.length) return { ok: false, errors };
+  KIT = kit; const shots = [];
+  for (const b of (style.backgrounds || [])) {
+    if (b.plain || /^(black|blank|white|plain|void|title|end)(_|$)/i.test(b.name)) { try { ctx.save(); kit.bg(ctx, 0.5, b.name); ctx.restore(); } catch (e) { errors.push(`background "${b.name}" crashed: ${e.message}`); } continue; } // plain screens skip the flatness, motion and detail checks
+    try { ctx.save(); kit.bg(ctx, 0.5, b.name); ctx.restore(); const a = snap(); const sp = spread(a), dt = detail(a); if (ck.bgDetail && dt < ck.bgDetail) errors.push(`background "${b.name}" is too plain for this template: its detail score is ${dt.toFixed(2)} (needs at least ${ck.bgDetail}; a flat gradient scores 0.2, six outlined boxes 1.45). Draw a real place: a floor line and back wall in simple perspective, 8 or more pieces of furniture or objects that say where we are, each with the style's outline, a shadow tone and small details (frames, handles, books, plants, light switches)`); if (sp < 6) errors.push(`background "${b.name}" is nearly flat: its brightness varies by only ${sp.toFixed(1)} (standard deviation, 0 to 255 scale; needs at least 6, aim for 12 to 25). Make the light pool or glow much lighter than the corners, add a vignette, and raise texture to 10 to 20% opacity`); ctx.save(); kit.bg(ctx, 2.0, b.name); ctx.restore(); const mv = diff(a, snap()); if (mv < 0.2) errors.push(`background "${b.name}" barely moves: frames at lt 0.5 and 2.0 differ by only ${mv.toFixed(2)} (needs at least 0.2): add drifting particles, a breathing glow or sliding layers driven by lt`); kit.panel(ctx, 100, 400, 600, 200, {}); kit.title(ctx, 'SAMPLE TITLE', 540, 800, { size: 90, k: 1 }); if (kit.post) kit.post(ctx, 0.5); shots.push(grab(270, 480)); }
+    catch (e) { errors.push(`background "${b.name}" crashed: ${e.message}${at(e, code)}${hint(e.message)}`); }
+  }
+  return { ok: !errors.length, errors, preview: shots.length ? sheet(shots, 270, 480) : null };
+};
+
+// sprite sheet: every state (pose) of every asset in 270x480 tiles, 4 per row and up to 16 per image, each tile labelled.
+// Characters share one scale so their relative sizes and proportions can be compared; other assets fit their own tile.
+window.poseSheet = (assets, kitCode) => {
+  try { KIT = compileKit(kitCode)(HK); } catch { }
+  const tiles = [], chars = assets.filter(a => a.kind === 'character' && a.code);
+  const sChar = chars.length ? Math.min(...chars.map(a => Math.min(940 / a.w, 1500 / a.h))) : 1;
+  for (const a of assets) {
+    if (!a.code) continue; let fn; try { fn = compileAsset(a.code); } catch { continue; }
+    const s = a.kind === 'character' ? sChar : Math.min(940 / a.w, 1500 / a.h);
+    for (const st of (a.states && a.states.length ? a.states : [{}]).slice(0, 10)) tiles.push({ fn, s, st, label: a.id + (st.pose ? ': ' + st.pose : '') });
+  }
+  const sheets = [], cols = 4, tw = 270, th = 480;
+  for (let k = 0; k < tiles.length; k += 16) {
+    const part = tiles.slice(k, k + 16), c = document.createElement('canvas'); c.width = tw * cols; c.height = th * Math.ceil(part.length / cols); const g = c.getContext('2d');
+    g.fillStyle = '#7f7f7f'; g.fillRect(0, 0, c.width, c.height);
+    part.forEach((t, i) => {
+      ctx.reset(); ctx.fillStyle = '#8c8c8c'; ctx.fillRect(0, 0, W, H); ctx.strokeStyle = '#555'; ctx.lineWidth = 6; ctx.strokeRect(3, 3, W - 6, H - 6);
+      ctx.save(); ctx.translate(540, 1040); ctx.scale(t.s, t.s); try { t.fn(ctx, { ...t.st, t: 0.4 }, HK, KIT); } catch (e) { } ctx.restore();
+      ctx.fillStyle = '#111'; ctx.font = 'bold 60px Arial'; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; _fillText.call(ctx, t.label, 36, 30);
+      g.drawImage(cv, (i % cols) * tw, Math.floor(i / cols) * th, tw, th);
+    });
+    sheets.push(c.toDataURL('image/jpeg', 0.85));
+  }
+  return { sheets, tiles: tiles.map(t => t.label) };
+};
+
+window.validateAsset = (code, spec, kitCode) => {
+  const errors = []; let fn, box = null, union = null;
+  try { KIT = compileKit(kitCode)(HK); } catch { }
+  try { fn = compileAsset(code); } catch (e) { return { ok: false, errors: [`SyntaxError: ${e.message}${dupHint(code, e.message)}`] }; }
+  const s = Math.min(820 / spec.w, 820 / spec.h), states = (spec.states && spec.states.length ? spec.states : [{}]).slice(0, 10), imgs = [];
+  // reset all canvas state and pass a fresh params copy each draw, so leaked ctx state or a mutated p is not mistaken for randomness
+  const blank = () => { if (ctx.reset) ctx.reset(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.fillStyle = '#7f7f7f'; ctx.fillRect(0, 0, W, H); };
+  const draw = (p) => { blank(); ctx.save(); ctx.translate(540, 960); ctx.scale(s, s); SAVES = 0; fn(ctx, { ...p }, HK, KIT); const ub = SAVES; ctx.restore(); if (ub) throw new Error(`drawAsset calls ctx.save() ${Math.abs(ub)} time(s) ${ub > 0 ? 'more' : 'less'} than ctx.restore(), so its canvas state leaks into whatever is drawn next: every ctx.save() needs exactly one ctx.restore() after it (count them, including inside if blocks, loops and early returns)`); };
+  try {
+    blank(); const empty = snap();
+    const runs = states.map((st, k) => ({ ...st, t: 0.4 + k * 0.7 }));
+    const bw = spec.w * s, bh = spec.h * s, cx = 540, cy = 960;
+    // bounding box of drawn pixels, at full resolution so thin or translucent strokes count
+    const measure = () => { const full = ctx.getImageData(0, 0, W, H).data; let x0 = 1e9, x1 = -1, y0 = 1e9, y1 = -1; for (let y = 0; y < H; y += 3) for (let x = 0; x < W; x += 3) { const i = (y * W + x) * 4; if (Math.abs(full[i] - 127) + Math.abs(full[i + 1] - 127) + Math.abs(full[i + 2] - 127) > 12) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); } } return { full, x0, x1, y0, y1 }; };
+    const u = v => Math.round(v / s); // canvas px to the asset's own box units
+    let first = null; union = null;
+    for (const [k, p] of runs.entries()) { // every previewed state must fit the box: shots place the asset by its box
+      draw(p); imgs.push(grab(300, 533)); const m = measure(); if (!k) first = m;
+      if (m.x1 >= 0) union = union ? { x0: Math.min(union.x0, m.x0), x1: Math.max(union.x1, m.x1), y0: Math.min(union.y0, m.y0), y1: Math.max(union.y1, m.y1) } : m;
+      if (m.x1 < 0) continue;
+      if (m.x0 < cx - bw * 0.62 || m.x1 > cx + bw * 0.62 || m.y0 < cy - bh * 0.62 || m.y1 > cy + bh * 0.62) {
+        const { t, ...st } = p, tooWide = (m.x1 - m.x0) > bw * 1.05, tooTall = (m.y1 - m.y0) > bh * 1.05;
+        errors.push(`in state ${JSON.stringify(st)} it draws from x ${u(m.x0 - cx)} to ${u(m.x1 - cx)} and y ${u(m.y0 - cy)} to ${u(m.y1 - cy)}, but its box is x ${-spec.w / 2} to ${spec.w / 2} and y ${-spec.h / 2} to ${spec.h / 2}. ${tooWide || tooTall ? `That state is ${tooWide ? 'wider' : 'taller'} than the box: scale the whole figure down in that state (ctx.scale) so it fits, or change how it is arranged` : 'Move it back inside the box'}`);
+      }
+    }
+    if (first.x1 < 0) errors.push('draws nothing visible');
+    else {
+      const { full, x0, x1, y0, y1 } = first, dw = (x1 - x0 + 1), dh = (y1 - y0 + 1);
+      // an object must not paint its whole box (a dark rectangle showed behind the hero in every shot)
+      const filled = [[-1, -1], [1, -1], [-1, 1], [1, 1]].filter(([sx, sy]) => { const i = (Math.round(cy + sy * bh * 0.46) * W + Math.round(cx + sx * bw * 0.46)) * 4; return Math.abs(full[i] - 127) + Math.abs(full[i + 1] - 127) + Math.abs(full[i + 2] - 127) > 12; }).length;
+      if (filled >= 3) errors.push(`paints its whole ${spec.w}x${spec.h} box (${filled} of 4 corners are filled), so a rectangle shows behind it in every shot: draw only the object itself and leave the box around it transparent (no background panel, card or glow rectangle)`);
+      const U = union || first; box = { fx: (U.x1 - U.x0 + 1) / bw, fy: (U.y1 - U.y0 + 1) / bh, ox: ((U.x0 + U.x1) / 2 - cx) / bw, oy: ((U.y0 + U.y1) / 2 - cy) / bh }; // where the drawn pixels sit inside the declared box (all states together)
+      if (dw < bw * 0.55 && dh < bh * 0.55) errors.push(`fills only ${Math.round(dw / bw * 100)}% x ${Math.round(dh / bh * 100)}% of its ${spec.w}x${spec.h} box; draw it bigger so it fills the box`);
+    }
+    draw(runs[0]); const a = snap();
+    draw(runs[0]); const nd = diff(a, snap()); if (nd > 0.01) errors.push(`not deterministic: the same params drawn twice gave different images (difference ${nd.toFixed(2)}). Use only p.t and an h.rng(seed) created inside drawAsset; never Math.random, values kept between calls, or changes to kit or h`);
+    // no "animated" check here: faint idle motion is hard to measure, and validateShot already rejects shots that do not move
+  } catch (e) { errors.push(`runtime error: ${e.message}${at(e, code)}${hint(e.message)}`); }
+  const ext = union ? { x0: (union.x0 - 540) / s, x1: (union.x1 - 540) / s, y0: (union.y0 - 960) / s, y1: (union.y1 - 960) / s } : null;
+  return { ok: !errors.length, errors, box, ext, preview: imgs.length ? sheet(imgs, 300, 533) : null };
+};
+
+// ck (from the template's "## checks"): { hero: asset id, heroBox: drawn part of its box (from validateAsset), heroWidth: [min, max] share of frame width, heroCentreY: [min, max], labels: 'from narration' }
+window.validateShot = (code, shot, tl, ck = {}) => {
+  const heroAt = [], shown = new Set(), loose = new Set(), frameDetail = [], lpSeen = { slice: 0, labels: 0 }; let cover = 0;
+  setupCode({ ...tl, shots: [] }); let fn;
+  try { fn = compileShot(code); } catch (e) { return { ok: false, errors: [`SyntaxError: ${e.message}${dupHint(code, e.message)}`] }; }
+  const sh = { ...shot, start: 0 }, saved = TL; TL = { ...tl, total: sh.dur, shots: [sh] }; SHOTS = { 0: fn }; STRICT = true;
+  const errors = [], warn = [], frames = [], shotsnaps = []; let maxMs = 0, biggest = 0; const texts = new Map();
+  try {
+    const times = [0.25, sh.dur * 0.3, sh.dur * 0.55, sh.dur * 0.8, sh.dur - 0.15].map(x => clamp(x, 0.05, sh.dur - 0.05));
+    if (tl.d3) { for (const tw of times) { TRACK = { texts: [], assets: [] }; try { render(tw, { still: true }); } catch { } } TRACK = null; } // 3D: first use builds rooms, textures and shaders; not timed
+    for (const t of times) {
+      TRACK = { texts: [], assets: [] }; const t0 = performance.now();
+      try { render(t, { still: true }); } catch (e) { const m = String(e && e.message || e); errors.push(`runtime error at lt=${t.toFixed(2)}s: ${m}${at(e, code)}${hint(m)}${/^(kit|h)\.\w+ is not a function/.test(m) ? '. The signature must be exactly function draw(ctx, lt, sh, h, kit): h (helpers) is the 4th parameter and kit (style kit: bg, panel, title, palette, font) is the 5th; check the order and that you do not reassign them' : ''}${/reading 'start'|reading 'end'/.test(m) ? '. sh.lines has only ' + (CUR.sh?.lines?.length ?? '?') + ' line(s) in this shot; never index past sh.lines.length - 1' : ''}`); TRACK = null; break; }
+      maxMs = Math.max(maxMs, performance.now() - t0); shotsnaps.push(snap());
+      for (const a of TRACK.assets) if (a.alpha > 0.5) biggest = Math.max(biggest, a.w, a.h);
+      for (const a of TRACK.photos || []) if (a.alpha > 0.5) biggest = Math.max(biggest, a.w); // a real photo (h.photo) is a subject too
+      for (const x of TRACK.texts) if (x.alpha > 0.3) { if (x.scale >= 0.9 && (x.x0 < 44 || x.x1 > W - 44 || x.y0 < 0)) texts.set('cut:' + x.text, `text "${x.text}" runs to the frame edge (x ${Math.round(x.x0)} to ${Math.round(x.x1)}), where phones and panels cut it off; keep text inside x 60 to 1020: shorten it or use a smaller font`); if (x.squeeze > 1.12) texts.set('squeeze:' + x.text, `text "${x.text}" is squeezed to ${Math.round(100 / x.squeeze)}% of its width by fillText's maxWidth, so it is unreadable; shorten it (at most 5 words) or use a smaller font so it fits without squeezing`); if (x.size < 30 && x.scale >= 0.9 && x.text.trim().length > 1) texts.set('small:' + x.text, `text "${x.text}" is only ${Math.round(x.size)} px; use at least 36 px`); }
+      // the shot's own words must not sit on a real photo or its credit line (e2: labels and leader text over the credits)
+      for (const ph of TRACK.photos || []) if (ph.alpha > 0.5 && ph.x1 != null) for (const x of TRACK.texts) if (x.alpha > 0.3 && x.scale >= 0.9 && x.text.trim()) {
+        const ov = Math.max(0, Math.min(ph.x1, x.x1) - Math.max(ph.x0, x.x0)) * Math.max(0, Math.min(ph.y1, x.y1) - Math.max(ph.y0, x.y0));
+        if (ov > 0.2 * (x.x1 - x.x0) * (x.y1 - x.y0)) texts.set('onphoto:' + x.text, `text "${x.text}" (x ${Math.round(x.x0)} to ${Math.round(x.x1)}, y ${Math.round(x.y0)} to ${Math.round(x.y1)}) sits on the photo "${ph.id}" or its credit line (x ${Math.round(ph.x0)} to ${Math.round(ph.x1)}, y ${Math.round(ph.y0)} to ${Math.round(ph.y1)}): move the label beside it`);
+      }
+      // "captions: select": the caption owns the top band and the small print the bottom one; the shot's own words stay in the picture band
+      if (TL.captions === 'select') for (const x of TRACK.texts) if (x.alpha > 0.3 && x.scale >= 0.9 && x.text.trim() && (x.y0 < 500 || x.y1 > 1465)) texts.set('band:' + x.text, `text "${x.text}" is drawn at y ${Math.round(x.y0)} to ${Math.round(x.y1)}, outside the picture band: the caption lives at y 300 to 430 and the small print below y 1460, so every label, number and panel of yours sits between y 560 and 1400`);
+      for (const m of TRACK.d3errs || []) texts.set('d3:' + m.slice(0, 90), m); // 3D staging: actors inside furniture or each other, blocked cameras (stage3d.js)
+      for (const tx of TRACK.nan || []) texts.set('nan:' + tx, `text "${tx}" is drawn at a position that is not a number (NaN), so it never shows: check every number you compute for it (a word passed where a number belongs, such as kit.title's opts.k, which is seconds since the text appeared, or leave it out)`);
+      // panels: every visible kit.panel must hold its words, and words must not spill out of their panel
+      for (const pn of TRACK.panels || []) { if (pn.alpha <= 0.3 || pn.x1 - pn.x0 < 90 || pn.y1 - pn.y0 < 40) continue;
+        const inside = TRACK.texts.filter(x => x.alpha > 0.3 && x.text.trim() && (x.x0 + x.x1) / 2 > pn.x0 && (x.x0 + x.x1) / 2 < pn.x1 && (x.y0 + x.y1) / 2 > pn.y0 && (x.y0 + x.y1) / 2 < pn.y1);
+        const box = `the panel at x ${Math.round(pn.x0)} to ${Math.round(pn.x1)}, y ${Math.round(pn.y0)} to ${Math.round(pn.y1)}`;
+        if (!inside.length) {
+          const cx = x => (x.x0 + x.x1) / 2, cy = x => (x.y0 + x.y1) / 2, within = x => cx(x) > pn.x0 && cx(x) < pn.x1 && cy(x) > pn.y0 && cy(x) < pn.y1;
+          const faint = TRACK.texts.filter(x => x.alpha <= 0.3 && x.text.trim() && within(x)), near = TRACK.texts.filter(x => x.alpha > 0.3 && x.text.trim() && !within(x) && x.x1 > pn.x0 - 160 && x.x0 < pn.x1 + 160 && x.y1 > pn.y0 - 120 && x.y0 < pn.y1 + 120);
+          const why = faint.length ? ` Its text "${faint[0].text}" is drawn there at opacity ${faint[0].alpha.toFixed(2)}, so it is invisible: if you draw it with kit.title, opts.k is the seconds since the text appeared (lt minus its start), so a constant 0 or a word keeps it hidden; leave k out to simply show it.`
+            : near.length ? ` The text "${near[0].text}" is drawn next to it (x ${Math.round(near[0].x0)} to ${Math.round(near[0].x1)}, y ${Math.round(near[0].y0)} to ${Math.round(near[0].y1)}) instead of inside it: centre the text on its panel.` : '';
+          texts.set(`empty:${Math.round(pn.x0 / 40)}:${Math.round(pn.y0 / 40)}`, `${box} is visible at lt=${t.toFixed(2)}s with no text in it: a panel exists only to hold words, so draw it in the same frames as its text (or not at all), and never leave placeholder boxes.${why}`);
+        }
+        for (const x of inside) if (x.x0 < pn.x0 - 4 || x.x1 > pn.x1 + 4 || x.y0 < pn.y0 - 4 || x.y1 > pn.y1 + 4) texts.set('spill:' + x.text, `text "${x.text}" (x ${Math.round(x.x0)} to ${Math.round(x.x1)}, y ${Math.round(x.y0)} to ${Math.round(x.y1)}) spills out of ${box}: measure the text, size the panel to it plus padding, and centre it vertically (textBaseline 'middle' at the panel's centre y), or shorten the text`);
+      }
+      // overlaps: panels drawn on top of each other, or two different texts on top of each other, are unreadable
+      const area = (p, q) => Math.max(0, Math.min(p.x1, q.x1) - Math.max(p.x0, q.x0)) * Math.max(0, Math.min(p.y1, q.y1) - Math.max(p.y0, q.y0)), size = p => (p.x1 - p.x0) * (p.y1 - p.y0);
+      const pans = (TRACK.panels || []).filter(pn => pn.alpha > 0.3 && pn.x1 - pn.x0 >= 90 && pn.y1 - pn.y0 >= 40);
+      for (let i = 0; i < pans.length; i++) for (let j = i + 1; j < pans.length; j++) if (area(pans[i], pans[j]) > 0.15 * Math.min(size(pans[i]), size(pans[j])))
+        texts.set(`poverlap:${Math.round(pans[i].y0 / 40)}:${Math.round(pans[j].y0 / 40)}`, `two panels overlap at lt=${t.toFixed(2)}s (y ${Math.round(pans[i].y0)} to ${Math.round(pans[i].y1)} and y ${Math.round(pans[j].y0)} to ${Math.round(pans[j].y1)}): show one panel at a time in each place, replacing the old one, or stack them with a gap`);
+      const tx = TRACK.texts.filter(x => x.alpha > 0.3 && x.text.trim() && x.scale >= 0.9);
+      for (let i = 0; i < tx.length; i++) for (let j = i + 1; j < tx.length; j++) if (tx[i].text !== tx[j].text && area(tx[i], tx[j]) > 0.2 * Math.min(size(tx[i]), size(tx[j])))
+        texts.set(`toverlap:${tx[i].text}|${tx[j].text}`, `text "${tx[i].text}" overlaps text "${tx[j].text}" at lt=${t.toFixed(2)}s: give each line its own space (measure them and place them apart)`);
+      if (ck.hero) { const hs = TRACK.assets.filter(a => a.id === ck.hero && a.alpha > 0.5); heroAt.push(hs.length ? hs.reduce((m, a) => (a.w > m.w ? a : m)) : null); }
+      frameDetail.push(detail(shotsnaps[shotsnaps.length - 1]));
+      for (const x of TRACK.texts) if (x.alpha > 0.3 && x.text.trim()) shown.add(x.text.trim());
+      for (const x of TRACK.texts) if (x.alpha > 0.3 && x.text.trim() && x.scale >= 0.5 && !(TRACK.panels || []).some(pn => pn.alpha > 0.3 && (x.x0 + x.x1) / 2 > pn.x0 - 30 && (x.x0 + x.x1) / 2 < pn.x1 + 30 && (x.y0 + x.y1) / 2 > pn.y0 - 30 && (x.y0 + x.y1) / 2 < pn.y1 + 30)) loose.add(x.text.trim());
+      if (TRACK.cover) cover = Math.max(cover, TRACK.cover);
+      if (tl.d3 && tl.d3.mode === 'lowpoly' && t >= sh.dur * 0.5) { lpSeen.slice = Math.max(lpSeen.slice, TRACK.lpSlice || 0); lpSeen.labels = Math.max(lpSeen.labels, TRACK.lpLabels || 0); }
+      if (tl.d3 && tl.d3.mode === 'lowpoly' && TRACK.lpHeader) lpSeen.header = TRACK.lpHeader;
+      TRACK = null;
+    }
+    // low-poly reels (renderer: lowpoly): a new host pose on every sentence of the narration
+    if (tl.d3 && tl.d3.mode === 'lowpoly' && !errors.length && typeof LP !== 'undefined' && LP) for (const m of LP.poseCheck(sh, tt => render(tt, { still: true }))) texts.set('pose:' + m.slice(0, 60), m);
+    if (tl.d3 && !errors.length) for (let tt = 0.1; tt < sh.dur - 0.05; tt += 0.4) { TRACK = { texts: [], assets: [] }; try { render(tt, { still: true }); for (const m of TRACK.d3errs || []) texts.set('d3:' + m.slice(0, 90), m.replace(/^/, `at lt=${tt.toFixed(1)}s: `)); } catch (e) { } TRACK = null; }
+    if (!errors.length) {
+      // template checks: the hero's size and place at the payoff (frames at 55%, 80% and the end), only when the shot shows it
+      const pay = heroAt.slice(2).filter(Boolean);
+      if (pay.length && ck.heroWidth) {
+        const b = ck.heroBox || { fx: 1, oy: 0 }, wf = Math.max(...pay.map(a => a.w * b.fx)) / W, [lo, hi] = ck.heroWidth;
+        if (wf < lo - 0.03) errors.push(`the hero "${ck.hero}" is only ${Math.round(wf * 100)}% of the frame width at its payoff; scale it to ${Math.round(lo * 100)} to ${Math.round(hi * 100)}% of the width`);
+        else if (wf > hi + 0.05) errors.push(`the hero "${ck.hero}" is ${Math.round(wf * 100)}% of the frame width at its payoff, so it is cut off or crowds the labels; scale it to ${Math.round(lo * 100)} to ${Math.round(hi * 100)}% of the width`);
+      }
+      if (pay.length && ck.heroSize) {
+        const b = ck.heroBox || { fx: 1, fy: 1 }, sz = Math.max(...pay.map(a => Math.max(a.w * b.fx / W, a.h * b.fy / H))), [lo, hi] = ck.heroSize;
+        if (sz < lo - 0.03) errors.push(`the hero "${ck.hero}" fills only ${Math.round(sz * 100)}% of the frame (its larger side) at its payoff; scale it so it fills ${Math.round(lo * 100)} to ${Math.round(hi * 100)}%`);
+        else if (sz > hi + 0.05) errors.push(`the hero "${ck.hero}" fills ${Math.round(sz * 100)}% of the frame at its payoff, so it is cut off; scale it so it fills ${Math.round(lo * 100)} to ${Math.round(hi * 100)}%`);
+      }
+      if (pay.length && ck.heroCentreY) {
+        const a = pay[pay.length - 1], cy = a.cy + (ck.heroBox ? ck.heroBox.oy * a.h : 0), [lo, hi] = ck.heroCentreY;
+        if (cy < lo - 20 || cy > hi + 20) errors.push(`the hero "${ck.hero}" is centred at y ${Math.round(cy)} at the end of the shot; centre it at y ${lo} to ${hi} (higher leaves the band above the caption empty)`);
+      }
+      // acting: the hero must change pose, expression, eyes, facing or what it holds, or move, within the shot (breathing and lip-sync alone are not acting)
+      const seen = heroAt.filter(Boolean);
+      if (ck.acting && seen.length >= 3) { // ck.acting = seconds per acting beat: a new expression, pose, facing or held thing, or a move of 30 px or more
+        const moved = Math.max(...seen.map(a => a.cx)) - Math.min(...seen.map(a => a.cx)) >= 30 || Math.max(...seen.map(a => a.cy)) - Math.min(...seen.map(a => a.cy)) >= 30;
+        const states = [...new Set(seen.map(a => a.act))], beats = states.length - 1 + (moved ? 1 : 0), need = Math.max(1, Math.ceil(sh.dur / ck.acting));
+        if (beats < need) errors.push(`the hero "${ck.hero}" barely acts: this ${sh.dur.toFixed(1)} s shot needs about ${need} acting beats (one every ${ck.acting} s) but has ${beats} (states seen: ${states.join(' | ')}${moved ? ', plus a move' : ''}). Give it a new expression, pose, facing or held item on each line and in between (a sigh, a slump, rubbing eyes, checking the phone, standing up), or move it across the room`);
+      }
+      // a solid fill painted over the kit's background hides the place
+      if (cover) errors.push(`after kit.bg you paint a solid rectangle over ${Math.round(cover * 100)}% of the frame, which hides the background's place: let kit.bg draw the room, walls and floor, and only add objects and characters on top (a tint must be a gradient or under 50% opacity)`);
+      if (ck.labels === 'panels only') for (const x of loose) errors.push(`text "${x}" is drawn outside any kit.panel: in this template words appear only on insert panels and the date card (no labels, banners or numbers floating over the picture); remove it or put it on the insert`);
+      // labels only use words this shot's narration says (part names, steps, numbers), never invented commentary
+      if (ck.labels === 'from narration') {
+        const said = sh.lines.map(l => l.text).join(' ').toLowerCase().match(/[a-z]+/g) || [];
+        const OK = /^(step|steps|one|two|three|four|five|six|seven|eight|nine|ten|first|second|third|fourth|fifth|left|right|upper|lower|top|bottom|front|back|and|the|per|mph|kph|rpm|psi)$/;
+        const near = (w, n) => { let k = 0; while (k < w.length && k < n.length && w[k] === n[k]) k++; return w === n || (k >= 4 && k >= 0.7 * Math.min(w.length, n.length)); };
+        for (const t of shown) {
+          const bad = (t.toLowerCase().match(/[a-z]+/g) || []).filter(w => w.length > 2 && !OK.test(w) && !said.some(n => near(w, n)));
+          if (bad.length) errors.push(`label "${t}" uses words this shot's narration never says (${bad.join(', ')}). On-screen text only names a part, step or number that this shot's lines say, in their words; remove the label or reword it`);
+        }
+      }
+      [0.2, 0.55, 0.92].forEach(f => { render(clamp(sh.dur * f, 0.05, sh.dur - 0.05), { still: true }); frames.push(grab(270, 480)); });
+      if (shotsnaps.every(s => spread(s) < 8)) errors.push('the frame is nearly blank: paint the background with kit.bg and place assets');
+      if (shotsnaps.length >= 4 && diff(shotsnaps[2], shotsnaps[3]) < 0.5) errors.push('not animated: frames at 55% and 80% of the shot are identical; keep things moving');
+      render(times[2], { still: true }); const a = snap(); render(times[2], { still: true }); if (diff(a, snap()) > 0.01) errors.push('not deterministic: use lt and h.rng(seed) only');
+      for (const ln of sh.lines) if (ln.who !== 'narrator') { ANCH = {}; render((ln.start + ln.end) / 2, { still: true }); if (!ANCH[ln.who]) errors.push(`speaker "${ln.who}" is not anchored while talking: call h.anchor('${ln.who}', x, yAboveHead) every frame they are on screen`); }
+      if (ck.hero !== null && biggest < 380) errors.push(`the largest subject is only ${Math.round(biggest)} px; the hero asset should be 400 to 900 px during its moment`);
+      errors.push(...texts.values());
+      if (maxMs > 180) errors.push(`too slow: ${maxMs.toFixed(0)} ms per frame`);
+    }
+  } finally { STRICT = false; TRACK = null; TL = saved; }
+  return { ok: !errors.length, errors, stats: { frameDetail: frameDetail.map(v => +v.toFixed(2)), acts: heroAt.map(a => a && a.act), shown: [...shown], lp: lpSeen }, maxMs: +maxMs.toFixed(1), preview: frames.length ? sheet(frames, 270, 480) : null };
+};
+</script>
+<script src="three.js"></script>
+<script src="stage3d.js"></script>
+<script src="stage3d_lowpoly.js"></script>
+</body>
+</html>

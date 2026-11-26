@@ -1,0 +1,50 @@
+# speedramp-mechanism-explainer fix log
+
+## epoch 0 (2026-11-19): created from a reference reel
+Made by Claude from the rea-video breakdown of references/ref3.mp4 (34.1 s toon-shaded 3D machine explainer rendered at about 190 pixels across and scaled up, one continuous camera, music bed at 112 BPM, no voice, 2 sound effects, every idea on a title placard), see reference-lab/runs/ref3/analysis-claude (survey + review by Claude), reference-lab/runs/ref3/crops and reference-lab/refs/ref3.
+What was taken from the reference:
+- Look: chunky pixel art over toon-shaded parts (3 cel bands, a one-art-pixel dark rim, checker dither between bands), deep navy inside world (L 0.22, C 0.03 to 0.09, hue about 280) with huge out-of-focus shapes and thin expanding rings; saturated part colours; cream HUD plates (L 0.97, C 0.04) with ink text, PRIMARY red (L 0.63, C 0.20, hue 29), SECONDARY blue (L 0.54, C 0.16, hue 262), GOLD (L 0.72 to 0.85, C 0.14, hue 76 to 88), measured with tools/oklch_colours.py; a mid-light everyday scene at start and end.
+- HUD (the signature): speed badge (REAL SPEED red / NNx SLOWER blue / FASTER flash), a semicircle dial whose needle follows the speed, a counter of 4 digit cells showing the real rate divided by the slowdown; a title placard (headline + red subline, a numbered step badge); callouts as cream tags with leader lines ending in a square on the part; a pop word on each working action.
+- Structure: real speed hook with the question and the real rate; too fast to see; slowed 256x; numbered steps down the chain from the working end toward the power source, each a question answered in the subline, speed doubling each step; the chain as lit chips; pull back to the whole device in x-ray while speeding back to real speed; back to the opening frame.
+- The style extractor found no pixel grid (too fine to measure at 576 px), but full-resolution crops show stair steps of about 3 px at 576 wide (about 190 art pixels across): template uses the engine's pixel grid 180.
+Engine limits met on the way (not changed):
+- The reference has no voice (music and placards only); the engine always narrates. Narrator bf_emma (measured 2.8 words/s in the engine).
+- One continuous camera: the engine adds a cut at every shot start; each shot opens with a short push-in to read as one camera move.
+- Kit helpers beyond the contract (kit.hud, kit.placard, kit.callout) are asked for in the look section so the HUD is identical in every shot; the kit validator does not test them, so their bugs show up only in shot validation.
+First brief: "How does a hair clipper work?" (the reference's own topic, at the user's request); second brief: "How OLED works".
+
+## epoch 1 (2026-11-19): fixes after reviewing the epoch-0 reel (reels/speedramp-e1-v2, brief "How does a hair clipper work?", $0.187, 43.8 s for 45 s, 553 s wall)
+Grade vs ref3: rhythm 0.44, rendering 0.21, colour 0.08; art pixels across 180 (pixel look), frame-to-frame change 0.81 vs 6.62 (far less motion), moving frames 53% vs 100%.
+Epoch 0 got the signature right: the HUD row (badge, dial, digit counter) and the placard in every shot, identical thanks to kit.hud / kit.placard; numbered steps; the speed ramp 8x, 4x, 2x, REAL in the ramp shot with "x2 FASTER" flashes and per-second counts on the placard; chips lighting in order in the chain shot; navy inside world with expanding rings; callouts with leader lines; the loop lands on the hook frame. Flaws seen -> fix:
+- Counter unit and rate differ in every shot (CPS, CUT, RPM, CYC, CPM, PM; rate 60, 128 ...), so values are wrong; shots invented prevSlow (1) and the kit flashed "X1 SLOWER" / "X128 SLOWER" on first frames -> the plan decides UNIT and RATE once and every idea starts with an exact HUD line (slow, prevSlow, change moment, unit, rate); kit.hud flashes only when prevSlow differs; the shots pass the HUD line verbatim.
+- Mixed kinds of device (a battery and 1.5 V switch feeding an AC magnetic drive) -> pick one real kind and keep every part true to it.
+- The device a plain navy slab with a red dot, the hook not "in use" (just the slab on a floor) -> the device has its real outside silhouette and colour; the hook shows it big, tilted as in use, touching the thing it works on, in a recognisable place.
+- Working end a thin rail stretched past both frame edges, teeth tiny -> 6 to 10 big features across, each 60 to 120 px; drawn at scale 1 to 1.15, never stretched.
+- Step badges on every shot (blur 2, chain 7, the ramp's badge showing 8/4/2/1) -> badges only on step and chain shots, numbered in order.
+- Pop words everywhere ("CLICK!", "FASTER!", "SMOOTH!") -> step 1 only.
+- Big brown and yellow glow blobs over the subject; the device inside a dark frame box in shots 6 to 8 -> no glows wider than 1.1x their part, no frames around the subject; device 820 to 880 px tall in chain and ramp.
+- Rejections: h.asset(ctx, ...) (shot 2) and solid full-frame rectangles after kit.bg (shots 1, 2) -> h.asset signature stated; no solid fills after kit.bg.
+- Far less motion than the reference -> the camera keeps creeping in (scale +6%) and drifting through every shot.
+
+## epoch 2 (2026-11-19): fixes after reviewing the epoch-1 reel (reels/speedramp-e2-v2, brief "How OLED works", $0.210, 46.2 s for 45 s, 638 s wall)
+Grade vs ref3: rhythm 0.55, rendering 0.22, colour 0.14; art pixels 180; frame-to-frame change 0.64 vs 6.62; ground lightness 0.42 vs 0.27.
+Epoch 1 fixed the HUD: one unit and rate in every shot (HZ, 60), counter values right at every speed (0.2, 0.5, 0.9, 1.9, 7.5, 15, 30, 60), FASTER flashes only on real changes; pop words only in step 1; the ramp placard counts actions per second at each speed; the chain chips light in order; the phone reads as a phone. Flaws seen -> fix:
+- Step badges still on the hook, blur, ramp (changing 1 to 4) and loop -> each idea writes a PLACARD line with "step none" for those beats; kit.placard draws a badge only for a number of 1 or more.
+- Device and working_end shipped failing "paints its whole box" (rectangular things: phone, pixel grid) and shots 4 and 5 shipped failing a 31 to 34% "solid rectangle" (the box-filling drive asset with a plate behind it); 34 rejections -> keep the 4 box corners empty: no backing plates or frames, flat rectangular objects inset 6% with corners rounded by 48 px or more.
+- Steps 2 and 3 showed the same transistor grid at the same framing -> step 3 is a different asset or a 2x push-in on another part.
+- The working end a row of blue cells with a "FLASH!" word; the real layer stack not shown -> a layered working end is a cross-section, each layer 50 px or more thick; its change travels 40 px or more per cycle.
+- Hook phone screen black (not at work), abstract blue blocks as the place; the loop ended on a big tilted phone, not the hook frame -> the hook shows the device visibly at work; the hook idea gives a DEVICE line (x, y, scale, angle, params) that the loop repeats word for word.
+- Chain and ramp: the x-ray device's inner parts unnamed abstract stripes -> up to 4 callouts naming them in a left column.
+- Inside background too light (ground 0.42) -> ground 0.20 to 0.24, brightest point under 0.36.
+- Still far less motion -> camera creep 12% and drift 40 to 60 px per shot.
+
+## epoch 3 review (2026-11-19): the epoch-2 reel (reels/speedramp-e3-v2, brief "How OLED works", $0.230, 47.7 s for 45 s, 837 s wall); fixes not yet written (3-round limit reached, waiting for go-ahead)
+Grade vs ref3: rhythm 0.53, rendering 0.20, colour 0.08 (best so far); ground lightness 0.30 vs 0.27 (was 0.42); contrast 11.0 vs 12.5; frame-to-frame change 0.78 vs 6.62; 17 rejections (was 34), 1 shipped failure (device revision fills its box).
+Epoch 2 got: the hook shows the phone at work (bright picture) in a readable room, and the loop lands on the same composition; no step badges on hook, blur, ramp, loop; dark navy inside world; callouts naming the inner parts in a left column in the chain and ramp shots; HUD unit and rate the same everywhere; counter values right in steps.
+Flaws still seen, with the fix to write next:
+- Loop HUD stuck on "x2 FASTER" with the counter at 30: the plan wrote "since 0" and the shot passed since: 0 as a constant -> since is always lt minus the change moment (never a constant); the loop has no change (prevSlow 1).
+- Ramp placard counts interpolated (9.7, 24.3, 38.8, 53.4) and badge and counter out of step with them -> the ramp idea lists its 4 segments with exact start times and values; numbers snap at each change, never interpolate.
+- Steps 2 and 3 still the same transistor-board picture at the same framing (the rule was ignored) -> make step 3 use the "device" asset pushed in on a different part, or require a 4th asset kind; or add a director flag the engine enforces.
+- Working end drawn as a grid of pixel cells, not the layer stack in cross-section; blur and step 1 show the same picture; the drive asset small (about 450 px wide) in a large empty frame -> name the cross-section explicitly for layered things; drive 700 px or more wide.
+- "Speed doubles four times" (it doubles three times: 8, 4, 2, 1) -> ramp line states the real count.
+- Still far less motion than the reference (0.78 vs 6.62): the reference's camera never stops and its parts fill the frame; our parts are mid-size and mostly static between cycles.

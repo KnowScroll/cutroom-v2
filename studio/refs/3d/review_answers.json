@@ -1,0 +1,1591 @@
+{
+ "by": "claude",
+ "shots": [
+  {
+   "id": "shot_001",
+   "time": "0.00-2.23",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Bank lobby, medium wide from a low three-quarter angle: the ball-headed hero (huge cream sphere head, teal cap with a side brim, red tube body, black stick legs with ball shoes) stands beside a dark green cash machine on the left edge, hand to mouth, then lowers it with a sly look; cream striped wallpaper with a navy band, two yellow cone lamps hang from a wood-beamed ceiling, red runner carpet on a plank floor. Slow push-in. One-word white captions with a black outline at about 73% of the frame height.",
+   "narrative": {
+    "role": "hook",
+    "point": "the absurd outcome in one sentence with its dollar figure, while the hero stands at the machine"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "hero",
+    "emotion": "sly",
+    "intensity": "mid",
+    "face": "simple toon face: dot or ring eyes, thick brow bars, small mouth",
+    "body": "small stick-limbed body, gestures with ball hands",
+    "arc": [],
+    "voice": "narration only, fast deadpan male voice-over",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "hero: sly"
+   }
+  },
+  {
+   "id": "shot_002",
+   "time": "2.23-4.87",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Insert close-up of the cash machine screen over the hero's shoulder (his cap and head a big cropped sphere on the left edge): a green sign on top, a green screen whose text changes from a deposit prompt to a balance that counts up to a five-figure dollar amount, a keypad below; a wall calendar card at top left shows month, year and day number.",
+   "narrative": {
+    "role": "proof",
+    "point": "the machine shows the huge balance as a number on its screen"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_003",
+   "time": "4.87-6.23",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Back to the lobby medium shot: the hero jolts, eyes pop into white circles with tiny pupils, mouth an open o, sweat drops appear; caption shows the dollar figure as digits.",
+   "narrative": {
+    "role": "hook",
+    "point": "the hero's shocked reaction to the number"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "hero",
+    "emotion": "surprised",
+    "intensity": "high",
+    "face": "simple toon face: dot or ring eyes, thick brow bars, small mouth",
+    "body": "small stick-limbed body, gestures with ball hands",
+    "arc": [],
+    "voice": "narration only, fast deadpan male voice-over",
+    "key": true,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "hero: surprised"
+   }
+  },
+  {
+   "id": "shot_004",
+   "time": "6.23-8.77",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Home room wide: teal-green striped upper wall, red wainscot, cream rails, plank floor with a teal rug and a yellow border stripe, a red cone lamp over a cream desk, a wall clock, a shelf of coloured binders. The hero sits at the desk holding up a bank statement with a small balance printed on it next to his glum face.",
+   "narrative": {
+    "role": "context",
+    "point": "flashback: his ordinary situation, shown by the small number on a paper he holds"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "hero",
+    "emotion": "glum",
+    "intensity": "low",
+    "face": "simple toon face: dot or ring eyes, thick brow bars, small mouth",
+    "body": "small stick-limbed body, gestures with ball hands",
+    "arc": [],
+    "voice": "narration only, fast deadpan male voice-over",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "hero: glum"
+   }
+  },
+  {
+   "id": "shot_005",
+   "time": "8.77-10.13",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Whip pan to a closer angle of the same room: the hero at the desk looks up brightly; a tear-off wall calendar shows the year in big digits.",
+   "narrative": {
+    "role": "context",
+    "point": "the year, shown on a wall calendar"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "hero",
+    "emotion": "curious",
+    "intensity": "low",
+    "face": "simple toon face: dot or ring eyes, thick brow bars, small mouth",
+    "body": "small stick-limbed body, gestures with ball hands",
+    "arc": [],
+    "voice": "narration only, fast deadpan male voice-over",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "hero: curious"
+   }
+  },
+  {
+   "id": "shot_006",
+   "time": "10.13-12.27",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Wide of the room from another side: a brown door with a brass letter slot on the left, junk-mail flyers lie on the mat; the hero at the desk turns toward them.",
+   "narrative": {
+    "role": "context",
+    "point": "the odd offer arrives through the letter slot"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "hero",
+    "emotion": "curious",
+    "intensity": "low",
+    "face": "simple toon face: dot or ring eyes, thick brow bars, small mouth",
+    "body": "small stick-limbed body, gestures with ball hands",
+    "arc": [],
+    "voice": "narration only, fast deadpan male voice-over",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "hero: curious"
+   }
+  },
+  {
+   "id": "shot_007",
+   "time": "12.27-13.93",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Whip pan to the hero at the desk facing camera, holding up a garish yellow flyer and a sample cheque beside his face.",
+   "narrative": {
+    "role": "info",
+    "point": "he holds the offer up: a sample cheque made out to him"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "hero",
+    "emotion": "amused",
+    "intensity": "mid",
+    "face": "simple toon face: dot or ring eyes, thick brow bars, small mouth",
+    "body": "small stick-limbed body, gestures with ball hands",
+    "arc": [],
+    "voice": "narration only, fast deadpan male voice-over",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "hero: amused"
+   }
+  },
+  {
+   "id": "shot_008",
+   "time": "13.93-17.10",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Close-up: the hero's huge face (closed happy eyes as arcs, stubble dots, small smile) fills the top of the frame, he holds a white cheque across the lower frame; its amount sits on a yellow highlight box.",
+   "narrative": {
+    "role": "info",
+    "point": "the cheque's amount, big and readable"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "hero",
+    "emotion": "happy",
+    "intensity": "mid",
+    "face": "simple toon face: dot or ring eyes, thick brow bars, small mouth",
+    "body": "small stick-limbed body, gestures with ball hands",
+    "arc": [],
+    "voice": "narration only, fast deadpan male voice-over",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "hero: happy"
+   }
+  },
+  {
+   "id": "shot_009",
+   "time": "17.10-19.70",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Extreme close-up of the cheque filling the frame, the face cropped at the top: a company name, pay-to line with a handwritten YOU, the written amount line, and the fine-print word that gets a yellow highlight when it is read.",
+   "narrative": {
+    "role": "info",
+    "point": "the fine print, highlighted as the narrator reads it"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_010",
+   "time": "19.70-21.37",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Close-up: the hero flips the cheque and draws a blue smiley face on the endorsement line on the back, smug half-lidded eyes.",
+   "narrative": {
+    "role": "info",
+    "point": "the joke: he endorses it with a smiley"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "hero",
+    "emotion": "smug",
+    "intensity": "mid",
+    "face": "simple toon face: dot or ring eyes, thick brow bars, small mouth",
+    "body": "small stick-limbed body, gestures with ball hands",
+    "arc": [],
+    "voice": "narration only, fast deadpan male voice-over",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "hero: smug"
+   }
+  },
+  {
+   "id": "shot_011",
+   "time": "21.37-23.27",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Over-the-shoulder insert of the cash machine: the deposit prompt, an arrow to the slot, then a thank-you message.",
+   "narrative": {
+    "role": "info",
+    "point": "he feeds the cheque to the machine"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_012",
+   "time": "23.27-26.57",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Lobby medium shot, a week later: the hero checks the machine, does a slow double take, eyes pop, sweat drops.",
+   "narrative": {
+    "role": "turn",
+    "point": "a week later he checks; the reaction take"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "hero",
+    "emotion": "surprised",
+    "intensity": "high",
+    "face": "simple toon face: dot or ring eyes, thick brow bars, small mouth",
+    "body": "small stick-limbed body, gestures with ball hands",
+    "arc": [],
+    "voice": "narration only, fast deadpan male voice-over",
+    "key": true,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "hero: surprised"
+   }
+  },
+  {
+   "id": "shot_013",
+   "time": "26.57-27.53",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Whip pan to the machine screen: the full balance in yellow digits.",
+   "narrative": {
+    "role": "proof",
+    "point": "the whole amount is there"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_014",
+   "time": "27.53-31.47",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Over-the-shoulder at the teller window: the hero's head a huge cropped sphere on the left, behind the glass a teller with a ginger cap and blue shirt smiles and nods; a TELLER sign in a frame on the wall.",
+   "narrative": {
+    "role": "info",
+    "point": "he asks the bank; they tell him it is his"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "teller",
+    "emotion": "cheerful",
+    "intensity": "low",
+    "face": "simple toon face: dot or ring eyes, thick brow bars, small mouth",
+    "body": "small stick-limbed body, gestures with ball hands",
+    "arc": [],
+    "voice": "narration only, fast deadpan male voice-over",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "teller: cheerful"
+   }
+  },
+  {
+   "id": "shot_015",
+   "time": "31.47-36.87",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Home desk, front: flyers for a sports car and a yacht lie on the desk; the hero scratches his head, then folds his arms with a firm frown and closed eyes.",
+   "narrative": {
+    "role": "turn",
+    "point": "the question what he does with the money; the answer: he spends nothing"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "hero",
+    "emotion": "determined",
+    "intensity": "mid",
+    "face": "simple toon face: dot or ring eyes, thick brow bars, small mouth",
+    "body": "small stick-limbed body, gestures with ball hands",
+    "arc": [],
+    "voice": "narration only, fast deadpan male voice-over",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "hero: determined"
+   }
+  },
+  {
+   "id": "shot_016",
+   "time": "36.87-38.63",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Back at the teller window over the shoulder: the teller hands over a paper.",
+   "narrative": {
+    "role": "info",
+    "point": "he converts the money into a cashier's cheque"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "teller",
+    "emotion": "neutral",
+    "intensity": "low",
+    "face": "simple toon face: dot or ring eyes, thick brow bars, small mouth",
+    "body": "small stick-limbed body, gestures with ball hands",
+    "arc": [],
+    "voice": "narration only, fast deadpan male voice-over",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "teller: neutral"
+   }
+  },
+  {
+   "id": "shot_017",
+   "time": "38.63-41.57",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Safe-deposit room: an amber wall of numbered lockers, a green cone lamp over a green table; the hero puts a long grey box on the table, smug and calm.",
+   "narrative": {
+    "role": "info",
+    "point": "he locks it in a box and waits for the bank to notice"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "hero",
+    "emotion": "smug",
+    "intensity": "low",
+    "face": "simple toon face: dot or ring eyes, thick brow bars, small mouth",
+    "body": "small stick-limbed body, gestures with ball hands",
+    "arc": [],
+    "voice": "narration only, fast deadpan male voice-over",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "hero: smug"
+   }
+  },
+  {
+   "id": "shot_018",
+   "time": "41.57-42.97",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Lobby: a bald bank manager (grey side hair, round glasses, mustache, dark suit, red tie) stands glaring; a wall calendar flips from one month to the next.",
+   "narrative": {
+    "role": "turn",
+    "point": "a month later the bank notices"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "manager",
+    "emotion": "angry",
+    "intensity": "mid",
+    "face": "simple toon face: dot or ring eyes, thick brow bars, small mouth",
+    "body": "small stick-limbed body, gestures with ball hands",
+    "arc": [],
+    "voice": "narration only, fast deadpan male voice-over",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "manager: angry"
+   }
+  },
+  {
+   "id": "shot_019",
+   "time": "42.97-43.47",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Whip pan to the machine screen with the balance.",
+   "narrative": {
+    "role": "turn",
+    "point": "the balance, one last time"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_020",
+   "time": "43.47-44.47",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "The screen flips to a light-blue ACCOUNT FROZEN message with snowflakes.",
+   "narrative": {
+    "role": "turn",
+    "point": "the account is frozen"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_021",
+   "time": "44.47-45.33",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Lobby: the hero at the machine, his card is swallowed; stunned look.",
+   "narrative": {
+    "role": "turn",
+    "point": "the machine swallows his card"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "hero",
+    "emotion": "stunned",
+    "intensity": "mid",
+    "face": "simple toon face: dot or ring eyes, thick brow bars, small mouth",
+    "body": "small stick-limbed body, gestures with ball hands",
+    "arc": [],
+    "voice": "narration only, fast deadpan male voice-over",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "hero: stunned"
+   }
+  },
+  {
+   "id": "shot_022",
+   "time": "45.33-47.30",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Safe-deposit room two-shot: hero and manager side by side behind the green table, the manager holds a yellow drill toward the box; the hero's eyes pop, sweat drops.",
+   "narrative": {
+    "role": "turn",
+    "point": "the bank asks to drill the box open"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "hero",
+    "emotion": "nervous",
+    "intensity": "high",
+    "face": "simple toon face: dot or ring eyes, thick brow bars, small mouth",
+    "body": "small stick-limbed body, gestures with ball hands",
+    "arc": [],
+    "voice": "narration only, fast deadpan male voice-over",
+    "key": true,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "hero: nervous"
+   }
+  },
+  {
+   "id": "shot_023",
+   "time": "47.30-49.53",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Home desk: the hero raises one finger, smug half-lidded eyes, knowing smile.",
+   "narrative": {
+    "role": "payoff",
+    "point": "he knew something the bank did not"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "hero",
+    "emotion": "smug",
+    "intensity": "mid",
+    "face": "simple toon face: dot or ring eyes, thick brow bars, small mouth",
+    "body": "small stick-limbed body, gestures with ball hands",
+    "arc": [],
+    "voice": "narration only, fast deadpan male voice-over",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "hero: smug"
+   }
+  },
+  {
+   "id": "shot_024",
+   "time": "49.53-52.50",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Cheque close-up again, the fine-print word highlighted in yellow.",
+   "narrative": {
+    "role": "payoff",
+    "point": "the fine print does not cancel it legally"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_025",
+   "time": "52.50-54.23",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Close-up of the back of the cheque with the smiley, the hero's smug face above.",
+   "narrative": {
+    "role": "payoff",
+    "point": "the joke was real"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "hero",
+    "emotion": "smug",
+    "intensity": "mid",
+    "face": "simple toon face: dot or ring eyes, thick brow bars, small mouth",
+    "body": "small stick-limbed body, gestures with ball hands",
+    "arc": [],
+    "voice": "narration only, fast deadpan male voice-over",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "hero: smug"
+   }
+  },
+  {
+   "id": "shot_026",
+   "time": "54.23-63.83",
+   "label_probs": {
+    "cg_3d": 0.88,
+    "ai_video": 0.08,
+    "anim_2d": 0.04
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "clean stable geometry and consistent toon ink outlines from frame to frame",
+    "smooth shading on spheres with one warm key light; cast and contact shadows consistent",
+    "on-screen text inside the world (signs, screens, papers, numbered lockers) stays crisp and correct across frames, no AI text garbling",
+    "the same characters, rooms and props are identical from shot to shot (one built 3D set)"
+   ],
+   "description": "Safe-deposit room two-shot, long hold: the box open, a cashier's cheque with the amount lies on the table; the hero is calm and smug, the manager goes from angry to defeated with sweat drops.",
+   "narrative": {
+    "role": "payoff",
+    "point": "how it ended: he gave it back for one thing, and the deadpan punchline"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "hero",
+    "emotion": "smug",
+    "intensity": "mid",
+    "face": "simple toon face: dot or ring eyes, thick brow bars, small mouth",
+    "body": "small stick-limbed body, gestures with ball hands",
+    "arc": [],
+    "voice": "narration only, fast deadpan male voice-over",
+    "key": true,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "hero: smug"
+   }
+  }
+ ],
+ "aspects": {
+  "camera": {
+   "setups": "virtual 3D camera: medium and wide room shots at chest height, over-the-shoulder views with the hero head as a huge cropped foreground sphere, close-ups of faces and full-frame inserts of papers and screens",
+   "gear_guess": "3D package with a toon/outline shader (Blender-like), rendered 9:16"
+  },
+  "lighting": {
+   "lighting_overall": "warm interior light from one hanging cone lamp per room: a soft cream pool on ceiling and wall, warm bounce, strong darker vignette at the corners, soft contact shadows"
+  },
+  "grade": {
+   "grade_overall": "warm, saturated primaries (red, teal-green, amber), cream highlights, slight bloom around bulbs"
+  },
+  "editing": {
+   "editing": "fast sitcom cutting, 23.5 cuts a minute (mean 2.5 s): hard cuts between wide, over-the-shoulder, reaction close-up and insert; short horizontal whip pans (0.1 to 0.2 s motion blur) when jumping to the machine or to a new angle in the same room; one long 9.6 s hold for the ending"
+  },
+  "format": {
+   "format": "narrated true anecdote with a twist, 64 s, one male TTS narrator, one-word captions, dense pop and ding effects, no music bed"
+  },
+  "style": {
+   "render_style": "toon-shaded 3D cartoon: smooth soft shading on simple 3D forms with dark ink outlines, warm lamp-lit interiors",
+   "outline": "dark warm-black ink outline on every object, about 4 to 5 px at 1080 wide on characters and furniture, thinner on far details",
+   "shading": "smooth gradient shading from one warm key light (top-left), lighter top faces, darker sides, soft contact shadows, vignette",
+   "shape_language": "characters are a huge sphere head (about half the height) on a small tube body with stick arms ending in ball hands and stick legs ending in ball shoes; furniture and machines are simple boxes and cylinders; cone lamps",
+   "texture": "almost none: striped wallpaper, wood plank lines, panel mouldings; stubble as small dots on faces",
+   "type_ui": "bold sans text on in-world objects (screens, signs, papers, calendars) carries every number; captions one word at a time, uppercase heavy white with a black outline, centred at about 73% of the height",
+   "motion_style": "snappy cartoon acting: quick expression changes (eyes popping to rings, brows jumping, sweat drops), small body moves; slow push-ins; whip pans between angles",
+   "signature": "the money shots are full-frame inserts of papers and screens with the key number on a yellow highlight; wall calendars mark time; reaction close-ups of the huge face",
+   "do_not_copy": "the topic (a junk-mail cheque deposited at a bank), the bank, cheque, ATM, safe-deposit room, the dollar figures, dates and any words on screen; the creator handle or watermark"
+  }
+ },
+ "story": {
+  "summary": "A man deposits a junk-mail sample cheque as a joke, the bank pays out, he keeps every cent untouched until the bank comes for it, and he trades it back for a written apology.",
+  "hook": "The first line gives the whole absurd outcome with its dollar figure while the hero stands at the machine, then the balance and a shocked take.",
+  "highlights": [
+   "0-6 s: outcome first, then flashback: the viewer knows the punchline and wants the how",
+   "13-21 s: inserts of the paper with the number and the fine print highlighted as it is read: proof on screen",
+   "25-26 s: one-word line \"What.\" on a reaction take, deadpan rhythm",
+   "33-35 s: a question to the viewer (\"so what does he do?\") answered with \"Nothing.\" - the unexpected choice",
+   "47-64 s: \"you see\" reveal of what he knew, then a deadpan punchline as the last line"
+  ]
+ },
+ "cast": {
+  "style": "toon-shaded 3D ball-head cartoon",
+  "characters": [
+   {
+    "id": "A",
+    "name": "hero",
+    "kind": "person",
+    "look": "huge cream sphere head with stubble dots, teal cap with a short side brim, dot eyes and thick brow bars, red tube shirt, black stick arms with white ball hands, black stick legs with black ball shoes",
+    "role": "main character",
+    "voice": "none (narrated)",
+    "shots": [
+     1,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     10,
+     12,
+     15,
+     17,
+     21,
+     22,
+     23,
+     25,
+     26
+    ]
+   },
+   {
+    "id": "B",
+    "name": "teller",
+    "kind": "person",
+    "look": "same build, ginger cap, blue shirt, behind a glass window",
+    "role": "bank clerk",
+    "voice": "none",
+    "shots": [
+     14,
+     16
+    ]
+   },
+   {
+    "id": "C",
+    "name": "manager",
+    "kind": "person",
+    "look": "same build, bald with grey side hair, round glasses, thick slanted brows, mustache, dark suit, red tie",
+    "role": "the institution",
+    "voice": "none",
+    "shots": [
+     18,
+     22,
+     26
+    ]
+   }
+  ],
+  "scenes": [
+   {
+    "id": "S1",
+    "where": "bank lobby with a cash machine",
+    "when": "day",
+    "look": "cream striped wallpaper, navy band, wood beams, yellow cone lamps, red carpet",
+    "shots": [
+     1,
+     3,
+     12,
+     18,
+     21
+    ]
+   },
+   {
+    "id": "S2",
+    "where": "cash machine close-up",
+    "when": "day",
+    "look": "dark teal machine, green sign and screen, keypad, wall calendar",
+    "shots": [
+     2,
+     11,
+     13,
+     19,
+     20
+    ]
+   },
+   {
+    "id": "S3",
+    "where": "home room with a desk",
+    "when": "evening",
+    "look": "teal-green striped wall, red wainscot, red cone lamp, clock, binders, door with letter slot, teal rug",
+    "shots": [
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     15,
+     23,
+     24,
+     25
+    ]
+   },
+   {
+    "id": "S4",
+    "where": "teller window",
+    "when": "day",
+    "look": "glass partition, counter, TELLER sign",
+    "shots": [
+     14,
+     16
+    ]
+   },
+   {
+    "id": "S5",
+    "where": "safe-deposit room",
+    "when": "day",
+    "look": "amber wall of numbered lockers, green cone lamp, green table",
+    "shots": [
+     17,
+     22,
+     26
+    ]
+   }
+  ],
+  "props": [
+   {
+    "name": "sample cheque",
+    "note": "white paper, company name, amount on a yellow highlight, fine print",
+    "shots": [
+     7,
+     8,
+     9,
+     10,
+     24,
+     25
+    ]
+   },
+   {
+    "name": "wall calendar",
+    "note": "tear-off card, red top strip with month and year, big day number",
+    "shots": [
+     2,
+     5,
+     18
+    ]
+   },
+   {
+    "name": "cash machine screen",
+    "note": "green screen with yellow balance digits; frozen message",
+    "shots": [
+     2,
+     11,
+     13,
+     19,
+     20
+    ]
+   }
+  ]
+ },
+ "packaging": {
+  "stickers": [
+   {
+    "id": "sticker_01",
+    "is_overlay": false,
+    "what": "part of the 3D picture (sweat drops or a prop), not a pasted sticker"
+   },
+   {
+    "id": "sticker_02",
+    "is_overlay": false,
+    "what": "part of the 3D picture (sweat drops or a prop), not a pasted sticker"
+   },
+   {
+    "id": "sticker_03",
+    "is_overlay": false,
+    "what": "part of the 3D picture (sweat drops or a prop), not a pasted sticker"
+   }
+  ],
+  "text": [
+   {
+    "id": "text_001",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_002",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_003",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_004",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_005",
+    "kind": "scene"
+   },
+   {
+    "id": "text_006",
+    "kind": "scene"
+   },
+   {
+    "id": "text_007",
+    "kind": "scene"
+   },
+   {
+    "id": "text_008",
+    "kind": "scene"
+   },
+   {
+    "id": "text_009",
+    "kind": "scene"
+   },
+   {
+    "id": "text_010",
+    "kind": "scene"
+   },
+   {
+    "id": "text_011",
+    "kind": "scene"
+   },
+   {
+    "id": "text_012",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_013",
+    "kind": "scene"
+   },
+   {
+    "id": "text_014",
+    "kind": "scene"
+   },
+   {
+    "id": "text_015",
+    "kind": "scene"
+   },
+   {
+    "id": "text_016",
+    "kind": "scene"
+   },
+   {
+    "id": "text_017",
+    "kind": "scene"
+   },
+   {
+    "id": "text_018",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_022",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_019",
+    "kind": "scene"
+   },
+   {
+    "id": "text_023",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_024",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_025",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_028",
+    "kind": "scene"
+   },
+   {
+    "id": "text_029",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_030",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_031",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_032",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_033",
+    "kind": "scene"
+   },
+   {
+    "id": "text_034",
+    "kind": "scene"
+   },
+   {
+    "id": "text_035",
+    "kind": "scene"
+   },
+   {
+    "id": "text_036",
+    "kind": "scene"
+   },
+   {
+    "id": "text_037",
+    "kind": "scene"
+   },
+   {
+    "id": "text_038",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_039",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_040",
+    "kind": "scene"
+   },
+   {
+    "id": "text_041",
+    "kind": "scene"
+   },
+   {
+    "id": "text_045",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_046",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_047",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_048",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_049",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_050",
+    "kind": "scene"
+   },
+   {
+    "id": "text_051",
+    "kind": "scene"
+   },
+   {
+    "id": "text_052",
+    "kind": "scene"
+   },
+   {
+    "id": "text_053",
+    "kind": "scene"
+   },
+   {
+    "id": "text_056",
+    "kind": "scene"
+   },
+   {
+    "id": "text_055",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_057",
+    "kind": "scene"
+   },
+   {
+    "id": "text_058",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_060",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_061",
+    "kind": "scene"
+   },
+   {
+    "id": "text_062",
+    "kind": "scene"
+   },
+   {
+    "id": "text_063",
+    "kind": "scene"
+   },
+   {
+    "id": "text_064",
+    "kind": "scene"
+   },
+   {
+    "id": "text_065",
+    "kind": "scene"
+   },
+   {
+    "id": "text_066",
+    "kind": "scene"
+   },
+   {
+    "id": "text_067",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_068",
+    "kind": "scene"
+   },
+   {
+    "id": "text_069",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_070",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_071",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_072",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_073",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_074",
+    "kind": "scene"
+   },
+   {
+    "id": "text_075",
+    "kind": "scene"
+   },
+   {
+    "id": "text_076",
+    "kind": "scene"
+   },
+   {
+    "id": "text_077",
+    "kind": "scene"
+   },
+   {
+    "id": "text_078",
+    "kind": "scene"
+   },
+   {
+    "id": "text_079",
+    "kind": "scene"
+   },
+   {
+    "id": "text_080",
+    "kind": "scene"
+   },
+   {
+    "id": "text_081",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_082",
+    "kind": "scene"
+   },
+   {
+    "id": "text_083",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_084",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_085",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_086",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_087",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_088",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_089",
+    "kind": "subtitle"
+   }
+  ],
+  "missed": []
+ }
+}

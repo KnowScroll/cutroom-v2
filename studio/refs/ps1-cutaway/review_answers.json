@@ -1,0 +1,1284 @@
+{
+ "by": "claude",
+ "shots": [
+  {
+   "id": "shot_001",
+   "time": "0.00-0.43",
+   "label_probs": {
+    "code_render": 0.9,
+    "cg_3d": 0.08,
+    "ai_video": 0.02
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Every frame is a real-time 3D render: stable geometry, consistent lighting, a 4 x 4 px pixel grid from a 270 x 480 render, flat-shaded faces, no AI morphing",
+    "Text overlays are crisp at full resolution over the pixelated picture"
+   ],
+   "description": "Host animal in a yellow suit and red tie stands right of a wooden sign board in a sunny backyard (wooden fence, pine trees, red house corner, grey bins). White wireframe triangles flash over the host for a few frames (the mesh shown), title text top-left: three lines, middle line yellow. Real-time three.js scene rendered at 270 x 480 and blown up 4x with nearest-neighbour (chunky square pixels), flat-shaded low-poly models (each face one tone), tiny 64 px textures painted by code (fabric speckle, fur stripes, grass tufts, wood grain), vertex positions snapped to the low-res grid so edges wobble a little as the camera moves, ordered dithering on gradients.",
+   "narrative": {
+    "role": "hook",
+    "point": "Open on the finished look with a promise of a short recipe"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "A",
+    "emotion": "playful",
+    "intensity": "mid",
+    "face": "big round eyes, open mouth on stressed words, smirk and half-closed eyes on jokes",
+    "body": "a new arm pose on every sentence: T-pose, wave, point at the thing, arms up, hands on hips, shrug, bow",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "low-poly cartoon host changes arm pose on every sentence, mouth opens on stressed words"
+   }
+  },
+  {
+   "id": "shot_002",
+   "time": "0.43-1.43",
+   "label_probs": {
+    "code_render": 0.9,
+    "cg_3d": 0.08,
+    "ai_video": 0.02
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Every frame is a real-time 3D render: stable geometry, consistent lighting, a 4 x 4 px pixel grid from a 270 x 480 render, flat-shaded faces, no AI morphing",
+    "Text overlays are crisp at full resolution over the pixelated picture"
+   ],
+   "description": "Same set; the sign board's numbered lines scribble in one by one (red numerals, dark text on the brown board). Host turns toward the board. Real-time three.js scene rendered at 270 x 480 and blown up 4x with nearest-neighbour (chunky square pixels), flat-shaded low-poly models (each face one tone), tiny 64 px textures painted by code (fabric speckle, fur stripes, grass tufts, wood grain), vertex positions snapped to the low-res grid so edges wobble a little as the camera moves, ordered dithering on gradients.",
+   "narrative": {
+    "role": "hook",
+    "point": "The number of steps appears as a list on a sign"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "A",
+    "emotion": "playful",
+    "intensity": "mid",
+    "face": "big round eyes, open mouth on stressed words, smirk and half-closed eyes on jokes",
+    "body": "a new arm pose on every sentence: T-pose, wave, point at the thing, arms up, hands on hips, shrug, bow",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "low-poly cartoon host changes arm pose on every sentence, mouth opens on stressed words"
+   }
+  },
+  {
+   "id": "shot_003",
+   "time": "1.43-6.50",
+   "label_probs": {
+    "code_render": 0.9,
+    "cg_3d": 0.08,
+    "ai_video": 0.02
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Every frame is a real-time 3D render: stable geometry, consistent lighting, a 4 x 4 px pixel grid from a 270 x 480 render, flat-shaded faces, no AI morphing",
+    "Text overlays are crisp at full resolution over the pixelated picture"
+   ],
+   "description": "Board fills to six numbered lines; host changes pose on each phrase (point at board, arm up, shrug); a wooden crate with a blue label slides in from the left as the objection, then a fast camera swing past the host's side. Real-time three.js scene rendered at 270 x 480 and blown up 4x with nearest-neighbour (chunky square pixels), flat-shaded low-poly models (each face one tone), tiny 64 px textures painted by code (fabric speckle, fur stripes, grass tufts, wood grain), vertex positions snapped to the low-res grid so edges wobble a little as the camera moves, ordered dithering on gradients.",
+   "narrative": {
+    "role": "hook",
+    "point": "List completes, host knocks down the expected objection"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "A",
+    "emotion": "playful",
+    "intensity": "mid",
+    "face": "big round eyes, open mouth on stressed words, smirk and half-closed eyes on jokes",
+    "body": "a new arm pose on every sentence: T-pose, wave, point at the thing, arms up, hands on hips, shrug, bow",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "low-poly cartoon host changes arm pose on every sentence, mouth opens on stressed words"
+   }
+  },
+  {
+   "id": "shot_004",
+   "time": "6.50-11.43",
+   "label_probs": {
+    "code_render": 0.9,
+    "cg_3d": 0.08,
+    "ai_video": 0.02
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Every frame is a real-time 3D render: stable geometry, consistent lighting, a 4 x 4 px pixel grid from a 270 x 480 render, flat-shaded faces, no AI morphing",
+    "Text overlays are crisp at full resolution over the pixelated picture"
+   ],
+   "description": "The same host rebuilt smooth and glossy (high-poly, soft shading, no pixels) waving in a backyard with tall grass and bins; a typed command line appears at the top; camera pushes in twice to a big face; one-word captions. Real-time three.js scene rendered at 270 x 480 and blown up 4x with nearest-neighbour (chunky square pixels), flat-shaded low-poly models (each face one tone), tiny 64 px textures painted by code (fabric speckle, fur stripes, grass tufts, wood grain), vertex positions snapped to the low-res grid so edges wobble a little as the camera moves, ordered dithering on gradients.",
+   "narrative": {
+    "role": "turn",
+    "point": "Show the bad default first: the smooth version looks like a toy"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "A",
+    "emotion": "playful",
+    "intensity": "mid",
+    "face": "big round eyes, open mouth on stressed words, smirk and half-closed eyes on jokes",
+    "body": "a new arm pose on every sentence: T-pose, wave, point at the thing, arms up, hands on hips, shrug, bow",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "low-poly cartoon host changes arm pose on every sentence, mouth opens on stressed words"
+   }
+  },
+  {
+   "id": "shot_005",
+   "time": "11.43-11.50",
+   "label_probs": {
+    "code_render": 0.9,
+    "cg_3d": 0.08,
+    "ai_video": 0.02
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Every frame is a real-time 3D render: stable geometry, consistent lighting, a 4 x 4 px pixel grid from a 270 x 480 render, flat-shaded faces, no AI morphing",
+    "Text overlays are crisp at full resolution over the pixelated picture"
+   ],
+   "description": "Near-white flash frame with shards starting to fly. Real-time three.js scene rendered at 270 x 480 and blown up 4x with nearest-neighbour (chunky square pixels), flat-shaded low-poly models (each face one tone), tiny 64 px textures painted by code (fabric speckle, fur stripes, grass tufts, wood grain), vertex positions snapped to the low-res grid so edges wobble a little as the camera moves, ordered dithering on gradients.",
+   "narrative": {
+    "role": "turn",
+    "point": "Flash to wipe the bad version away"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_006",
+   "time": "11.50-14.60",
+   "label_probs": {
+    "code_render": 0.9,
+    "cg_3d": 0.08,
+    "ai_video": 0.02
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Every frame is a real-time 3D render: stable geometry, consistent lighting, a 4 x 4 px pixel grid from a 270 x 480 render, flat-shaded faces, no AI morphing",
+    "Text overlays are crisp at full resolution over the pixelated picture"
+   ],
+   "description": "Hundreds of coloured triangles fly in and lock into a flat-shaded untextured low-poly host in T-pose (grey faceted head, orange box jacket, red tie, navy legs); camera orbits a few degrees; header 'k/6 rule' at the top with the numeral in yellow. Real-time three.js scene rendered at 270 x 480 and blown up 4x with nearest-neighbour (chunky square pixels), flat-shaded low-poly models (each face one tone), tiny 64 px textures painted by code (fabric speckle, fur stripes, grass tufts, wood grain), vertex positions snapped to the low-res grid so edges wobble a little as the camera moves, ordered dithering on gradients.",
+   "narrative": {
+    "role": "info",
+    "point": "Rule 1: a few hundred flat-shaded triangles"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "A",
+    "emotion": "playful",
+    "intensity": "mid",
+    "face": "big round eyes, open mouth on stressed words, smirk and half-closed eyes on jokes",
+    "body": "a new arm pose on every sentence: T-pose, wave, point at the thing, arms up, hands on hips, shrug, bow",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "low-poly cartoon host changes arm pose on every sentence, mouth opens on stressed words"
+   }
+  },
+  {
+   "id": "shot_007",
+   "time": "14.60-15.67",
+   "label_probs": {
+    "code_render": 0.9,
+    "cg_3d": 0.08,
+    "ai_video": 0.02
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Every frame is a real-time 3D render: stable geometry, consistent lighting, a 4 x 4 px pixel grid from a 270 x 480 render, flat-shaded faces, no AI morphing",
+    "Text overlays are crisp at full resolution over the pixelated picture"
+   ],
+   "description": "T-pose host, header switches to the next rule number, word caption. Real-time three.js scene rendered at 270 x 480 and blown up 4x with nearest-neighbour (chunky square pixels), flat-shaded low-poly models (each face one tone), tiny 64 px textures painted by code (fabric speckle, fur stripes, grass tufts, wood grain), vertex positions snapped to the low-res grid so edges wobble a little as the camera moves, ordered dithering on gradients.",
+   "narrative": {
+    "role": "info",
+    "point": "Rule 2 starts: textures"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "A",
+    "emotion": "playful",
+    "intensity": "mid",
+    "face": "big round eyes, open mouth on stressed words, smirk and half-closed eyes on jokes",
+    "body": "a new arm pose on every sentence: T-pose, wave, point at the thing, arms up, hands on hips, shrug, bow",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "low-poly cartoon host changes arm pose on every sentence, mouth opens on stressed words"
+   }
+  },
+  {
+   "id": "shot_008",
+   "time": "15.67-19.73",
+   "label_probs": {
+    "code_render": 0.9,
+    "cg_3d": 0.08,
+    "ai_video": 0.02
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Every frame is a real-time 3D render: stable geometry, consistent lighting, a 4 x 4 px pixel grid from a 270 x 480 render, flat-shaded faces, no AI morphing",
+    "Text overlays are crisp at full resolution over the pixelated picture"
+   ],
+   "description": "Textures pop onto the host (striped fur, speckled jacket); the 64 px face texture is pulled out as a flat square in front of the head and shown big, then snaps back; header moves on to rule 3. Real-time three.js scene rendered at 270 x 480 and blown up 4x with nearest-neighbour (chunky square pixels), flat-shaded low-poly models (each face one tone), tiny 64 px textures painted by code (fabric speckle, fur stripes, grass tufts, wood grain), vertex positions snapped to the low-res grid so edges wobble a little as the camera moves, ordered dithering on gradients.",
+   "narrative": {
+    "role": "info",
+    "point": "Rule 2: tiny textures painted by code"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "A",
+    "emotion": "playful",
+    "intensity": "mid",
+    "face": "big round eyes, open mouth on stressed words, smirk and half-closed eyes on jokes",
+    "body": "a new arm pose on every sentence: T-pose, wave, point at the thing, arms up, hands on hips, shrug, bow",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "low-poly cartoon host changes arm pose on every sentence, mouth opens on stressed words"
+   }
+  },
+  {
+   "id": "shot_009",
+   "time": "19.73-20.37",
+   "label_probs": {
+    "code_render": 0.9,
+    "cg_3d": 0.08,
+    "ai_video": 0.02
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Every frame is a real-time 3D render: stable geometry, consistent lighting, a 4 x 4 px pixel grid from a 270 x 480 render, flat-shaded faces, no AI morphing",
+    "Text overlays are crisp at full resolution over the pixelated picture"
+   ],
+   "description": "The whole frame shrinks to a small 270 x 480 card centred on black, held, then grows back. Real-time three.js scene rendered at 270 x 480 and blown up 4x with nearest-neighbour (chunky square pixels), flat-shaded low-poly models (each face one tone), tiny 64 px textures painted by code (fabric speckle, fur stripes, grass tufts, wood grain), vertex positions snapped to the low-res grid so edges wobble a little as the camera moves, ordered dithering on gradients.",
+   "narrative": {
+    "role": "proof",
+    "point": "Show the true render size"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_010",
+   "time": "20.37-21.83",
+   "label_probs": {
+    "code_render": 0.9,
+    "cg_3d": 0.08,
+    "ai_video": 0.02
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Every frame is a real-time 3D render: stable geometry, consistent lighting, a 4 x 4 px pixel grid from a 270 x 480 render, flat-shaded faces, no AI morphing",
+    "Text overlays are crisp at full resolution over the pixelated picture"
+   ],
+   "description": "Extreme close-up of the host's face: square pixels clearly visible, a highlighted keyword under the header; pulls back to a medium shot. Real-time three.js scene rendered at 270 x 480 and blown up 4x with nearest-neighbour (chunky square pixels), flat-shaded low-poly models (each face one tone), tiny 64 px textures painted by code (fabric speckle, fur stripes, grass tufts, wood grain), vertex positions snapped to the low-res grid so edges wobble a little as the camera moves, ordered dithering on gradients.",
+   "narrative": {
+    "role": "proof",
+    "point": "Close-up proves the pixels are kept crunchy"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "A",
+    "emotion": "playful",
+    "intensity": "mid",
+    "face": "big round eyes, open mouth on stressed words, smirk and half-closed eyes on jokes",
+    "body": "a new arm pose on every sentence: T-pose, wave, point at the thing, arms up, hands on hips, shrug, bow",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "low-poly cartoon host changes arm pose on every sentence, mouth opens on stressed words"
+   }
+  },
+  {
+   "id": "shot_011",
+   "time": "21.83-23.50",
+   "label_probs": {
+    "code_render": 0.9,
+    "cg_3d": 0.08,
+    "ai_video": 0.02
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Every frame is a real-time 3D render: stable geometry, consistent lighting, a 4 x 4 px pixel grid from a 270 x 480 render, flat-shaded faces, no AI morphing",
+    "Text overlays are crisp at full resolution over the pixelated picture"
+   ],
+   "description": "Medium on the host in T-pose, header rule 4; a vertical yellow line splits the frame into before (left) and after (right) with small labels at the top. Real-time three.js scene rendered at 270 x 480 and blown up 4x with nearest-neighbour (chunky square pixels), flat-shaded low-poly models (each face one tone), tiny 64 px textures painted by code (fabric speckle, fur stripes, grass tufts, wood grain), vertex positions snapped to the low-res grid so edges wobble a little as the camera moves, ordered dithering on gradients.",
+   "narrative": {
+    "role": "info",
+    "point": "Rule 4: snap vertices, dither"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "A",
+    "emotion": "playful",
+    "intensity": "mid",
+    "face": "big round eyes, open mouth on stressed words, smirk and half-closed eyes on jokes",
+    "body": "a new arm pose on every sentence: T-pose, wave, point at the thing, arms up, hands on hips, shrug, bow",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "low-poly cartoon host changes arm pose on every sentence, mouth opens on stressed words"
+   }
+  },
+  {
+   "id": "shot_012",
+   "time": "23.50-25.10",
+   "label_probs": {
+    "code_render": 0.9,
+    "cg_3d": 0.08,
+    "ai_video": 0.02
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Every frame is a real-time 3D render: stable geometry, consistent lighting, a 4 x 4 px pixel grid from a 270 x 480 render, flat-shaded faces, no AI morphing",
+    "Text overlays are crisp at full resolution over the pixelated picture"
+   ],
+   "description": "Same split screen, the host's face half smooth, half snapped; the split line slides; host blinks and smirks. Real-time three.js scene rendered at 270 x 480 and blown up 4x with nearest-neighbour (chunky square pixels), flat-shaded low-poly models (each face one tone), tiny 64 px textures painted by code (fabric speckle, fur stripes, grass tufts, wood grain), vertex positions snapped to the low-res grid so edges wobble a little as the camera moves, ordered dithering on gradients.",
+   "narrative": {
+    "role": "proof",
+    "point": "Before/after comparison of the wobble"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "A",
+    "emotion": "playful",
+    "intensity": "mid",
+    "face": "big round eyes, open mouth on stressed words, smirk and half-closed eyes on jokes",
+    "body": "a new arm pose on every sentence: T-pose, wave, point at the thing, arms up, hands on hips, shrug, bow",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "low-poly cartoon host changes arm pose on every sentence, mouth opens on stressed words"
+   }
+  },
+  {
+   "id": "shot_013",
+   "time": "25.10-29.63",
+   "label_probs": {
+    "code_render": 0.9,
+    "cg_3d": 0.08,
+    "ai_video": 0.02
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Every frame is a real-time 3D render: stable geometry, consistent lighting, a 4 x 4 px pixel grid from a 270 x 480 render, flat-shaded faces, no AI morphing",
+    "Text overlays are crisp at full resolution over the pixelated picture"
+   ],
+   "description": "Host in T-pose splits down the middle into two halves that slide apart; the cut faces are a dark violet fill with bright orange triangle edges; the ground under him is cut too, showing pixel dirt layers; a yellow outlined label with a thin orange leader line names the inside; host deadpans at the joke. Real-time three.js scene rendered at 270 x 480 and blown up 4x with nearest-neighbour (chunky square pixels), flat-shaded low-poly models (each face one tone), tiny 64 px textures painted by code (fabric speckle, fur stripes, grass tufts, wood grain), vertex positions snapped to the low-res grid so edges wobble a little as the camera moves, ordered dithering on gradients.",
+   "narrative": {
+    "role": "info",
+    "point": "Rule 5: slice it open and label one part"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "A",
+    "emotion": "playful",
+    "intensity": "mid",
+    "face": "big round eyes, open mouth on stressed words, smirk and half-closed eyes on jokes",
+    "body": "a new arm pose on every sentence: T-pose, wave, point at the thing, arms up, hands on hips, shrug, bow",
+    "arc": [],
+    "voice": "",
+    "key": true,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "low-poly cartoon host changes arm pose on every sentence, mouth opens on stressed words"
+   }
+  },
+  {
+   "id": "shot_014",
+   "time": "29.63-35.03",
+   "label_probs": {
+    "code_render": 0.9,
+    "cg_3d": 0.08,
+    "ai_video": 0.02
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Every frame is a real-time 3D render: stable geometry, consistent lighting, a 4 x 4 px pixel grid from a 270 x 480 render, flat-shaded faces, no AI morphing",
+    "Text overlays are crisp at full resolution over the pixelated picture"
+   ],
+   "description": "Halves close; the host strikes a different pose on every phrase: arms down, arms up in a V, hands on hips, a bow, a shrug, pointing at the viewer; camera static at medium. Real-time three.js scene rendered at 270 x 480 and blown up 4x with nearest-neighbour (chunky square pixels), flat-shaded low-poly models (each face one tone), tiny 64 px textures painted by code (fabric speckle, fur stripes, grass tufts, wood grain), vertex positions snapped to the low-res grid so edges wobble a little as the camera moves, ordered dithering on gradients.",
+   "narrative": {
+    "role": "info",
+    "point": "Rule 6: a new pose on every sentence"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "A",
+    "emotion": "playful",
+    "intensity": "mid",
+    "face": "big round eyes, open mouth on stressed words, smirk and half-closed eyes on jokes",
+    "body": "a new arm pose on every sentence: T-pose, wave, point at the thing, arms up, hands on hips, shrug, bow",
+    "arc": [],
+    "voice": "",
+    "key": true,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "low-poly cartoon host changes arm pose on every sentence, mouth opens on stressed words"
+   }
+  },
+  {
+   "id": "shot_015",
+   "time": "35.03-36.60",
+   "label_probs": {
+    "code_render": 0.9,
+    "cg_3d": 0.08,
+    "ai_video": 0.02
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Every frame is a real-time 3D render: stable geometry, consistent lighting, a 4 x 4 px pixel grid from a 270 x 480 render, flat-shaded faces, no AI morphing",
+    "Text overlays are crisp at full resolution over the pixelated picture"
+   ],
+   "description": "Camera pulls back; host walks to the lower left and gets small; the evening backyard opens up behind; the command line at the top changes its keyword. Real-time three.js scene rendered at 270 x 480 and blown up 4x with nearest-neighbour (chunky square pixels), flat-shaded low-poly models (each face one tone), tiny 64 px textures painted by code (fabric speckle, fur stripes, grass tufts, wood grain), vertex positions snapped to the low-res grid so edges wobble a little as the camera moves, ordered dithering on gradients.",
+   "narrative": {
+    "role": "turn",
+    "point": "Hand the method to the viewer: swap the subject"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "A",
+    "emotion": "playful",
+    "intensity": "mid",
+    "face": "big round eyes, open mouth on stressed words, smirk and half-closed eyes on jokes",
+    "body": "a new arm pose on every sentence: T-pose, wave, point at the thing, arms up, hands on hips, shrug, bow",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "low-poly cartoon host changes arm pose on every sentence, mouth opens on stressed words"
+   }
+  },
+  {
+   "id": "shot_016",
+   "time": "36.60-37.00",
+   "label_probs": {
+    "code_render": 0.9,
+    "cg_3d": 0.08,
+    "ai_video": 0.02
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Every frame is a real-time 3D render: stable geometry, consistent lighting, a 4 x 4 px pixel grid from a 270 x 480 render, flat-shaded faces, no AI morphing",
+    "Text overlays are crisp at full resolution over the pixelated picture"
+   ],
+   "description": "Plain dusky purple backdrop with a low horizon; a big striped low-poly volcano cut in half shows a bright orange magma pipe from a glowing pool to the crater, pixel lava chunks flying; host at lower left raises an arm. Real-time three.js scene rendered at 270 x 480 and blown up 4x with nearest-neighbour (chunky square pixels), flat-shaded low-poly models (each face one tone), tiny 64 px textures painted by code (fabric speckle, fur stripes, grass tufts, wood grain), vertex positions snapped to the low-res grid so edges wobble a little as the camera moves, ordered dithering on gradients.",
+   "narrative": {
+    "role": "proof",
+    "point": "Example 1: a cutaway of a natural thing"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "A",
+    "emotion": "playful",
+    "intensity": "mid",
+    "face": "big round eyes, open mouth on stressed words, smirk and half-closed eyes on jokes",
+    "body": "a new arm pose on every sentence: T-pose, wave, point at the thing, arms up, hands on hips, shrug, bow",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "low-poly cartoon host changes arm pose on every sentence, mouth opens on stressed words"
+   }
+  },
+  {
+   "id": "shot_017",
+   "time": "37.00-37.67",
+   "label_probs": {
+    "code_render": 0.9,
+    "cg_3d": 0.08,
+    "ai_video": 0.02
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Every frame is a real-time 3D render: stable geometry, consistent lighting, a 4 x 4 px pixel grid from a 270 x 480 render, flat-shaded faces, no AI morphing",
+    "Text overlays are crisp at full resolution over the pixelated picture"
+   ],
+   "description": "Volcano holds, then hard cut to the next example. Real-time three.js scene rendered at 270 x 480 and blown up 4x with nearest-neighbour (chunky square pixels), flat-shaded low-poly models (each face one tone), tiny 64 px textures painted by code (fabric speckle, fur stripes, grass tufts, wood grain), vertex positions snapped to the low-res grid so edges wobble a little as the camera moves, ordered dithering on gradients.",
+   "narrative": {
+    "role": "proof",
+    "point": "Example 1 to 2"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "A",
+    "emotion": "playful",
+    "intensity": "mid",
+    "face": "big round eyes, open mouth on stressed words, smirk and half-closed eyes on jokes",
+    "body": "a new arm pose on every sentence: T-pose, wave, point at the thing, arms up, hands on hips, shrug, bow",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "low-poly cartoon host changes arm pose on every sentence, mouth opens on stressed words"
+   }
+  },
+  {
+   "id": "shot_018",
+   "time": "37.67-38.27",
+   "label_probs": {
+    "code_render": 0.9,
+    "cg_3d": 0.08,
+    "ai_video": 0.02
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Every frame is a real-time 3D render: stable geometry, consistent lighting, a 4 x 4 px pixel grid from a 270 x 480 render, flat-shaded faces, no AI morphing",
+    "Text overlays are crisp at full resolution over the pixelated picture"
+   ],
+   "description": "Pink backdrop; a big red faceted heart sliced open shows blue and red chambers and vessels; host at lower left touches it. Real-time three.js scene rendered at 270 x 480 and blown up 4x with nearest-neighbour (chunky square pixels), flat-shaded low-poly models (each face one tone), tiny 64 px textures painted by code (fabric speckle, fur stripes, grass tufts, wood grain), vertex positions snapped to the low-res grid so edges wobble a little as the camera moves, ordered dithering on gradients.",
+   "narrative": {
+    "role": "proof",
+    "point": "Example 2: a cutaway of an organ"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "A",
+    "emotion": "playful",
+    "intensity": "mid",
+    "face": "big round eyes, open mouth on stressed words, smirk and half-closed eyes on jokes",
+    "body": "a new arm pose on every sentence: T-pose, wave, point at the thing, arms up, hands on hips, shrug, bow",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "low-poly cartoon host changes arm pose on every sentence, mouth opens on stressed words"
+   }
+  },
+  {
+   "id": "shot_019",
+   "time": "38.27-39.17",
+   "label_probs": {
+    "code_render": 0.9,
+    "cg_3d": 0.08,
+    "ai_video": 0.02
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Every frame is a real-time 3D render: stable geometry, consistent lighting, a 4 x 4 px pixel grid from a 270 x 480 render, flat-shaded faces, no AI morphing",
+    "Text overlays are crisp at full resolution over the pixelated picture"
+   ],
+   "description": "Warm beige backdrop; a blocky machine with its front removed shows a blue water tank, a boiler, a brown portafilter and a cup; host at lower left gestures at it. Real-time three.js scene rendered at 270 x 480 and blown up 4x with nearest-neighbour (chunky square pixels), flat-shaded low-poly models (each face one tone), tiny 64 px textures painted by code (fabric speckle, fur stripes, grass tufts, wood grain), vertex positions snapped to the low-res grid so edges wobble a little as the camera moves, ordered dithering on gradients.",
+   "narrative": {
+    "role": "proof",
+    "point": "Example 3: a cutaway of a machine"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "A",
+    "emotion": "playful",
+    "intensity": "mid",
+    "face": "big round eyes, open mouth on stressed words, smirk and half-closed eyes on jokes",
+    "body": "a new arm pose on every sentence: T-pose, wave, point at the thing, arms up, hands on hips, shrug, bow",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "low-poly cartoon host changes arm pose on every sentence, mouth opens on stressed words"
+   }
+  },
+  {
+   "id": "shot_020",
+   "time": "39.17-43.23",
+   "label_probs": {
+    "code_render": 0.9,
+    "cg_3d": 0.08,
+    "ai_video": 0.02
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Every frame is a real-time 3D render: stable geometry, consistent lighting, a 4 x 4 px pixel grid from a 270 x 480 render, flat-shaded faces, no AI morphing",
+    "Text overlays are crisp at full resolution over the pixelated picture"
+   ],
+   "description": "Back in the backyard: a big wooden board fills the upper frame with the full numbered list; the small host stands bottom right; title at the top with a yellow second line. Real-time three.js scene rendered at 270 x 480 and blown up 4x with nearest-neighbour (chunky square pixels), flat-shaded low-poly models (each face one tone), tiny 64 px textures painted by code (fabric speckle, fur stripes, grass tufts, wood grain), vertex positions snapped to the low-res grid so edges wobble a little as the camera moves, ordered dithering on gradients.",
+   "narrative": {
+    "role": "cta",
+    "point": "Offer the full recipe"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "A",
+    "emotion": "playful",
+    "intensity": "mid",
+    "face": "big round eyes, open mouth on stressed words, smirk and half-closed eyes on jokes",
+    "body": "a new arm pose on every sentence: T-pose, wave, point at the thing, arms up, hands on hips, shrug, bow",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "low-poly cartoon host changes arm pose on every sentence, mouth opens on stressed words"
+   }
+  }
+ ],
+ "aspects": {
+  "camera": {
+   "setups": "Virtual three.js camera: mostly a static medium full-body shot of the host at chest height; slow orbits of a few degrees, quick push-ins to the face, one pull-back to a wide; examples framed with the host small lower-left and the subject big right.",
+   "gear_guess": "three.js in one HTML file, WebGLRenderer at 270 x 480, CSS/nearest upscale"
+  },
+  "lighting": {
+   "lighting_overall": "One warm directional sun from the upper left plus a cool hemisphere fill; flat-shaded faces so every facet is one tone; no shadows except a dark blob under the feet."
+  },
+  "grade": {
+   "grade_overall": "Bright, saturated, slightly warm; evening sky gradient violet-blue to pink; dithered."
+  },
+  "editing": {
+   "editing": "One-word captions on every word, hard cuts on the beat, a white flash once, a shrink-to-card and back once, a split-screen before/after once; the host never leaves the screen until the examples."
+  },
+  "format": {
+   "format": "Talking low-poly mascot explains a numbered list of rules, demonstrating each on itself, then shows example cutaways and a CTA board."
+  },
+  "style": {
+   "render_style": "Real-time low-poly 3D (three.js) rendered at 270 x 480 and upscaled 4x with nearest-neighbour: PS1-style chunky pixels with crisp UI on top.",
+   "outline": "None. Shapes separate by flat facet tones and texture; the slice reveals a cut face with bright orange triangle edges.",
+   "shading": "Flat shading, one tone per triangle, sun from the upper left; ordered dither on gradients; no specular, no soft shadows; a dark blob shadow under feet.",
+   "shape_language": "Faceted, blocky, about 300 triangles per character: box torso, box limbs, faceted ball head with cone ears, chunky boxy shoes; subjects simplified to big readable volumes.",
+   "texture": "Tiny 64 px textures painted by code and sampled nearest: fabric speckle on the suit, stripes on fur, tufted grass, plank grain on the fence, a painted face; visible texels.",
+   "type_ui": "Header top-left: a yellow numeral 'k/N' plus a short rule in white rounded heavy type with a dark outline (about 60 px at 1080 wide), the key word in yellow; one-word captions centre-low in heavy white with a thick dark outline (about 80 px); in-world labels yellow with dark outline and a thin orange leader line.",
+   "motion_style": "Snappy: poses switch on each sentence, small idle bob, short camera pushes and orbits; vertices jitter slightly (snapped to the pixel grid).",
+   "signature": "The subject sliced open down the middle, halves sliding apart, a dark violet cut face with orange triangle edges, and one yellow label with a leader line naming the part inside.",
+   "do_not_copy": "The 'made with visualizemy.com' watermark, the raccoon, the yellow suit with red tie, the backyard set as-is, the topic (making low-poly videos with an AI), the rule texts, the 'link in bio' CTA wording and the example subjects (volcano, heart, coffee machine)."
+  }
+ },
+ "story": {
+  "summary": "A low-poly mascot teaches a six-step recipe for its own look, demonstrating each step on its own body, then shows the recipe applied to other subjects; charm comes from the mascot reacting to what is being done to it.",
+  "hook": "0-6 s: the finished look on screen at once, a sign board fills with six numbered steps while the host promises it is short and knocks down the expected objection.",
+  "highlights": [
+   "6.5-11 s: the bad default first (a smooth glossy toy version, the host says 'Ew'), so every rule after it reads as a fix",
+   "11.5-35 s: each rule gets a numbered header 'k/6' at the top and is demonstrated on the host immediately (shards, textures, tiny render, before/after, slice, poses), one visible change per rule",
+   "25-29 s: the slice reveals the inside with a single label and a deadpan joke: the cutaway is the signature image",
+   "35-39 s: three quick cutaway examples on plain coloured backdrops prove the method transfers"
+  ]
+ },
+ "cast": {
+  "style": "PS1-era low-poly three.js render at 270 x 480, flat shading, 64 px painted textures, bright backyard, dithered evening sky.",
+  "characters": [
+   {
+    "id": "A",
+    "name": "host mascot",
+    "kind": "animal",
+    "look": "Low-poly animal host about 1.1 m tall: faceted grey head with dark eye mask and cone ears, huge round eyes with orange irises, yellow-orange boxy suit jacket, white shirt, red striped tie, navy trousers, black box shoes, black mitten hands, striped tail.",
+    "role": "narrator and demonstrator",
+    "voice": "young male cartoon voice, quick and playful",
+    "shots": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20
+    ]
+   }
+  ],
+  "scenes": [
+   {
+    "id": "S1",
+    "where": "backyard: wooden picket fence, pine trees, red house corner, grey metal bins, grass",
+    "when": "golden evening, violet-blue to pink sky with pixel clouds",
+    "look": "low-poly, 64 px textures, nearest pixels",
+    "shots": [
+     1,
+     2,
+     3,
+     6,
+     7,
+     8,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     20
+    ]
+   },
+   {
+    "id": "S2",
+    "where": "plain studio backdrop with a soft horizon line and floor in one hue per subject",
+    "when": "",
+    "look": "flat colour wall and floor, subject big on the right, host small lower-left",
+    "shots": [
+     16,
+     17,
+     18,
+     19
+    ]
+   }
+  ],
+  "props": [
+   {
+    "name": "sign board",
+    "note": "wooden board on posts holding a numbered list",
+    "shots": [
+     1,
+     2,
+     3,
+     20
+    ]
+   },
+   {
+    "name": "crate with label",
+    "note": "the objection",
+    "shots": [
+     3
+    ]
+   }
+  ]
+ },
+ "packaging": {
+  "stickers": [],
+  "text": [
+   {
+    "id": "text_001",
+    "kind": "title"
+   },
+   {
+    "id": "text_003",
+    "kind": "title"
+   },
+   {
+    "id": "text_004",
+    "kind": "title"
+   },
+   {
+    "id": "text_007",
+    "kind": "scene"
+   },
+   {
+    "id": "text_008",
+    "kind": "scene"
+   },
+   {
+    "id": "text_009",
+    "kind": "scene"
+   },
+   {
+    "id": "text_010",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_011",
+    "kind": "scene"
+   },
+   {
+    "id": "text_012",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_013",
+    "kind": "scene"
+   },
+   {
+    "id": "text_014",
+    "kind": "scene"
+   },
+   {
+    "id": "text_015",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_016",
+    "kind": "scene"
+   },
+   {
+    "id": "text_017",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_018",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_020",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_023",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_022",
+    "kind": "title"
+   },
+   {
+    "id": "text_024",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_025",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_026",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_028",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_031",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_032",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_033",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_034",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_035",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_037",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_039",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_040",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_041",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_042",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_044",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_047",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_048",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_050",
+    "kind": "title"
+   },
+   {
+    "id": "text_051",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_053",
+    "kind": "title"
+   },
+   {
+    "id": "text_054",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_057",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_058",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_060",
+    "kind": "label"
+   },
+   {
+    "id": "text_061",
+    "kind": "label"
+   },
+   {
+    "id": "text_062",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_063",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_064",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_065",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_067",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_069",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_070",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_071",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_072",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_074",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_075",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_077",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_078",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_080",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_081",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_082",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_083",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_084",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_086",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_088",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_089",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_090",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_092",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_093",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_094",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_096",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_099",
+    "kind": "scene"
+   },
+   {
+    "id": "text_098",
+    "kind": "scene"
+   },
+   {
+    "id": "text_102",
+    "kind": "scene"
+   },
+   {
+    "id": "text_103",
+    "kind": "scene"
+   },
+   {
+    "id": "text_104",
+    "kind": "scene"
+   },
+   {
+    "id": "text_105",
+    "kind": "scene"
+   },
+   {
+    "id": "text_106",
+    "kind": "scene"
+   },
+   {
+    "id": "text_107",
+    "kind": "scene"
+   },
+   {
+    "id": "text_108",
+    "kind": "scene"
+   },
+   {
+    "id": "text_109",
+    "kind": "scene"
+   },
+   {
+    "id": "text_110",
+    "kind": "scene"
+   }
+  ],
+  "missed": [
+   {
+    "t0": 11.5,
+    "t1": 35.0,
+    "what": "rule header 'k/6' with the numeral in yellow and the rule text in white",
+    "where": "top-left, y about 230-300 of 1280"
+   },
+   {
+    "t0": 28.0,
+    "t1": 29.6,
+    "what": "in-world label 'NOTHING' in yellow with an orange leader line",
+    "where": "centre, over the cut"
+   }
+  ]
+ }
+}

@@ -1,0 +1,116 @@
+# mirror-parable fix log
+
+## epoch 0 (2026-11-25): created from a reference reel
+Made by Claude from the rea-video breakdown of references/controller.mp4 (59.9 s, 576 x 1024, code-rendered 2D motion graphics on pure black, 11 shots by the survey, 79% held frames, almost no frame change outside a few moves; TTS narrator at about 3.3 words/s, female-leaning pitch about 223 Hz, wide pitch movement; a soft bed at about 80 bpm; one pop sound effect), see reference-lab/refs/controller (survey + review by Claude) and reference-lab/runs/controller/crops.
+Taken from the reference (idea and art, not its objects):
+- Idea: a second-person parable built on a double standard. A tiny symbolic scene where a figure tagged FRIEND fails and gets a calm, exact answer from you; the same failure as YOU gets a harsh verdict; both replayed side by side with their words in chips; the same pattern in real life with an expectation curve that turns and lands on the real outcome; the outside view ("if it were your friend's") as the one full-colour reveal; back to the opening scene with the advice applied, so the reel loops.
+- Look: pure black frame, one soft elliptical light pool per scene (centre lightness about 0.15, edges 0), the scene in one horizontal band in the middle of the frame, a glowing white disc-and-bell figure with arm stubs and no face, thin bevelled dark slabs with a bright top edge, dashed baselines and measuring ticks, pill chips (dark with a grey border for who is who, white with dark text for spoken words, dimmed grey for the rejected words), a mint expectation curve (measured lightness 0.86, chroma 0.07, hue about 178; glow 0.58) over a tilted grid plate with a counter riding its tip, the crash in red (lightness 0.56 to 0.62, chroma 0.14, hue about 20), outlined numerals, warm low-chroma greys for the real-life room with a warm lamp, and one full-colour reveal (blue-teal field hue about 230 with an ochre spot hue about 75, lightness 0.71, chroma 0.10). Colours measured with tools/oklch_colours.py and a pixel sampler on full-resolution frames.
+- Left behind on purpose (user: "taking the idea and art, not the objects"): the topic (self-talk), the game controller and the jump-between-platforms level, the desk mat, laptop, phone and store UIs, all words and numbers. The template's symbolic set is any simple obstacle built from slabs and is never a game device, screen or vehicle; the third asset is whatever real place or object the study is about.
+Changes from the reference for clarity: the figure about 270 px tall (the reference's is about 75 px on a 1080 frame), chips 38 to 40 px (reference about 26 px), the expect and reality numbers must be real measured values from the reference (the reference's numbers are imagined story numbers).
+Engine limits met on the way (not changed; ask before touching the engine):
+- Captions: the reference shows the whole spoken line in bold white sentence case with no box, directly under the scene (about y 1300). The engine has no such mode; the template uses "captions: plain" (whole line, no box, but lowercase, regular weight, at y about 1600), so the scene band sits a little lower (y 640 to 1400).
+- The writer's fact checker sees only the script: the parable's imagined scenes ("your friend ...") may be flagged as unsupported claims. If it happens, the factcheck prompt needs a line that second-person hypothetical scenes are not claims.
+- The reference has no transition smear; the engine adds one at every shot start.
+- Subject size check switched off: the hero (the figure) is small on its set by design.
+First brief (chosen by Claude, a different topic from the reference): "The spotlight effect: why you think everyone noticed your embarrassing moment".
+
+## epoch 0 story passes (2026-11-25, --until script, MiniMax $0.035 + $0.018)
+- reels/spotlight-s1 ("The spotlight effect: why you think everyone noticed your embarrassing moment"): the Wikipedia article (and its fetched passages) states no study numbers (no expected vs measured share), so the expect beat had no counter and the payoff landed on "drastic overestimation ... is widely common". The fact checker also flagged the imagined parable lines (the friend's question, "same mistake, same result") as unsupported claims and the revision flattened them into explanations. Fixes: the fact sheet must hold one study with BOTH expected and measured numbers (ask "need" for its passages), the payoff is the measured number; the parable beats get the double-standard fact or none; the parable's quoted question, clipped echo and "why" line survive revisions. Brief changed to one whose article states the numbers.
+- reels/planning-s1 ("The planning fallacy: why your own plans always take longer than you think"): real numbers (37 students, thesis estimate 33.9 days, actual 55.5 days), fact check clean, viewer 4/4/5/4. Flaws -> fix: the hook opened with the brief's question and an abstract "why did I underestimate" instead of a concrete failure -> line 1 starts "Your friend" and is an everyday failure as an action; the reality line added a derived difference (two numbers in one shot) -> the landing line carries no number; parable shots say no numbers.
+Engine note (not changed): the fact checker (engine/prompts/factcheck.txt) gets no template guidance; a parable framed in the second person can be flagged as invented. A line there ("an imagined second-person scene that illustrates the topic is not a claim") would protect any story template.
+
+## epoch 1 (2026-11-25): fixes after reviewing the epoch-0 reel (reels/planning-e1-v2, 57.9 s for 55, MiniMax about $0.19: $0.124 logged for shots and review after a resume, about $0.07 estimated for story, plan, kit and assets from the first attempt's 28 calls)
+Voice: ElevenLabs quota ran out (0 credits) mid-run and MiniMax speech has no OpenRouter endpoint, so the reel was voiced with Kokoro af_sky (the checkpointed cast was pointed from jessica to af_sky by hand); pitch spread 3.81 st (gate 4). Music: library "Gymnopedie No. 1", fit pass, voice 12.5 dB over music.
+Grade against the reference: rendering distance 0.04, colour 0.02, rhythm 0.26 (4.1 cuts a minute vs 10; held frames 77% vs 79%).
+Got right: the reference's look (pure black, breathing light pool, glowing white disc-and-bell figure, slabs with a bright top edge, dark tag pills, white voice pills, a dimmed verdict pill), the split with a divider and identical replays, the mint curve and counter turning red, an outlined measured numeral, the thesis room in a lit window in warm greys (and its blue-teal colour state), the last shot back on the hook's layout with the YOU tag and the advice chip. Real numbers (33.9 vs 55.5 days, 37 students).
+Flaws -> fix:
+- The set asset drew outside its 960 x 360 box (pieces at asset x 650 to 790), the engine refit the box to 1921 x 714, so in every shot the slabs shrank and moved up to y about 1030 while the figure's feet sat at y 1140: the figure stood in front of the set -> asset coordinates spelled out (centred, x -470 to 470, y -170 to 170, frame = 540 + x, 1100 + y), a start spot on the left and a glowing target on the right.
+- The failure did not read (a hop next to a stack of blocks) -> the attempt runs from the start spot toward the glowing target and ends visibly short; the measure line shows the shortfall.
+- The advice line said "You say", so the FRIEND tag was rejected and dropped -> "You tell your friend".
+- The real shot showed a "37" chip -> no chip, word or number there except a tag the line says.
+- Expect: the counter rode the tip and started at x 10, a static "33.9" and a loose "DAYS" axis label sat on the plate, number and unit overlapped -> counter at a fixed spot (540, 560) with its unit under it, nothing else.
+- Reality: the line and counter added a derived difference (21.6) and the big number read "55.5 DAYS LONGER" (false: 55.5 is the total); the curve's tip left the top of the frame -> exactly one number said and shown, the word under the big number is the unit only; one shared vertical scale from the larger number so nothing goes above y 700.
+- Flip: drew the chart again with a "FAILURE" chip and flooded a blue rectangle over it (shipped failing) -> uses the thing and the figure only; colour by animating the thing's colour param, never a painted rectangle or clip.
+- Narrator: Kokoro note added (af_sky) so a run without ElevenLabs keeps a young American woman.
+
+## epoch 2 (2026-11-25): fixes after reviewing the epoch-1 reel (reels/planning-e2-v2, 63.1 s for 55, MiniMax $0.254: story 0.030, plan 0.010, kit 0.011, assets 0.018, shots 0.068, review 0.090; 1164 s wall; Kokoro af_sky, pitch spread 3.82 st, music "Too Cool" fit pass)
+Grade: rendering 0.06, colour 0.03, rhythm 0.28.
+Got right: the set now spans the frame with the figure standing on its start slab; the advice line says "your friend" so the FRIEND tag stays; the counter sits at a fixed spot; the reality shot says one number and the big outlined numeral reads "55.5 DAYS" (true); the flip uses the room and floods it blue-teal; the last shot returns to the set with the YOU tag and the advice chip.
+Flaws -> fix:
+- The counter ticked through in-between values (0.1, 2.6, 32.3, 34.7, 36.4): "numbers: reference" rejected them and shots 6 and 7 shipped failing -> the number pops in whole when the curve completes and flips once to the measured value; never counts.
+- The expect chip said "THIRTY-SEVEN" -> its word is the line's verb for expecting.
+- Thing asset rejected twice for filling its box corners (a room filling the box), and the real shot showed a wall band running off both frame edges -> one lit window centred in the box, a frame and a sill only, corners empty.
+- Real and reality shots shipped "not animated" -> the figure changes pose once per line in the real shot; the big number breathes and the tip dot pulses.
+- The flip's colour arrived in the last half second (cue on the last word) -> its cue is "friend" in the first line.
+- Compare chips drew in the wrong styles before their cue and an empty grey pill showed -> both pop on the cue in 'voice' style, the verdict dims 0.6 s later, nothing before the cue.
+- Shots 1 and 4 were rejected for a frame-filling rectangle (fade-to-black) and for a pose "wait" the engine's pose sheet does not have -> no frame fills after kit.bg; exactly six poses.
+- 6 sound effects (template asked for 2) -> "exactly two ... no sfx in any other shot".
+- 63 s for a 55 s target (Kokoro af_sky measured 2.58 words/s, slower than the 2.85 budgeted) -> next run asks for 50 s.
+
+## epoch 3 (2026-11-25): fixes after reviewing the epoch-2 reel (reels/planning-e3-v2, 52.4 s for 50, MiniMax $0.175: story 0.022, plan 0.008, kit 0.009, assets 0.013, shots 0.066, review 0.040; 464 s wall; Kokoro af_sky, pitch spread 3.86 st, music "Easy Lemon" fit pass, 2 sound effects as asked). Not yet run: 3-round limit reached, waiting for the user.
+Grade: rendering 0.03, colour 0.04, rhythm 0.22 (best so far); no shot shipped failing.
+Got right: the number pops whole (33.9 in mint) and flips once to 55.5 in red, then the big outlined "55.5 DAYS"; the room is one lit window with corners empty (a white figure and a grey student, warm lamp); the flip floods the room blue-teal from the word "friend"; the split's chips both pop on the cue and the verdict dims; the reality line carries one number ("reality landed higher").
+Flaws -> fix:
+- Every shot shows a hard-edged grey oval behind the scene: the kit, after a "background barely moves" rejection, added a filled ellipse at 18 to 30% white that drifts (seen with bg_render) -> every background light is a gradient that fades to transparent, never a filled shape; the motion recipe that passes the check is spelled out (a drifting soft glow and 70 brighter rising specks).
+- The advice chip came out dim and the mirror's verdict chip sat on the figure's chest -> voice chips white everywhere except the compare beat, bottom edge 40 px above the head; tags from the first frame (the mirror's YOU tag appeared late).
+- The expect chip was filled mint -> dark tag chip with a mint dot.
+- The return line said "your" but not "you", so the YOU tag was rejected and dropped -> both return lines say "you".
+- The hook was vague ("Your friend starts, then stops. 'Why did I fail?'") -> name the real everyday action and how it goes wrong; time words allowed.
+Still open: the symbolic failure reads weakly (a small hop beside a block); the figure is large next to the set in single-scene shots.
+
+## epoch 4 (2026-11-25): redesign after the user's review of the epoch-2 reel (reels/planning-e3-v2)
+User: "it looks bad and not so good, you'll have to watch it and make the fixes", and "I said to make the new reel on a completely different brief, you made the brief on the same reel" (spotlight effect and planning fallacy were the reference's own field: self-talk / psychology).
+Watched planning-e3 at 2 frames a second and at full resolution against the reference: a chunky toilet-sign figure with T-bar arms about 3 times the reference's size; a hard grey oval behind every scene; a set (slab, box, ramp) that says nothing; a muddy olive room with a yellow capsule lamp; small lowercase grey captions where the reference has bold white ones; 30 s stretches where nothing changes; a vague story.
+Redesign (the old version is in the scratchpad as mirror-parable.epoch3.md):
+- Subject-free: the reference's idea kept as a device for any field: a small everyday case mirrors the big real thing (the reference's game mirrors real life), the two side by side in identical halves, what you see or guess against what is really there as two numbers, one full-colour reveal of the hidden part, a loop back to the small case. The friend / you self-talk parable is gone; the small case is a true everyday fact, so the fact checker has nothing imagined to flag.
+- Background: exact kit.bg code, tested with the engine's own validateKit (passes the flatness and motion checks with soft gradients and specks only), so M3 has no reason to add shapes.
+- Figure: exact drawing recipe, about 146 px tall, one arm stub, like the reference's.
+- Objects: the reference's laptop line-art (dark fills, pale 2.5 px outlines, a glowing key part), each subject with a hidden part dashed at colour 0 and in the reveal colours at colour 1.
+- Numbers: two glowing 3D columns on the perspective plate on one shared scale (works for any pair of numbers), numbers pop whole.
+- Captions: "phrases" (bold white chunks, number words in the first hue), closer to the reference's bold white lines than "plain".
+- 8 shots: hook, closer, compare, real, first, second, reveal, return.
+Brief (a different field: physics / nature): "Icebergs: why about 90% of an iceberg is hidden under the water". Story pass reels/iceberg-s1 ($0.02): ice cube in water -> waterline -> "an iceberg does the same thing" -> one-tenth above -> ninety percent below -> ice less dense than seawater -> the cube again; fact check clean, viewer 4/3/4/4.
+
+## epoch 5 (2026-11-25): fixes after watching the epoch-4 reel (reels/iceberg-e4-v2, 49.5 s for 50, MiniMax $0.153: story 0.011, plan 0.007, kit 0.005, assets 0.010, shots 0.062, review 0.039; Kokoro af_sky, music "Canon in D for Two Harps" fit pass)
+Watched at 2 frames a second and at full resolution. Got right: the soft pool (no hard shapes now, the tested kit code was used), a small figure, the 10% mint and 90% red columns on the plate (clear, one scale), the reveal flooding the iceberg's underwater body blue-teal with an ochre glow, the split.
+Flaws -> fix:
+- Every line showed as a white speech bubble over the scene and no captions: the writer, told "one narrator, jessica", made "jessica" a speaker -> the cast is exactly {narrator: {voice}}, every line's who is "narrator", never a speaker named after the voice.
+- The small case was a tall block standing on the plinth, no water, already blue in the hook -> the whole everyday setup (container, surface line, object in its true position); colour 0 until the return.
+- The iceberg was drawn 1345 px tall, the engine enlarged its box, and it ran down over the caption area -> the whole thing fits the box, a mostly-hidden subject is drawn narrower; the surface line at its true level.
+- The figure stood inside the underwater part in the reveal -> it stands on a visible surface or is left out.
+
+## epoch 6 (2026-11-25): fixes after watching the epoch-5 reel (reels/iceberg-e5-v2, 49.3 s, MiniMax $0.171; Kokoro af_sky)
+Got right: captions now bold white phrases with number words in mint (close to the reference's caption look); every line is the narrator; the iceberg fits the band with a clear waterline and glowing top; the reveal floods its underwater body blue-teal; the 10% / 90% columns.
+Flaws -> fix:
+- FALSE STORY: the facts step wrote a "general" fact "A typical ice cube sinks because pure ice is less dense than ordinary water"; the first fact check trusted that sheet and flagged the correct "it floats" line, the revision made shot 1 say "sinks", the second fact check caught the reversal but the fix step (which also trusts the sheet) kept it. Shipped wrong. Template: the small case's fact must agree with the rule it illustrates. Engine (not changed, needs the user): "general" facts are never verified and the fact checker and fixer both treat the sheet as truth.
+- The small glass was a slanted perspective outline with the cube hanging on lines -> front view, flat, symmetric, straight sides, nothing hanging.
+- The figure stood inside the iceberg again -> no figure in the real and reveal shots.
+- Second number shot: column A turned red, and the big outlined 90% overlapped the small red 90% -> A keeps the first hue; the plate, columns, numbers and chips fade out completely before the big number appears at (540, 900).
+
+## epoch 7 (2026-11-25): fixes after watching the epoch-6 reel (reels/iceberg-e6-v2, 44.5 s for 50, MiniMax $0.149; Kokoro af_sky)
+Engine change, approved by the user: engine/prompts/factcheck.txt and fix.txt now say the fact sheet can be wrong (a sheet fact that contradicts standard knowledge or the reference is itself a problem; the true claim wins). e6's fact check ran before the change.
+Got right: the story is true again ("most sinks / only a small tip shows", ten percent / ninety percent); the iceberg reads well (a dark rounded mass, glowing tip, waterline, blue-teal underwater body with an ochre spot in the reveal); the glass is front-on with straight sides; no figure inside the iceberg; columns 10% mint, 90% red.
+Flaws -> fix:
+- Every chip's text hung outside its pill: the kit's panel drew the pill centred on (x, y) while the shots pass the top-left corner -> kit.panel's top-left contract spelled out.
+- A chip in lowercase ("surface") -> text.toUpperCase().
+- The real shot already showed the blue reveal colour -> colour 0 for the whole real shot.
+- The closer's 1.3x push made the glass run off the band and showed colour -> 1.15x, colour 0.
+- Story: "Because an iceberg broke from a glacier, it floats" (false cause) and a garbled displacement line -> the real shot has no "because"; the cause line compares the two deciding things the way the reference does.
+
+## epoch 8 (2026-11-25): fixes after watching the epoch-7 reel (reels/iceberg-e7-v2, 47.0 s for 50, MiniMax $0.133; Kokoro af_sky)
+Got right: chips now wrap their text (top-left panel contract), uppercase; crisp line-art iceberg with a glowing crystal outline; the reveal floods the underwater body blue-teal with an ochre glow; the story is true and the fact check (with the new engine rule) found nothing; the cause line "pure ice is less dense than seawater, buoyancy pushes the iceberg upward".
+Flaws -> fix:
+- Column A was 47 px in shot 5 but about 380 px in shot 6 (each shot scaled on its own), so 10% looked like 90% -> both ideas carry both columns' px heights, computed once.
+- The big outlined number landed at x about 0 (off-frame, shot 6 shipped failing) -> exact draw code at (540, 900).
+- The iceberg's visible part was a tall mountain about half the shape -> the part above the surface line takes the real visible share of the area; the plan states it with its number.
+- Halo rings over the key parts in the split -> pulse in place, no rings.
+
+## epoch 8 result (2026-11-25): reels/iceberg-e8-v2, 46.3 s for 50, MiniMax $0.134 (story 0.023, plan 0.008, kit 0.003, assets 0.010, shots 0.044, review 0.036), Kokoro af_sky (pitch spread 3.73 st, gate 4), music "Canon in D for Autoharp" fit pass
+Grade: rendering 0.03, colour 0.00, rhythm 0.26 (held frames 77% vs 79%; 3.9 cuts a minute vs 10).
+First coherent reel: glass with a floating cube (cap above the waterline), the split ICE CUBE / ICEBERG, the iceberg as a thin glowing cap over a large dark body at the right share, columns 10% (short, mint) and 90% (tall, red) on one scale in both shots, the big outlined 90% "BELOW THE SURFACE" centred, the blue-teal reveal with ochre glows and buoyancy arrows, a BUOYANCY chip on the glass at the end; true story, fact check clean.
+Still open: the hook's glass shows the reveal blue for a second (colour 1 before the return); shot 7 says "deeper pressure pushes the iceberg upward" (true but loose) and shot 8's callback is weak; thin up-arrows in the reveal (the shots section bans arrows); Kokoro voice under the pitch gate; fewer cuts than the reference (one shot per line).
+
+## voice retry (2026-11-25): reels/iceberg-e9-v2 = the epoch-8 reel re-voiced (user: "using openrouter can you use gemini voice model or something better")
+OpenRouter's paid voices (Gemini 3.8 Flash TTS, Gemini 2.5 Pro TTS, ElevenLabs through OpenRouter) answered 402: the key's account has no purchased credits (free tier, $0.19 used). Free speech models measured on the reel's first 4 lines with the engine's voiceCheck: HeyGen Voice Turbo meredith 4.59 st, sabrina 4.22, tabitha 4.10 (female); Kokoro af_sky 3.46; Fish Audio S2.1 Pro 2.65.
+Engine change (asked for by the user): engine/audio.mjs gets voice models 'heygen' (heygen/heygen-voice-1-turbo:free, raw 44.1 kHz PCM wrapped into WAV), 'heygen-paid' and 'gemini-tts' (google/gemini-3.8-flash-tts, ready for when OpenRouter has credits), with voice lists, Kokoro mappings, narrator defaults and rates.
+Result: resumed from the e8 checkpoint with VOICE_MODEL=heygen (meredith): 45.6 s, MiniMax $0.047 (the director round only), voice $0; pitch spread 4.45 st PASS (Kokoro run 3.73 FAIL), 3.11 words/s, voice 12 dB over music PASS. The director's round also removed the hook's early blue flash.

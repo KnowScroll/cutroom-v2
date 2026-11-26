@@ -1,0 +1,89 @@
+# globe-zoom-explainer fix log
+
+## epoch 0 (2026-11-20): created from a reference reel
+Made by Claude from the rea-video breakdown of references/test4.mp4 (59.4 s map-animation geography explainer: an orthographic globe with hillshaded land, one continuous map camera that zooms, glides and spins, rolling km counters, distance lines and equal-distance rings drawn on the sphere, striped pole and buoy markers; male TTS voice at about 3.5 words/s, 23 sound effects (dings and pops on each pop-in), no music bed detected), see reference-lab/runs/test4/analysis-claude (survey + review by Claude), reference-lab/runs/test4/crops and reference-lab/refs/test4.
+What was taken from the reference:
+- Look: space navy (L 0.11 to 0.14, C 0.04, hue 265); ocean navy (L 0.22 to 0.26, C 0.07 to 0.08, hue 273) with a light pool facing the viewer (L up to 0.35) darkening to L 0.11 at the rim; land warm grey, nearly neutral (L 0.32 to 0.36, C 0.01, hue about 60) with relief; a thin blue-grey atmosphere rim (L 0.48, C 0.055, hue 261) and halo; faint graticule. Overlay colours measured with tools/oklch_colours.py and pixel samples: gold (L 0.87, C 0.13, hue 85 to 94), ice blue (L 0.85 to 0.88, C 0.07, hue 231 to 248), orange (L 0.77, C 0.15, hue 61), ochre region fill (L 0.65, C 0.08, hue 68), white text with dark outlines.
+- Signature: measure on a real globe: a striped marker on the place, a line or ring grows on the sphere, a big counter rolls up to the real number with a small unit; two numbers side by side in gold and ice blue at the payoff; the camera never stops.
+- Structure as topic-free beats: hook (globe, one thing glows) -> locate (zoom, marker, title) -> measure (gold line + counter) -> compare (familiar distance in white) -> second (ice blue) -> twist (orange catch) -> payoff (both numbers side by side) -> close (back to the hook's view). The reference's own order puts its twist before its second place; the template puts "second" first so a two-number subject (for example two coordinates) reads in order.
+- No pixel grid (smooth map render).
+Template choices that are not in the reference:
+- The globe is drawn from real coastline data written into the template (870 points, 37 landmasses plus 2 inland seas, longitude/latitude to 0.5 degree, checked by Claude in equirectangular and 6 orthographic views). M3 cannot draw recognisable continents from memory. Clipping: polygons with no visible point are skipped (otherwise a landmass on the far side wraps the whole disc), the rest are densified to 3-degree edges and hidden points pushed to the rim.
+- All projection maths lives in the kit (kit.view, kit.geo, kit.cam, kit.geoLine, kit.ring, kit.arc, kit.parallel, kit.meridian) so the globe asset and every shot share one projection; shots never guess screen positions.
+- No country borders (no border data): places are marked with markers, rings, lines and labels only.
+Engine limits met on the way (not changed):
+- Captions: the reference's are white word-by-word captions without a box at about 71% of the height; the engine draws a boxed caption at y 1600 (palette.accent = gold colours its bar).
+- One continuous camera: the engine adds a cut smear at every shot start; kit.cam starts every shot on the previous shot's camera.
+- The reference has no music bed; the engine always lays one (Bright, Driving, low under the voice).
+- Kit helpers beyond the contract are not tested by the kit validator; a bug there shows up as globe asset or shot rejections.
+- Coastline data in the template is copied by M3 into the globe asset (about 4k output tokens); an engine helper with real map data (Natural Earth 110m in the stage, e.g. h.world()) would remove that and add borders.
+First brief: "Latitude and Longitude".
+
+## epoch 1 (2026-11-20): fixes after reviewing the epoch-0 plan only (reels/latlong-e1-work/plan.json, brief "Latitude and Longitude"; the run stopped at the voice step: OpenRouter HTTP 402, account out of credits)
+Plan rejected 3 times on word count (76, 132, 76 words for a 95 to 111 budget) and passed on the 4th of 4 tries with 7 shots, twist dropped. Epoch 0 got right: CAMERA / OVERLAYS / TOP lines in every idea with real coordinates, kit-style structure (parallels, meridians, markers, counters), gold and ice blue counters side by side in the payoff, the close returning to the hook's camera. Flaws seen -> fix:
+- Word-count ping-pong: the template's "9 to 14 words each" fought the engine's budget -> one line per shot, the request's budget split evenly over the 8 shots.
+- Hook line a definition ("Latitude and longitude turn Earth into one precise coordinate system ...") -> a surprising fact with a number or a question; never a definition or summary.
+- Wrong fact: "measured along a parallel from the Equator" (latitude is measured north-south along a meridian) -> lines that say how something is measured must be the real way.
+- Payoff paired Greenwich's latitude (51.5 N) with Honolulu's longitude (158 W) and drew a meaningless Greenwich-Honolulu line -> GOLD and ICE BLUE are the two measures of the SAME place or the same quantity for two places; LINE only where the distance is the point.
+- Compare was not a familiar scale ("625 km south of Tema") -> WHITE = what one unit means in everyday terms or a famous distance.
+- Twist dropped -> exactly 8 shots, every beat required, the template's count overrides the engine's "7 shots" hint.
+- Labels repeating the counter ("51.5 N" label) -> labels name places only.
+- Claude's own slip: the text-format example in ## plan used the reference's number and a real coordinate; M3 copied the coordinate -> replaced by a format description.
+
+## epoch 2 (2026-11-20): fixes after reviewing the epoch-1 reel (reels/latlong-e2-v2, brief "Latitude and Longitude", MiniMax $0.196 + ElevenLabs voice $0.110 = $0.306, 54.3 s for 45 s, 609 s wall)
+Grade vs test4: rhythm 0.39, rendering 0.11, colour 0.04; frame-to-frame change 0.25 vs 0.49, held frames 39% vs 18%, ground lightness 0.39 vs 0.32.
+Voice now goes to ElevenLabs directly (engine/audio.mjs, ELEVENLABS_API_KEY; OpenRouter was out of credit). Plan passed on the first try (8 shots, 98 words: the word-budget fix worked); audio gates all PASS (voice 12.8 dB over music, chris measured 2.59 words/s, pitch spread 5.4 st).
+Epoch 1 got right: the globe's atmosphere rim, halo, ocean light pool and graticule; navy space; the camera zooming from the whole globe to a place and pulling back through the globe between far places (kit.cam); gold, ice blue and orange glowing parallels and meridians drawn on the sphere; a ring around the pole for a named latitude circle; the striped marker dropping on its place; counters rolling and popping; the payoff with two counters side by side for the same place; the close back on the whole globe. Kit projection helpers checked numerically by Claude (geo, ring, arc, cam all correct). Flaws seen -> fix:
+- NO LAND anywhere: LAND = {key: polygon} was looped as `for (const poly of LAND[key])`, so every point was treated as a polygon and nothing drew; the sheet review saw it twice but the revisions never found the cause -> the template states the data shape and the exact loop; director flags a globe with no land.
+- Shots 4 and 5 shipped or retried "not animated" (a spinning globe with no land looks still) -> land fixes most of it; kit.cam also keeps a slow push-in (+2.5% per second) after each move and spins 3 degrees per second; stars brighter and drifting faster.
+- Counters meaningless or wrong: 1.0 deg for the prime meridian, 0.0 deg for the equator, "0 0" in the close; the degree unit drawn as a tiny dot with no hemisphere letter -> no counter shows 0 or a trivial value; payoff and close repeat the measure and second values exactly; degree units drawn as a full-size "°" plus the hemisphere letter.
+- Wrong fact added on revision: "longitude ... all the way round to three hundred sixty degrees" -> ranges must be their real range.
+- Hook still a definition ("Two numbers ... turn our spinning planet into a precise, navigable grid") -> the hook line holds a real number or ends with "?".
+- Twist was not a catch ("latitude also has named circles") -> line shape "But [the same measure] at [another place] is [surprising number]"; a new name is not a catch.
+- Compare shot framed neither place (camera aimed 90 degrees away; Paris a tiny dot, Greenwich off screen) -> the camera of a two-place shot centres on their midpoint at scale 57 / distance in degrees.
+- Shot 7 rejected twice for single letters spilling out of a pill: kit.label drew letter by letter and the shot put a pill under it -> one fillText with ctx.letterSpacing, never a panel under labels, counters or titles.
+- Shot 1 title "LATITUDE AND LONGITUDE" ran past the frame edge -> kit.title shrinks to 900 px.
+- Kit rejected once: background too flat (std 2.7, needs 6) and too still -> glow 0.30 at the centre to 0.10 at the corners, 80 to 110 brighter drifting stars.
+- 54.3 s for 45 s: director's revisions lengthened lines to 17 to 19 words; chris measured slower (2.59 words/s) than the engine's 2.9 default (now cached in rates.json).
+
+## epoch 3 review (2026-11-20): the epoch-2 reel (reels/latlong-e3-v2, brief "Latitude and Longitude", MiniMax $0.181 + ElevenLabs $0.078 = $0.259, 48.5 s for 45 s, 725 s wall); fixes not yet written (3-round limit reached, waiting for go-ahead)
+Grade vs test4: rhythm 0.46, rendering 0.19, colour 0.04; frame-to-frame change 0.80 vs 0.49 (now MORE motion than the reference), held frames 0% vs 18%, ground lightness 0.40 vs 0.32.
+Epoch 2 got: real continents on the globe from every angle (the data-shape note fixed it; Africa, Arabia, the Persian Gulf read at once); the zoom from the whole globe onto a place with the marker on it; the gold latitude parallel drawn while the counter rolls to its value; the ice blue meridian with its counter; a ring around a point at sea for the twist; the payoff with both lines crossing at the marker and both counters side by side; the close pulled back on the whole globe; length near target.
+Flaws still seen, with the fix to write next:
+- Wrong numbers from the plan: Dubai at 51.5 E (it is about 55.3 E; 51.5 E is Doha), so the marker sits on the wrong peninsula and the payoff shows a wrong coordinate; Dubai-Greenwich 5,267 km (about 5,470 km). The director did not catch either -> engine: check each named place's coordinates against Wikipedia's coordinates (the fact lookup already uses Wikipedia) and compute distances in the kit (kit.dist) instead of trusting the plan.
+- Hook ignored the "number or question" rule in all three plans -> engine check (a "hook" key under ## checks) or a fixed line shape.
+- Compare shot ignored the midpoint camera rule: Greenwich off screen, its label floating mid-line -> kit.frame(placeA, placeB) returns the camera, and the CAMERA line names the two places instead of numbers.
+- Degree counters rejected in 5 shots: the hemisphere letter drawn over the "°" (kit measured the number but not the "°") -> draw number + "°" as one text, measure it, letter 10 px after.
+- Twist still not a catch ("zero latitude and zero longitude meet in the Gulf of Guinea") -> name the catch types (same measure, very different value elsewhere; a common belief the number disproves; the measure's limit).
+- Too much motion now (3 deg/s spin + 2.5%/s push-in, every frame moves) -> 1.5 deg/s and 1.2%/s.
+- "space_far" rejected once as too flat -> same glow numbers as "space".
+- Land too light (L about 0.42 vs 0.33) -> state palette.land lightness explicitly.
+- At scale 4 and above the 0.5-degree coastline shows straight 100 px segments -> engine: real map data (Natural Earth 50m) in the stage.
+- Close counters rolled up from wrong values (5.6, 11.4) -> the close shows its counters fully from the first frame.
+
+## epoch 4 (2026-11-20): the epoch-3 review's fixes, with engine changes approved by the user
+Engine (asked and approved: "Template fixes + engine"):
+- engine/world.js: Natural Earth 1:110m and 1:50m land, coasts and country borders (public domain, via world-atlas@2.0.2 TopoJSON, converted by reference-lab/tools/topo2world.py, 989 KB); the stage loads it (lib.mjs launchStage allows engine/world.js beside the stage page, nothing else).
+- stage_asset.html map helpers: h.geo (orthographic projection), h.geoDist (great-circle km), h.landPath / h.coastPath / h.borderPath (Path2D, culled to the view, 1:50m once the globe is 900 px or more in radius on screen). Checked by Claude at 6 views: 1 to 45 ms per frame; Dubai-Greenwich 5,474 km.
+- asset_reel.mjs: "places: wikipedia" check (named MARKER / LINE / RING / LABEL places against Wikipedia coordinates; a LINE's km counter against the great-circle distance; on the epoch-3 plan it reports Dubai 379 km off and 5,267 vs 5,464 km, on epoch 2 Greenwich-Paris 247 vs 336 km); "hook: number or question" check; the plan request names the template's shot count instead of always 7.
+- engine/audio.mjs: ElevenLabs direct (done in epoch 2).
+Template:
+- The globe asset draws h.landPath / h.coastPath / h.borderPath (the 870-point coastline data and its copy instructions are gone; borders now drawn); kit.geo = h.geo, kit.dist = h.geoDist, kit.frame(two places) for the two-place camera ("to FRAME Name [..] and Name [..]").
+- Overlays name every place: "MARKER at Name [lon, lat]" (epoch 3 wrote "MARKER at [51.5, 25.2]", so the name was only in a label).
+- A LINE's km counter ends on kit.dist; both line ends get a marker or node dot and a label.
+- Degree counters: number + "°" as one text, the hemisphere letter 10 px after its measured end.
+- Calmer drift: 1.5 deg/s and +1.2%/s after each move.
+- "space_far" the same glow lightness as "space"; palette.land lightness 0.34 stated.
+- Twist: three catch types named; a place where lines meet is not a catch.
+- Close: counters fully shown from the first frame.
+- checks: hook: number or question; places: wikipedia.
+
+## epoch 4 review (2026-11-20): the epoch-4 reel (reels/latlong-e4-v2, brief "Latitude and Longitude", MiniMax $0.126 + ElevenLabs $0.047 = $0.173, 40.0 s for 45 s, 435 s wall)
+Grade vs test4: rhythm 0.33 (best so far), rendering 0.14, colour 0.04; moving frames 44.6% vs 44.8% (now matched), frame-to-frame change 0.60 vs 0.49, held frames 0% vs 18%; ground lightness 0.40 vs 0.32; detail 6.9 vs 3.5.
+Epoch 4 got: real Natural Earth coastlines and country borders at every zoom (Europe, Alaska, Arctic islands crisp); the kit passed first try; the hook is a question (the new hook check rejected the first plan's general claim); the gold 51.5 N parallel through the marker on Greenwich with its counter; a 1-degree LINE with its counter computed by kit.dist (69.2 KM, correct); the ice blue prime meridian; an orange parallel through Fairbanks; the payoff with both lines crossing at the marker and both counters side by side; the close on the whole globe with the equator and the meridian.
+Flaws still seen, with the fix to write next:
+- Spoken line wrong while the screen is right: "one degree of longitude here spans only one point six kilometres" over a 69.2 KM counter (the plan's LINE was Greenwich-London, 9 km, counter 1.6 KM; the distance check skipped lines under 20 km) -> engine: threshold lowered to 1 km (done after this run); the spoken number must match kit.dist.
+- An ice blue counter of 0.0 E (the plan chose a place on the prime meridian) despite "never 0" -> engine check: a plan counter of 0 is rejected under a template key, or the template asks for a place whose two numbers are both non-zero.
+- Twist still not a catch (Fairbanks' latitude is just another latitude) -> give the twist its own required content: a number that shrinks, grows or breaks between two places, shown as two counters.
+- Land too light (the plan chose palette.land #68615B, about lightness 0.47, although the template asks for 0.34; ground 0.40 vs 0.32) -> an engine check on the palette's land lightness, since the prose rule was ignored.
+- 40 s for 45 s: chris now measures 2.34 words/s and the plan used 76 words (the 80% floor) -> fine for now.
