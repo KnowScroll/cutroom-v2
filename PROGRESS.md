@@ -18,7 +18,7 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 
 | issue | agent / model | branch or worktree | started | note |
 |---|---|---|---|---|
-| #2 | implementer / sonnet | claude/2-import (worktree) | 2026-11-27 | cleared for its 2 real runs (import-check) |
+| #2 | implementer / sonnet | claude/2-import (worktree) | 2026-11-27 | PR #22 in review; real runs done |
 | #3 | implementer / sonnet | claude/3-config-minimax (worktree) | 2026-11-27 | PR #21 in review |
 | #12 | implementer / opus | claude/12-frame-audit (worktree) | 2026-11-27 | parity on 3 fastreel reels |
 
@@ -26,6 +26,8 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 
 | # | date | issue | purpose | voice | cost USD | run folder |
 |---|---|---|---|---|---|---|
+| 1 | 2026-11-27 | #2 | `--until script` import check | none | 0.0289 | var/runs/import-check |
+| 2 | 2026-11-27 | #2 | full reel `--rounds 0` (resumed from script) | heygen (4.66 st) | 0.0537 (folder total 0.0826) | var/runs/import-check |
 
 ## Next action
 
