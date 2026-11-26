@@ -80,6 +80,7 @@ function sampleRun(id: string): RunRecord {
         notes_applied: null,
         patch_applied: null,
         engine_rejections: ['shot 2 rejected: text clipped'],
+        credits: '',
       },
       {
         n: 2,
@@ -95,6 +96,7 @@ function sampleRun(id: string): RunRecord {
         notes_applied: { shots: { '3': 'caption covers the subject' } },
         patch_applied: null,
         engine_rejections: [],
+        credits: 'Music: Kevin MacLeod, CC BY 4.0. Put this line in the post description.',
       },
     ],
     voice_switches: [{ cut: 2, from: 'kokoro', to: 'heygen', reason: 'voice_pitch FAIL (2.9 st)' }],
@@ -103,8 +105,10 @@ function sampleRun(id: string): RunRecord {
       { step: 'review-1', tokens_in: 20000, tokens_out: 900, usd: 0.0071 },
     ],
     selected: { cut: 2, why: 'fewest blocking FAILs (0), then highest score sum (24)' },
+    status: 'done',
+    error: null,
     approved: true,
-    totals: { usd: 0.85, wall_s: 560 },
+    totals: { usd: 0.85, wall_s: 560, cuts: 2, harness_calls: 2 },
     started: '2026-11-27T10:20:30.000Z',
     finished: '2026-11-27T10:29:50.000Z',
   });
@@ -201,7 +205,34 @@ await test('report.md shows the cut, why, scores, gates, flags and costs', async
     assert.match(text, /sync conflict: explainer/);
     assert.match(text, /Total \$0\.85 \(engine \$0\.84, harness \$0\.01\)/);
     assert.match(text, /kokoro -> heygen/);
+    assert.match(text, /## Credits\n\nMusic: Kevin MacLeod, CC BY 4.0/);
+    assert.match(text, /2 cut\(s\), 2 harness call\(s\), git abc1234/);
     console.log(`\n--- sample report.md ---\n${text}\n--- end ---`);
+  });
+});
+
+await test('a failed job report shows the error with zero cuts', async () => {
+  await withVar(async (dir) => {
+    const job = await createJob(dir, { request: 'doomed' }, at);
+    const run: RunRecord = {
+      ...sampleRun(job.id),
+      intake: null,
+      sync_conflicts: [],
+      cuts: [],
+      voice_switches: [],
+      harness_calls: [],
+      selected: null,
+      status: 'failed',
+      error: 'no voice left: heygen HTTP 402, kokoro HTTP 500',
+      approved: false,
+      totals: { usd: 0, wall_s: 12, cuts: 0, harness_calls: 0 },
+    };
+    await writeRunRecord(dir, run);
+    assert.deepEqual(await readRunRecord(dir, job.id), run);
+    const text = renderReport(run);
+    assert.match(text, /- job failed: no voice left: heygen HTTP 402, kokoro HTTP 500/);
+    assert.match(text, /## Still wrong\n\n- job failed: no voice left/);
+    assert.doesNotMatch(text, /Nothing recorded/);
   });
 });
 

@@ -118,6 +118,7 @@ export const CutRecord = z.object({
   notes_applied: ReviewNotes.nullable(),
   patch_applied: z.array(TemplatePatch).nullable(),
   engine_rejections: z.array(z.string()),
+  credits: z.string(),
 });
 export type CutRecord = z.infer<typeof CutRecord>;
 
@@ -147,8 +148,15 @@ export const RunRecord = z.object({
   voice_switches: z.array(VoiceSwitch),
   harness_calls: z.array(HarnessCall),
   selected: z.object({ cut: z.number().int().positive(), why: z.string() }).nullable(),
+  status: z.enum(['done', 'failed']),
+  error: z.string().nullable(),
   approved: z.boolean(),
-  totals: z.object({ usd: NonNegative, wall_s: NonNegative }),
+  totals: z.object({
+    usd: NonNegative,
+    wall_s: NonNegative,
+    cuts: z.number().int().nonnegative(),
+    harness_calls: z.number().int().nonnegative(),
+  }),
   started: z.string(),
   finished: z.string(),
 });
@@ -352,6 +360,7 @@ export function renderReport(run: RunRecord): string {
   const flags: string[] = [];
   if (run.intake?.fit === 'none') flags.push(`fit: none (${run.intake.reason})`);
   for (const c of run.sync_conflicts) flags.push(`sync conflict: ${c}`);
+  if (run.status === 'failed') flags.push(`job failed: ${run.error ?? 'no error recorded'}`);
   if (run.selected === null) flags.push('no cut was produced');
   else if (!run.approved) flags.push('not approved');
   if (flags.length > 0) out.push('## Flags', '', ...flags.map((f) => `- ${f}`), '');
@@ -395,6 +404,8 @@ export function renderReport(run: RunRecord): string {
   }
   out.push('');
 
+  const wrong: string[] = [];
+  if (run.status === 'failed') wrong.push(`job failed: ${run.error ?? 'no error recorded'}`);
   if (selected !== undefined) {
     if (selected.review !== null) {
       const s = selected.review.scores;
@@ -413,7 +424,6 @@ export function renderReport(run: RunRecord): string {
     }
     out.push('');
 
-    const wrong: string[] = [];
     for (const g of selected.gates) if (!g.pass) wrong.push(`gate ${g.name} fails (${g.mode})`);
     for (const r of selected.engine_rejections) wrong.push(`engine rejection: ${r}`);
     if (selected.review !== null && !selected.review.approve) {
@@ -425,13 +435,13 @@ export function renderReport(run: RunRecord): string {
         wrong.push(`template ${p.section} (${p.op}): ${p.reason}`);
       }
     }
-    out.push(
-      '## Still wrong',
-      '',
-      ...(wrong.length > 0 ? wrong.map((w) => `- ${w}`) : ['Nothing recorded.']),
-      '',
-    );
   }
+  out.push(
+    '## Still wrong',
+    '',
+    ...(wrong.length > 0 ? wrong.map((w) => `- ${w}`) : ['Nothing recorded.']),
+    '',
+  );
 
   if (run.voice_switches.length > 0) {
     out.push(
@@ -444,13 +454,17 @@ export function renderReport(run: RunRecord): string {
     );
   }
 
+  if (selected !== undefined && selected.credits.trim() !== '') {
+    out.push('## Credits', '', selected.credits.trim(), '');
+  }
+
   const engine = run.cuts.reduce((a, c) => a + engineUsd(c), 0);
   const harness = run.harness_calls.reduce((a, h) => a + h.usd, 0);
   out.push(
     '## Cost and time',
     '',
     `Total ${money(run.totals.usd)} (engine ${money(engine)}, harness ${money(harness)}), wall ${secs(run.totals.wall_s)}.`,
-    `Credits: ${String(run.cuts.length)} cut(s), ${String(run.harness_calls.length)} harness call(s), git ${run.git_commit}.`,
+    `${String(run.totals.cuts)} cut(s), ${String(run.totals.harness_calls)} harness call(s), git ${run.git_commit}.`,
     '',
   );
   return out.join('\n');
