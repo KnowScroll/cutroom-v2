@@ -223,11 +223,16 @@ export async function reviewCut(input: ReviewInput): Promise<ReviewResult> {
   if (assetIds.length > 0 && sheets.length === 0) throw new Error(`${cut.dir}: no assets.jpg`);
 
   const story = plan.story;
+  const length = `Target length: ${String(plan.seconds)} s. This cut: ${tl.total.toFixed(1)} s, ${String(tl.shots.length)} shots. Cut ${n}.`;
+  const question = story
+    ? ` The question the reel answers: "${story.question}"; its answer: "${story.answer}".`
+    : '';
+  const sheetIntro =
+    assetIds.length > 0
+      ? ' First, the sheet of every asset (each tile is one asset):'
+      : ' There are no assets in this reel: every shot draws everything itself, so put every visual fix in "shots" and leave "assets" empty.';
   const content: ContentBlock[] = [
-    {
-      type: 'text',
-      text: `Brief: ${plan.brief}\nTarget length: ${String(plan.seconds)} s. This cut: ${tl.total.toFixed(1)} s, ${String(tl.shots.length)} shots. Cut ${n}.${story ? ` The question the reel answers: "${story.question}"; its answer: "${story.answer}".` : ''}${assetIds.length > 0 ? ' First, the sheet of every asset (each tile is one asset):' : ' There are no assets in this reel: every shot draws everything itself, so put every visual fix in "shots" and leave "assets" empty.'}`,
-    },
+    { type: 'text', text: `Brief: ${plan.brief}\n${length}${question}${sheetIntro}` },
   ];
   for (const f of sheets) content.push(await jpeg(f));
   if (assetIds.length > 0) {
