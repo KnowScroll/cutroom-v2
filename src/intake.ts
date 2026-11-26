@@ -63,12 +63,6 @@ function parseModelJson(text: string): unknown {
   return JSON.parse(text.slice(start, end + 1));
 }
 
-function templateNamedIn(request: string, names: string[]): string | undefined {
-  const lower = request.toLowerCase();
-  const hits = names.filter((n) => new RegExp(`(^|[^a-z0-9-])${n}($|[^a-z0-9-])`).test(lower));
-  return hits.length === 1 ? hits[0] : undefined;
-}
-
 /** One M3 call (one retry on bad JSON or an unknown template), then the code-side rules of design §6.2. */
 export async function runIntake(input: IntakeInput): Promise<IntakeResult> {
   const templates = await listTemplates(input.templatesDir);
@@ -76,12 +70,15 @@ export async function runIntake(input: IntakeInput): Promise<IntakeResult> {
   if (input.template !== undefined && !names.includes(input.template)) {
     throw new Error(`unknown template "${input.template}"`);
   }
-  const named = input.template ?? templateNamedIn(input.request, names);
 
   const system = await readFile(PROMPT_FILE, 'utf8');
   const list = templates.map((t) => `### ${t.name}\n${t.about}`).join('\n\n');
   const lines = [`Templates:\n\n${list}`, `Request:\n${input.request}`];
-  if (named !== undefined) lines.push(`The request names the template "${named}": use it.`);
+  if (input.template !== undefined) {
+    lines.push(
+      `The caller chose the template "${input.template}": answer with that template and judge how well it fits this request.`,
+    );
+  }
   if (input.seconds !== undefined) {
     lines.push(`The user asked for ${String(input.seconds)} seconds: use that length.`);
   }
@@ -89,23 +86,30 @@ export async function runIntake(input: IntakeInput): Promise<IntakeResult> {
 
   let usd = 0;
   let problem = '';
+  let lastText = '';
+  const messages: M3Request['messages'] = [{ role: 'user', content: user }];
   for (let attempt = 0; attempt < 2; attempt++) {
-    const messages: M3Request['messages'] = [{ role: 'user', content: user }];
     if (problem !== '') {
-      messages.push({
-        role: 'user',
-        content: `Your previous answer was rejected: ${problem}. Answer again with one JSON object only; "template" must be exactly one of: ${names.join(', ')}.`,
-      });
+      messages.push(
+        { role: 'assistant', content: lastText || '(empty)' },
+        {
+          role: 'user',
+          content: `Your previous answer was rejected: ${problem}. Answer again with one JSON object only; "template" must be exactly one of: ${names.join(', ')}.`,
+        },
+      );
     }
     const res = await input.m3({ step: 'intake', system, messages, maxTokens: 2000 });
     usd += res.usd;
+    lastText = res.text;
     try {
       const parsed = ModelAnswer.parse(parseModelJson(res.text));
       if (!names.includes(parsed.template))
         throw new Error(`unknown template "${parsed.template}"`);
+      if (input.template !== undefined && parsed.template !== input.template) {
+        throw new Error(`the template must be "${input.template}", not "${parsed.template}"`);
+      }
       const intake: Intake = {
         ...parsed,
-        template: named ?? parsed.template,
         seconds: clampSeconds(input.seconds ?? parsed.seconds ?? DEFAULT_SECONDS),
       };
       return { intake, brief: briefText(input.request, intake), usd };

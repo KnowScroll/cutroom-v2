@@ -86,18 +86,31 @@ await test('the model template is returned; prompt holds every about; usd is sum
   assert.ok(!body.includes('NOT A TEMPLATE'));
 });
 
-await test('a template given by the caller wins over the model pick', async () => {
-  const { result } = await run([answer(base)], { template: 'beta-two' });
-  assert.ok(!(result instanceof Error));
-  assert.equal(result.intake.template, 'beta-two');
-});
-
-await test('a template named in the request text wins', async () => {
-  const { result } = await run([answer(base)], {
-    request: 'Make it in the beta-two style: the sun',
+await test('a caller template is used and the model is told to judge it', async () => {
+  const { result, requests } = await run([answer({ ...base, template: 'beta-two' })], {
+    template: 'beta-two',
   });
   assert.ok(!(result instanceof Error));
   assert.equal(result.intake.template, 'beta-two');
+  assert.ok(JSON.stringify(requests[0]?.body).includes('The caller chose the template'));
+});
+
+await test('an answer naming another template than the caller is rejected, retried, then errors', async () => {
+  const other = answer({ ...base, template: 'alpha', fit: 'good', reason: 'alpha fits' });
+  const retried = await run([other, answer({ ...base, template: 'beta-two', fit: 'none' })], {
+    template: 'beta-two',
+  });
+  assert.ok(!(retried.result instanceof Error));
+  assert.equal(retried.result.intake.fit, 'none');
+  assert.equal(retried.requests.length, 2);
+  const failed = await run([other], { template: 'beta-two' });
+  assert.ok(failed.result instanceof Error && /failed twice/.test(failed.result.message));
+});
+
+await test('topic words naming a template do not force it', async () => {
+  const { result } = await run([answer(base)], { request: 'A story about beta-two the horse' });
+  assert.ok(!(result instanceof Error));
+  assert.equal(result.intake.template, 'alpha');
 });
 
 await test('an unknown caller template is an error without a model call', async () => {
@@ -113,6 +126,10 @@ await test('an unknown name is retried once, then errors', async () => {
   assert.equal(retried.result.intake.template, 'beta-two');
   assert.equal(retried.requests.length, 2);
   assert.ok(JSON.stringify(retried.requests[1]?.body).includes('gamma'));
+  assert.deepEqual(
+    (retried.requests[1]?.body as { messages: { role: string }[] }).messages.map((m) => m.role),
+    ['user', 'assistant', 'user'],
+  );
 
   const failed = await run([bad]);
   assert.ok(failed.result instanceof Error && /failed twice/.test(failed.result.message));
