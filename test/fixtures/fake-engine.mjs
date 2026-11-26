@@ -2,11 +2,12 @@
 // Env switches:
 //   FAKE_ENGINE_CRASH=once|always   exit 1 mid-run (once: only the first invocation for this --out)
 //   FAKE_ENGINE_FAILING_SHOT=1      ship shot4 although no attempt passed (real log lines)
-//   FAKE_ENGINE_REFUSE=<voice key>  refuse that --voice-model with the engine's own error format
+//   FAKE_ENGINE_REFUSE=<keys,...>   refuse these --voice-model keys with the engine's own error format
 //   FAKE_ENGINE_REFUSE_STATUS=402   HTTP status of that refusal (default 402)
 //   FAKE_ENGINE_SLEEP_MS=n          wait before writing outputs
 //   FAKE_ENGINE_CHROME=<file>       start a detached grandchild (like puppeteer's Chrome) and write its pid to <file>;
 //                                   then idle; on SIGTERM kill the grandchild and exit (like the real engine's handlers)
+//   FAKE_ENGINE_SYNTH=1             audio.json with the synth fallback (music.fit.pass null)
 //   FAKE_ENGINE_NULL_PITCH=1        audio.json voice without measured pitch (engine/audio.mjs: too little voiced audio)
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -35,7 +36,25 @@ fs.appendFileSync(
 log(`asset_reel (fake): "${brief}", ${seconds}s, 0 director rounds`);
 log(`template: ${flag('--template')}`);
 
-if (process.env['FAKE_ENGINE_REFUSE'] === voice) {
+// Like the engine's live cost log (ckSave('calls.json')): the model calls paid so far, rewritten by every invocation.
+fs.writeFileSync(
+  path.join(work, 'calls.json'),
+  JSON.stringify({
+    brief,
+    calls: [
+      {
+        step: 'story',
+        input_tokens: 1000000,
+        cached: 0,
+        output_tokens: 100000,
+        thinking: 0,
+        seconds: 1,
+      },
+    ],
+  }),
+);
+
+if ((process.env['FAKE_ENGINE_REFUSE'] ?? '').split(',').includes(voice)) {
   const status = process.env['FAKE_ENGINE_REFUSE_STATUS'] ?? '402';
   const body = '{"error":{"message":"Insufficient credits","code":' + status + '}}';
   console.error(
@@ -132,6 +151,15 @@ const audio = {
     pass: true,
   },
 };
+if (process.env['FAKE_ENGINE_SYNTH'] === '1') {
+  // engine/audio.mjs pickMusic: the procedural fallback has no fit verdict
+  audio.music = {
+    source: 'synth',
+    title: 'procedural (calm)',
+    credit: null,
+    fit: { start: 0, pass: null },
+  };
+}
 if (process.env['FAKE_ENGINE_NULL_PITCH'] === '1') {
   audio.voice = {
     model,
@@ -142,7 +170,33 @@ if (process.env['FAKE_ENGINE_NULL_PITCH'] === '1') {
 }
 const write = (f, v) => fs.writeFileSync(f, typeof v === 'string' ? v : JSON.stringify(v, null, 2));
 write(path.join(dir, 'timeline.json'), timeline);
-write(path.join(dir, 'plan.json'), { brief, seconds, shots: [], assets: [] });
+write(path.join(dir, 'plan.json'), {
+  brief,
+  seconds,
+  story: {
+    question: 'How big is it?',
+    answer: 'Very big',
+    payoff: 'f1',
+    facts: [{ id: 'f1', text: 'It is very big.', source: 'reference' }],
+  },
+  assets: [{ id: 'sun' }],
+  shots: [
+    { point: 'It is big.', idea: 'STAGE: a big circle.' },
+    { point: 'Very big.', idea: 'A small circle beside it.' },
+  ],
+});
+const sheet = spawnSync(
+  'ffmpeg',
+  [
+    ...['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=c=red:s=400x300:d=0.1'],
+    ...['-frames:v', '1', path.join(dir, 'assets.jpg')],
+  ],
+  { encoding: 'utf8' },
+);
+if (sheet.status !== 0) {
+  console.error(`FAILED: ffmpeg: ${sheet.stderr}`);
+  process.exit(1);
+}
 write(path.join(dir, 'audio.json'), audio);
 write(
   path.join(dir, 'CREDITS.md'),

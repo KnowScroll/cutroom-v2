@@ -407,7 +407,8 @@ export function renderReport(run: RunRecord): string {
   );
   for (const c of run.cuts) {
     const sum = scoreSum(c);
-    const approved = c.review === null ? '-' : c.review.approve ? 'yes' : 'no';
+    const approved =
+      c.review === null ? '-' : c.review.approve && blockingFails(c) === 0 ? 'yes' : 'no';
     out.push(
       `| ${String(c.n)} | ${c.voice_model} | ${sum === null ? '-' : String(sum)} | ${String(blockingFails(c))} | ${approved} | ${secs(c.film_s)} | ${secs(c.wall_s)} | ${money(engineUsd(c))} |`,
     );
@@ -435,8 +436,11 @@ export function renderReport(run: RunRecord): string {
     out.push('');
 
     for (const g of selected.gates) if (!g.pass) wrong.push(`gate ${g.name} fails (${g.mode})`);
-    for (const r of selected.engine_rejections) wrong.push(`engine rejection: ${r}`);
-    if (selected.review !== null && !selected.review.approve) {
+    // Rejections the engine later fixed are not wrong any more; only steps it shipped failing are (all stay in run.json).
+    for (const r of selected.engine_rejections) {
+      if (r.startsWith('shipped failing:')) wrong.push(r);
+    }
+    if (selected.review !== null && !run.approved) {
       const n = selected.review.notes;
       for (const [shot, text] of Object.entries(n.shots ?? {})) wrong.push(`shot ${shot}: ${text}`);
       for (const [id, text] of Object.entries(n.assets ?? {})) wrong.push(`asset ${id}: ${text}`);
@@ -452,6 +456,12 @@ export function renderReport(run: RunRecord): string {
     ...(wrong.length > 0 ? wrong.map((w) => `- ${w}`) : ['Nothing recorded.']),
     '',
   );
+  if (selected !== undefined) {
+    out.push(
+      `The engine's validators rejected ${String(selected.engine_rejections.filter((r) => !r.startsWith('shipped failing:')).length)} attempt(s) while building this cut; the list is in run.json.`,
+      '',
+    );
+  }
 
   if (run.voice_switches.length > 0) {
     out.push(

@@ -10,10 +10,11 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { copyFile, mkdir, readFile } from 'node:fs/promises';
+import { copyFile, mkdir, readdir, readFile, rename } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 import type { Config, VoiceModelKey } from './config.ts';
+import { PRICE } from './minimax.ts';
 import type { PhaseCost } from './record.ts';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
@@ -27,8 +28,18 @@ export interface RunCutOptions {
   cut: number;
   notesFile?: string;
   voiceModel: VoiceModelKey;
+  /** What earlier invocations of this cut already spent (a refused voice); folded into the result. */
+  earlier?: Spent;
   /** Extra environment for the engine process (tests drive the fake engine with it). */
   env?: Readonly<Record<string, string>>;
+}
+
+/** Cost and time of engine invocations that stopped before the cut was written (they paid for their steps). */
+export interface Spent {
+  usd: number;
+  tokensIn: number;
+  tokensOut: number;
+  wallS: number;
 }
 
 export interface FailingStep {
@@ -67,6 +78,8 @@ export interface VoiceRefused {
   model: VoiceModelKey;
   status: number;
   message: string;
+  /** Everything spent on this cut so far, this invocation included. */
+  spent: Spent;
 }
 
 export interface AudioNumbers {
@@ -115,7 +128,7 @@ const AudioJson = z.object({
     .nullish(),
   music: z.object({
     source: z.string(),
-    fit: z.object({ pass: z.boolean() }).nullish(),
+    fit: z.object({ pass: z.boolean().nullable() }).nullish(),
   }),
   mix: z
     .object({
@@ -136,7 +149,9 @@ const LockFile = z.object({
 type LockFile = z.infer<typeof LockFile>;
 
 export class EngineBusyError extends Error {}
-export class EngineCrashError extends Error {}
+export class EngineCrashError extends Error {
+  spent: Spent = { usd: 0, tokensIn: 0, tokensOut: 0, wallS: 0 };
+}
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
@@ -200,6 +215,15 @@ function renameWithRetry(from: string, to: string, owned: (() => boolean) | unde
   }
 }
 
+/**
+ * Create the lock file only if absent. Not `link` + removing a temp file: on Windows a file made that way refuses a
+ * rename over it (EPERM) for up to ~1.3 s (measured under load); a file written in place does not. The file is briefly
+ * empty or partial, which `readLock` waits out.
+ */
+function createExclusive(file: string, content: string): void {
+  writeFileSync(file, content, { flag: 'wx' });
+}
+
 /** Write a temp file, then publish it whole: `link` creates the target only if absent, `rename` replaces it. */
 function publish(
   file: string,
@@ -235,15 +259,18 @@ function safeJson(text: string): unknown {
 
 /** null: no lock. An unreadable lock is never deleted automatically. */
 function readLock(file: string): LockFile | null {
-  let text: string;
-  try {
-    text = readFileSync(file, 'utf8');
-  } catch (e) {
-    if (errCode(e) === 'ENOENT') return null;
-    throw e;
+  let parsed: ReturnType<typeof LockFile.safeParse> | undefined;
+  // A lock being created is empty or partial for an instant; only a lock that stays bad is unreadable.
+  for (let i = 0; i < 20 && parsed?.success !== true; i++) {
+    if (i > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+    try {
+      parsed = LockFile.safeParse(safeJson(readFileSync(file, 'utf8')));
+    } catch (e) {
+      if (errCode(e) === 'ENOENT') return null;
+      throw e;
+    }
   }
-  const parsed = LockFile.safeParse(safeJson(text));
-  if (!parsed.success) {
+  if (parsed?.success !== true) {
     throw new EngineBusyError(`${file} is unreadable; check it and remove it by hand`);
   }
   return parsed.data;
@@ -309,7 +336,7 @@ async function takeOver(file: string, mineJson: string): Promise<boolean> {
       if (readLock(file)?.token !== held.token) return false;
       rmSync(file, { force: true });
     }
-    publish(file, mineJson, 'link');
+    createExclusive(file, mineJson);
     return true;
   } catch (e) {
     if (errCode(e) === 'EEXIST') return false;
@@ -331,7 +358,7 @@ async function acquireLock(file: string): Promise<Held> {
   } satisfies LockFile);
   for (let i = 0; i < 200; i++) {
     try {
-      publish(file, mine, 'link');
+      createExclusive(file, mine);
       return held;
     } catch (e) {
       if (errCode(e) !== 'EEXIST') throw e;
@@ -524,6 +551,42 @@ export async function parseOutputs(
   };
 }
 
+const CallsFile = z.object({
+  calls: z.array(
+    z.object({
+      input_tokens: z.number(),
+      cached: z.number(),
+      output_tokens: z.number(),
+    }),
+  ),
+});
+
+/**
+ * An invocation that stopped early leaves its model calls in reel-work/calls.json, and the next invocation overwrites
+ * the file. Move it aside as calls-<cut>-<k>.json and price it (engine prices, design §6.6).
+ */
+async function harvestCalls(runDir: string, cut: number): Promise<Spent> {
+  const spent: Spent = { usd: 0, tokensIn: 0, tokensOut: 0, wallS: 0 };
+  const file = path.join(runDir, 'reel-work', 'calls.json');
+  let text: string;
+  try {
+    text = await readFile(file, 'utf8');
+  } catch (e) {
+    if (errCode(e) === 'ENOENT') return spent;
+    throw e;
+  }
+  const prefix = `calls-${String(cut)}-`;
+  const k = (await readdir(runDir)).filter((f) => f.startsWith(prefix)).length + 1;
+  await rename(file, path.join(runDir, `${prefix}${String(k)}.json`));
+  for (const c of CallsFile.parse(JSON.parse(text)).calls) {
+    spent.usd +=
+      (c.input_tokens * PRICE.in + c.cached * PRICE.cached + c.output_tokens * PRICE.out) / 1e6;
+    spent.tokensIn += c.input_tokens + c.cached;
+    spent.tokensOut += c.output_tokens;
+  }
+  return spent;
+}
+
 /**
  * Run the engine for one cut under var/engine.lock. A voice refusal returns `VoiceRefused` (no rerun); any other
  * non-zero exit reruns the same command once (the engine resumes); a second failure throws with the log tail.
@@ -574,6 +637,7 @@ export async function runCut(opts: RunCutOptions): Promise<CutResult | VoiceRefu
   process.on('SIGINT', stop);
   process.on('SIGTERM', stop);
   const stopping = (): boolean => state.stopping;
+  const earlier: Spent = { ...(opts.earlier ?? { usd: 0, tokensIn: 0, tokensOut: 0, wallS: 0 }) };
   const untilExit = new Promise<never>(() => undefined);
   try {
     for (let attempt = 1; ; attempt++) {
@@ -586,10 +650,28 @@ export async function runCut(opts: RunCutOptions): Promise<CutResult | VoiceRefu
           return 0;
         }
       })();
+      const startedAt = Date.now();
       const { code } = await runEngineOnce(args, env, logPath, held, state);
       if (stopping()) return await untilExit;
       const thisRun = readFileSync(logPath, 'utf8').slice(before);
-      if (code === 0) return await parseOutputs(runDir, cut, logPath);
+      if (code === 0) {
+        const result = await parseOutputs(runDir, cut, logPath);
+        if (earlier.usd > 0 || earlier.wallS > 0) {
+          result.cost['earlier attempts'] = {
+            usd: earlier.usd,
+            tokens_in: earlier.tokensIn,
+            tokens_out: earlier.tokensOut,
+          };
+          result.totalUsd += earlier.usd;
+          result.wallS += earlier.wallS;
+        }
+        return result;
+      }
+      const lost = await harvestCalls(runDir, cut);
+      earlier.usd += lost.usd;
+      earlier.tokensIn += lost.tokensIn;
+      earlier.tokensOut += lost.tokensOut;
+      earlier.wallS += (Date.now() - startedAt) / 1000;
       const refusal = REFUSAL.exec(thisRun);
       if (refusal?.[2] !== undefined) {
         return {
@@ -597,12 +679,15 @@ export async function runCut(opts: RunCutOptions): Promise<CutResult | VoiceRefu
           model: opts.voiceModel,
           status: Number(refusal[2]),
           message: (refusal[3] ?? '').trim(),
+          spent: { ...earlier },
         };
       }
       if (attempt === 2) {
-        throw new EngineCrashError(
+        const crash = new EngineCrashError(
           `engine exited with code ${String(code)} twice; log tail of ${logPath}:\n${tail(thisRun)}`,
         );
+        crash.spent = { ...earlier };
+        throw crash;
       }
     }
   } finally {
