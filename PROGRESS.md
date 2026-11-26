@@ -25,11 +25,15 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 
 ## Real cuts (budget: 40 cuts with model calls, docs/plan.md)
 
+Free re-renders (no model calls) not counted: #9 `--cut 3` on e2-check; two #9 failed notes reads.
+
 | # | date | issue | purpose | voice | cost USD | run folder |
 |---|---|---|---|---|---|---|
 | 1 | 2026-11-27 | #2 | `--until script` import check | none | 0.0289 | var/runs/import-check |
 | 2 | 2026-11-27 | #2 | full reel `--rounds 0` (resumed from script) | heygen (4.66 st) | 0.0537 (folder total 0.0826) | var/runs/import-check |
-| 3 | 2026-11-27 | #9 | `--apply-notes notes-2.json --cut 2` | heygen (4.72 st) | 0.0153 | var/runs/e2-check |
+| 3 | 2026-11-27 | #9 | `--apply-notes --cut 2`, attempt 1 (shot-5 note rejected by validator; kept as reel-v2-attempt1) | heygen (4.72 st) | 0.0153 | var/runs/e2-check |
+| 4 | 2026-11-27 | #9 | `--apply-notes --cut 2` rerun from cut-1 checkpoints (shot-6 note) | heygen | 0.0088 | var/runs/e2-check |
+| 5 | 2026-11-27 | #9 | `--rounds 1` through the shared function | heygen | 0.0409 | var/runs/e2-rounds |
 
 ## Next action
 
