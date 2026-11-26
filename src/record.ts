@@ -76,7 +76,8 @@ export const TemplatePatch = z.object({
 });
 export type TemplatePatch = z.infer<typeof TemplatePatch>;
 
-export const ReviewNotes = z.object({
+// Strict: a key outside the contract (design §6.4) is an error, not a note dropped in silence.
+export const ReviewNotes = z.strictObject({
   lines: z
     .record(
       z.string(),
@@ -88,7 +89,7 @@ export const ReviewNotes = z.object({
 });
 export type ReviewNotes = z.infer<typeof ReviewNotes>;
 
-export const Review = z.object({
+export const Review = z.strictObject({
   approve: z.boolean(),
   summary: z.string(),
   scores: ReviewScores,
@@ -351,7 +352,7 @@ function secs(s: number): string {
   return `${s.toFixed(0)} s`;
 }
 
-function gateValue(v: Gate['value']): string {
+export function gateValue(v: Gate['value']): string {
   if (v !== null && typeof v === 'object') {
     return Object.entries(v)
       .map(([k, n]) => `${k} ${String(n)}`)
