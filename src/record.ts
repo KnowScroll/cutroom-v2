@@ -436,7 +436,10 @@ export function renderReport(run: RunRecord): string {
     out.push('');
 
     for (const g of selected.gates) if (!g.pass) wrong.push(`gate ${g.name} fails (${g.mode})`);
-    for (const r of selected.engine_rejections) wrong.push(`engine rejection: ${r}`);
+    // Rejections the engine later fixed are not wrong any more; only steps it shipped failing are (all stay in run.json).
+    for (const r of selected.engine_rejections) {
+      if (r.startsWith('shipped failing:')) wrong.push(r);
+    }
     if (selected.review !== null && !run.approved) {
       const n = selected.review.notes;
       for (const [shot, text] of Object.entries(n.shots ?? {})) wrong.push(`shot ${shot}: ${text}`);
@@ -453,6 +456,12 @@ export function renderReport(run: RunRecord): string {
     ...(wrong.length > 0 ? wrong.map((w) => `- ${w}`) : ['Nothing recorded.']),
     '',
   );
+  if (selected !== undefined) {
+    out.push(
+      `The engine's validators rejected ${String(selected.engine_rejections.filter((r) => !r.startsWith('shipped failing:')).length)} attempt(s) while building this cut; the list is in run.json.`,
+      '',
+    );
+  }
 
   if (run.voice_switches.length > 0) {
     out.push(

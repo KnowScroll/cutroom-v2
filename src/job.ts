@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { Config, VoiceModelKey } from './config.ts';
-import { runCut, type CutResult } from './engine.ts';
+import { EngineCrashError, runCut, type CutResult, type Spent } from './engine.ts';
 import { basicGates } from './gates/basic.ts';
 import { runIntake } from './intake.ts';
 import type { M3Request, M3Result } from './minimax.ts';
@@ -104,6 +104,8 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
   const cuts: CutRecord[] = [];
   const switches: VoiceSwitch[] = [];
   let error: string | null = null;
+  // Spent by invocations that never produced a cut (refused voices, a crash); a failed job counts it in its totals.
+  let unrecorded: Spent | undefined;
 
   try {
     await event('intake', 'job.start', { request: options.request });
@@ -130,6 +132,7 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
     const refusals: Refusal[] = [];
     let cut: CutResult | null = null;
     let voice = 0;
+    let carried: Spent | undefined;
     while (cut === null) {
       const model = config.voiceModels[voice];
       if (model === undefined) {
@@ -147,10 +150,13 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
         seconds: intake.seconds,
         cut: 1,
         voiceModel: model,
+        ...(carried === undefined ? {} : { earlier: carried }),
         env: { CUTROOM_TEMPLATE_DIR: templatesDir, ...options.engineEnv },
       });
       if (run.kind === 'voice_refused') {
         refusals.push(run);
+        carried = run.spent;
+        unrecorded = run.spent;
         const next = config.voiceModels[voice + 1];
         await event('engine', 'voice.refused', run);
         if (next !== undefined) {
@@ -225,6 +231,7 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
     log(`review: ${reviewed.review.approve ? 'approve' : 'fixes wanted'}`);
   } catch (e) {
     error = describe(e);
+    if (e instanceof EngineCrashError) unrecorded = e.spent;
     await event('error', 'job.error', { error });
     log(`error: ${error}`);
   }
@@ -235,10 +242,9 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
   const fails = chosen === undefined ? 0 : blockingFails(chosen);
   const finished = new Date();
   const harnessUsd = calls.reduce((a, c) => a + c.usd, 0);
-  const engineUsd = cuts.reduce(
-    (a, c) => a + Object.values(c.engine_cost).reduce((b, p) => b + p.usd, 0),
-    0,
-  );
+  const engineUsd =
+    cuts.reduce((a, c) => a + Object.values(c.engine_cost).reduce((b, p) => b + p.usd, 0), 0) +
+    (cuts.length === 0 ? (unrecorded?.usd ?? 0) : 0);
   const run: RunRecord = {
     id,
     request: options.request,

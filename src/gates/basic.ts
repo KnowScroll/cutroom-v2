@@ -9,6 +9,7 @@ export const MIN_PITCH_ST = 4;
 export const MIN_VOICE_OVER_MUSIC_DB = 10;
 export const MAX_VOICE_OVER_MUSIC_DB = 14;
 const DURATION_TOLERANCE_S = 0.1;
+const FORMAT_THRESHOLD = `1080x1920, 30 fps, audio stream, duration = timeline total +-${String(DURATION_TOLERANCE_S)} s`;
 
 const Probe = z.object({
   streams: z.array(
@@ -61,7 +62,7 @@ function fps(rate: string | undefined): number | null {
 
 /** design §6.3 `format`: ffprobe says 1080x1920, 30 fps, an audio stream, a duration within 0.1 s of the timeline. */
 async function formatGate(cut: CutResult): Promise<Gate> {
-  const threshold = `1080x1920, 30 fps, audio stream, duration = timeline total +-${String(DURATION_TOLERANCE_S)} s`;
+  const threshold = FORMAT_THRESHOLD;
   const probe = Probe.parse(await ffprobe(cut.reelPath));
   const timeline = Timeline.parse(
     JSON.parse(await readFile(path.join(cut.dir, 'timeline.json'), 'utf8')),
@@ -86,8 +87,16 @@ async function formatGate(cut: CutResult): Promise<Gate> {
 export async function basicGates(cut: CutResult): Promise<Gate[]> {
   const a = cut.audio;
   const shipped = cut.failingSteps.map((f) => f.step);
+  // A reel that cannot be probed or has no readable timeline is a failed format gate, not a thrown error.
+  const format: Gate = await formatGate(cut).catch((e: unknown) => ({
+    name: 'format',
+    value: `unreadable: ${e instanceof Error ? e.message : String(e)}`,
+    threshold: FORMAT_THRESHOLD,
+    pass: false,
+    mode: 'block' as const,
+  }));
   return [
-    await formatGate(cut),
+    format,
     {
       name: 'shipped_failing',
       value: shipped.length === 0 ? 'none' : shipped.join(', '),

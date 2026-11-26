@@ -7,6 +7,7 @@
 //   FAKE_ENGINE_SLEEP_MS=n          wait before writing outputs
 //   FAKE_ENGINE_CHROME=<file>       start a detached grandchild (like puppeteer's Chrome) and write its pid to <file>;
 //                                   then idle; on SIGTERM kill the grandchild and exit (like the real engine's handlers)
+//   FAKE_ENGINE_SYNTH=1             audio.json with the synth fallback (music.fit.pass null)
 //   FAKE_ENGINE_NULL_PITCH=1        audio.json voice without measured pitch (engine/audio.mjs: too little voiced audio)
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -34,6 +35,24 @@ fs.appendFileSync(
 );
 log(`asset_reel (fake): "${brief}", ${seconds}s, 0 director rounds`);
 log(`template: ${flag('--template')}`);
+
+// Like the engine's live cost log (ckSave('calls.json')): the model calls paid so far, rewritten by every invocation.
+fs.writeFileSync(
+  path.join(work, 'calls.json'),
+  JSON.stringify({
+    brief,
+    calls: [
+      {
+        step: 'story',
+        input_tokens: 1000000,
+        cached: 0,
+        output_tokens: 100000,
+        thinking: 0,
+        seconds: 1,
+      },
+    ],
+  }),
+);
 
 if ((process.env['FAKE_ENGINE_REFUSE'] ?? '').split(',').includes(voice)) {
   const status = process.env['FAKE_ENGINE_REFUSE_STATUS'] ?? '402';
@@ -132,6 +151,15 @@ const audio = {
     pass: true,
   },
 };
+if (process.env['FAKE_ENGINE_SYNTH'] === '1') {
+  // engine/audio.mjs pickMusic: the procedural fallback has no fit verdict
+  audio.music = {
+    source: 'synth',
+    title: 'procedural (calm)',
+    credit: null,
+    fit: { start: 0, pass: null },
+  };
+}
 if (process.env['FAKE_ENGINE_NULL_PITCH'] === '1') {
   audio.voice = {
     model,

@@ -174,6 +174,12 @@ await test('a wrong-size video fails the format gate', async () => {
   const format = (await basicGates(r)).find((g) => g.name === 'format');
   assert.equal(format?.pass, false);
   assert.match(gateValue(format.value), /640x360/);
+  await writeFile(r.reelPath, 'not a video');
+  const unreadable = (await basicGates(r)).find((g) => g.name === 'format');
+  assert.ok(unreadable);
+  assert.equal(unreadable.pass, false);
+  assert.equal(unreadable.mode, 'block');
+  assert.match(gateValue(unreadable.value), /^unreadable: ffprobe exited/);
 });
 
 await test('audio gates read audio.json: a null pitch and a shipped-failing shot block', async () => {
@@ -210,11 +216,25 @@ await test('an approve while a blocking gate FAILs is not approved', async () =>
   );
 });
 
+await test('synth music (no fit verdict) fails the music_fit gate, not the job', async () => {
+  const { run } = await job([intake, review(true)], { FAKE_ENGINE_SYNTH: '1' });
+  assert.equal(run.status, 'done');
+  const gate = run.cuts[0]?.gates.find((g) => g.name === 'music_fit');
+  assert.ok(gate);
+  assert.equal(gate.pass, false);
+  assert.equal(gate.value, null);
+  assert.equal(run.approved, false);
+  assert.ok(run.cuts[0]?.review);
+});
+
 await test('an engine that crashes twice gives a failed job with a report', async () => {
   const { run, varDir } = await job([intake], { FAKE_ENGINE_CRASH: 'always' });
   assert.equal(run.status, 'failed');
   assert.match(run.error ?? '', /twice/);
   assert.equal(run.selected, null);
+  assert.ok(
+    Math.abs(run.totals.usd - (0.84 + run.harness_calls.reduce((a, c) => a + c.usd, 0))) < 1e-9,
+  );
   assert.equal((await readJob(varDir, run.id)).status, 'failed');
   const report = await readFile(path.join(runDir(varDir, run.id), 'report.md'), 'utf8');
   assert.match(report, /job failed: engine exited with code 1 twice/);
@@ -235,6 +255,21 @@ await test('a refused first voice falls back to the second', async () => {
   assert.equal(sw.from, 'heygen');
   assert.equal(sw.to, 'minimax');
   assert.match(sw.reason, /HTTP 402/);
+  // The refused invocation paid for its steps before the voice was refused: that cost and time stay on the cut.
+  const cut = run.cuts[0];
+  assert.ok(cut);
+  assert.ok(Math.abs((cut.engine_cost['earlier attempts']?.usd ?? 0) - 0.42) < 1e-9);
+  assert.equal(cut.engine_cost['earlier attempts']?.tokens_in, 1_000_000);
+  assert.ok(cut.wall_s > 2);
+  assert.ok(
+    Math.abs(run.totals.usd - (0.42 + 0.01 + run.harness_calls.reduce((a, c) => a + c.usd, 0))) <
+      1e-9,
+  );
+  assert.ok(existsSync(path.join(runDir(varDir, run.id), 'calls-1-1.json')));
+  assert.doesNotMatch(
+    await readFile(path.join(runDir(varDir, run.id), 'report.md'), 'utf8'),
+    /engine rejection:/,
+  );
   const events = (await readEvents(varDir, run.id)).map((e) => e.event);
   assert.deepEqual(events.slice(2, 6), [
     'engine.start',
