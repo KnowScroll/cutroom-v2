@@ -18,7 +18,7 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 
 | issue | agent / model | branch or worktree | started | note |
 |---|---|---|---|---|
-| #8 | implementer / sonnet | claude/8-make (worktree) | 2026-11-27 | PR #30 in review; CP1 run done |
+| #8 | implementer / sonnet | claude/8-make (worktree) | 2026-11-27 | PR #30: fixing 2 review findings (synth null fit, lost cost on rerun); CP1 run done |
 
 ## Real cuts (budget: 40 cuts with model calls, docs/plan.md)
 
@@ -31,7 +31,7 @@ Free re-renders (no model calls) not counted: #16 radio-lp-e4 resume (fonts-radi
 | 3 | 2026-11-27 | #9 | `--apply-notes --cut 2`, attempt 1 (shot-5 note rejected by validator; kept as reel-v2-attempt1) | heygen (4.72 st) | 0.0153 | var/runs/e2-check |
 | 4 | 2026-11-27 | #9 | `--apply-notes --cut 2` rerun from cut-1 checkpoints (shot-6 note) | heygen | 0.0088 | var/runs/e2-check |
 | 5 | 2026-11-27 | #9 | `--rounds 1` through the shared function | heygen | 0.0409 | var/runs/e2-rounds |
-| 6 | 2026-11-27 | #8 | CP1 `make` "lighthouse Fresnel lens" (breakdown-explainer, fit good) | heygen (4.07 st) | 0.2391 (engine 0.2316, harness 0.0078) | var/runs/20261126-225022-how-does-a-lighthouse-fresnel-lens-make |
+| 6 | 2026-11-27 | #8 | CP1 `make` "lighthouse Fresnel lens" (breakdown-explainer, fit good) | heygen (4.07 st) | 0.2391 (engine 0.2313, harness 0.0078) | var/runs/20261126-225022-how-does-a-lighthouse-fresnel-lens-make |
 
 ## Next action
 
