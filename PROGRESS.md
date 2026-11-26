@@ -8,7 +8,7 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 
 ## Waiting on the user
 
-- [ ] `.env` at the repo root with `MINIMAX_API_KEY`, `OPENROUTER_API_KEY`, `CUTROOM_API_TOKEN` (any long random string) and optionally `ELEVENLABS_API_KEY`. Needed from #2 on. It was missing on 2026-11-27.
+- [x] `.env` at the repo root: `MINIMAX_API_KEY`, `OPENROUTER_API_KEY`, `CUTROOM_API_TOKEN` present (checked by name, 2026-11-27). No `ELEVENLABS_API_KEY`: eleven-v4 goes through OpenRouter.
 - [ ] Confirm design D20: "max 3" means the first cut plus up to 3 fix rounds (up to 4 cuts). Not blocking: it is one constant.
 - [ ] #13: approve the frame-gate calibration table (the issue gets `needs-user` when it is ready).
 - [ ] #17: OK to install Node 22, FFmpeg and Chrome in WSL Ubuntu.
@@ -20,7 +20,7 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 |---|---|---|---|---|
 | none | | | | |
 
-## Real runs (budget: 20 full reels, docs/plan.md)
+## Real cuts (budget: 40 cuts with model calls, docs/plan.md)
 
 | # | date | issue | purpose | voice | cost USD | run folder |
 |---|---|---|---|---|---|---|

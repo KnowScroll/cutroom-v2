@@ -27,7 +27,7 @@ Source of truth: design §1 > the rest of `docs/design.md` > the issue > `docs/p
 
 ## Preflight (before the first issue, and after any interruption)
 
-- `git status` clean on `main`; `git pull`. `gh auth status` shows the `repo` and `workflow` scopes.
+- On `main`: `git pull`; `git status` clean apart from PROGRESS.md (commit and push it). `gh auth status` shows the `repo` and `workflow` scopes.
 - `node -v` >= 22.18, `ffmpeg -version`, Chrome at `C:/Program Files/Google/Chrome/Application/chrome.exe`.
 - `.env` exists at the repo root and has the key **names** in PROGRESS.md (check names only; never print values). Missing: #1 can still run; stop before #2's real run and ask the user.
 - Reconcile: compare PROGRESS.md "In flight" with `gh pr list`, `git worktree list` and open issues. The repository and GitHub are the truth; a claim in a doc or an agent report is not.
@@ -36,16 +36,16 @@ Source of truth: design §1 > the rest of `docs/design.md` > the issue > `docs/p
 
 1. **Pick** an eligible issue: open, every `Depends on` issue closed, no `blocked` or `needs-user` label, lowest milestone first, then lowest number. Start independent eligible issues in parallel (plan "Parallel lanes"), at most 3-4 implementers at once.
 2. **Brief** an implementer (Agent tool, `model` from the issue's `Model:` line, `isolation: "worktree"`, `run_in_background: true` when running several). The brief: the issue number (it reads the issue itself), `AGENTS.md`, the design sections the issue cites, the files it owns, and these environment facts:
-   - `CUTROOM_ENV_FILE=C:\Users\XZNON\cutroom-v2\.env` and `CUTROOM_VAR=C:\Users\XZNON\cutroom-v2\var` (worktrees have no `.env`; all real runs share one var folder, cache and engine lock);
-   - real engine runs: one at a time; before #5 lands, ask you before starting one; log each in PROGRESS.md;
+   - `CUTROOM_ENV_FILE=C:\Users\XZNON\cutroom-v2\.env` and `CUTROOM_VAR=C:\Users\XZNON\cutroom-v2\var` (worktrees have no `.env`; all real runs share one var folder, cache and engine lock; removing a worktree deletes everything inside it, so nothing real lives there);
+   - real engine runs: `--out` absolute under `C:\Users\XZNON\cutroom-v2\var\runs\`, `CUTROOM_VOICE_MODEL=heygen-paid`, one at a time; before #5 lands, ask you before starting one; log each cut in PROGRESS.md;
    - run `npm ci` in a new worktree; run `npm run check` before opening the PR;
    - open the PR with the AGENTS.md body and report the PR number, what was checked and what was not.
    Give each agent only the context its issue needs.
 3. **CI**: wait for green (`gh pr checks <pr> --watch`). Red: send it back to the same implementer (SendMessage).
 4. **Review**: a fresh Opus reviewer (no implementer conclusions in its brief): the PR number, the issue, the design sections. Blocking findings only. Fixes go back to the implementer; re-review only the changed parts.
 5. **Verify** the issue's `Done when` yourself or with an Opus tester for real runs. Run the checks; do not trust "it passed".
-6. **Merge**: `gh pr merge <pr> --squash --delete-branch`; the issue closes from `Closes #n`. Remove the worktree.
-7. **Record**: a handoff comment on the issue (commit, what was verified, anything not verified), and PROGRESS.md (in flight, real runs, next action). At a checkpoint (CP1-CP5, plan.md), run the end-to-end check it names and record it in the issue.
+6. **Merge**: `gh pr merge <pr> --squash --delete-branch`; the issue closes from `Closes #n`. Remove the worktree. `git pull` on `main` before briefing any issue that depends on this one.
+7. **Record**: a handoff comment on the issue (commit, what was verified, anything not verified), and PROGRESS.md (in flight, real runs, next action), committed and pushed straight to `main` (the ruleset lets the admin through; nothing else goes to `main` without a PR). At a checkpoint (CP1-CP5, plan.md), run the end-to-end check it names and record it in the issue.
 8. Back to 1.
 
 ## Models

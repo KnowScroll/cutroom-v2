@@ -43,13 +43,13 @@ Tests check behaviour (what the harness does with real files, processes and HTTP
 
 - `.env` (repo root) holds the keys. Never print, log, copy or commit it or any key; load it with `process.loadEnvFile`. The repo is **public**.
 - Never commit `var/`, reference `.mp4` files, run outputs or `node_modules`.
-- Kill only a PID you started. Never `pkill`, `killall` or kill by pattern.
-- Real engine runs cost money and quota: one at a time on the machine (`var/engine.lock`), `CUTROOM_VOICE_MODEL=kokoro` unless the issue says otherwise, and every run is logged in PROGRESS.md.
+- Kill only a PID you started, or the engine pid the harness recorded in `var/engine.lock`; kill its whole tree (`taskkill /PID <pid> /T /F` on Windows, the process group on Linux), since the engine starts Chrome. Never `pkill`, `killall` or kill by pattern.
+- Real engine runs cost money and quota: one at a time on the machine (`var/engine.lock`), `--out` absolute under `$CUTROOM_VAR/runs/`, `CUTROOM_VOICE_MODEL=heygen-paid` unless the issue says otherwise (kokoro fails the voice gate), and every cut is logged in PROGRESS.md.
 - Never `npx` a bare package name (a public npm package called `cutroom` exists); use `npm exec --no-install` or `node src/cli.ts`.
 
 ## Git and GitHub
 
-- One issue, one branch `claude/<issue>-<short-slug>`, one PR to `main`. Squash merge; the branch is deleted.
+- One issue, one branch `claude/<issue>-<short-slug>` from the latest `origin/main`, one PR to `main`. Squash merge; the branch is deleted. The only direct push to `main`: the orchestrator committing PROGRESS.md.
 - Commit subject: a plain-English outcome ("Add the template sync with conflict flags"). Commits end with the attribution lines the session gives you.
 - PR body:
   ```

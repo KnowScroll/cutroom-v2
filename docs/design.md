@@ -59,16 +59,16 @@ var/           runtime, gitignored (CUTROOM_VAR): templates/, runs/, cache/, eng
 ```
 node engine/asset_reel.mjs --brief-file <run>/brief.txt --template <kind> --seconds <n> --rounds 0 --out <run>/reel --cut <n> [--voice-model <m>]
 node engine/asset_reel.mjs ... same flags ... --apply-notes <run>/notes-<n>.json
-env: CUTROOM_TEMPLATE_DIR (var/templates), CUTROOM_ENV_FILE (repo .env), CUTROOM_CACHE_DIR (var/cache)
+env: CUTROOM_TEMPLATE_DIR (var/templates), CUTROOM_ENV_FILE (repo .env), CUTROOM_VAR (cache in $CUTROOM_VAR/cache)
 ```
 - Writes `<out>-v<n>/` (reel.mp4 1080x1920 30 fps, timeline.json, plan.json with every asset and shot's code, audio.json, CREDITS.md, assets*.jpg), `<out>-work/` (checkpoints: reference.txt, facts.json, spine.json, script.json, script.md, plan.json, poses.json, kit.js, asset_*, sheet-review*.json, photos.json, shot_*.js, music.json, calls.json, rejected_*.js), `<out>-summary.json`, `<out>-cost.txt`. Stdout is the run log; the harness saves it per invocation.
-- Rerunning with the same `--out` resumes from checkpoints. A deleted checkpoint is rebuilt with everything after it.
+- Rerunning with the same `--out` resumes from checkpoints. Each checkpoint file is restored on its own (kit.js, asset_*.js and shot_*.js do not check what came before them), so rebuilding a step means deleting its checkpoint and every later one (§5.4). `--out` is always an absolute path under `$CUTROOM_VAR/runs/`.
 - The engine waits by itself when the MiniMax Token Plan quota runs out (error 2056), up to 24 h.
 
 ### 4.2 Allowed engine edits (the only ones)
 
-- E1 Paths: the engine runs from `engine/`; templates, keys and cache come from the env vars above (defaults: `../templates`, `../.env`, `../var/cache`). Replaces the hard-coded `C:/Users/XZNON/cutroom-v2/.env` and `FASTREEL_ENV_FILE`.
-- E2 `--cut <n>` names the output `<out>-v<n>`. `--apply-notes <file>` restores the checkpoints, applies a notes file exactly as fastreel's director round does today (same schema, same speaker mapping, same `h.cue` re-timing rule, `script: yes` ignores line notes), saves the redrawn assets and shots back to the checkpoints, then renders cut n. The director-round body becomes one function used by both `--rounds` and `--apply-notes`; `--rounds` keeps working for developers.
+- E1 Paths: the engine lives in `engine/`; templates, keys and the var folder come from the env vars above (defaults: `<repo>/templates`, `<repo>/.env`, `<repo>/var`); the cache is `$CUTROOM_VAR/cache` and a run without `--out` goes to `$CUTROOM_VAR/runs/<slug>-<stamp>` (never `<repo>/reels/`). Replaces the hard-coded `C:/Users/XZNON/cutroom-v2/.env` and `FASTREEL_ENV_FILE`.
+- E2 `--cut <n>` names the output `<out>-v<n>`. `--apply-notes <file>` restores the checkpoints, applies a notes file exactly as fastreel's director round does today (same schema, same speaker mapping, same `h.cue` re-timing rule, `script: yes` ignores line notes), saves the redrawn assets and shots and the changed lines (the work folder's `plan.json`) back to the checkpoints, then renders cut n. The director-round body becomes one function used by both `--rounds` and `--apply-notes`; `--rounds` keeps working for developers.
 - E3 Fonts (§4.3): `@font-face` for the bundled fonts in the stage, and a wait for `document.fonts` before validation and render.
 - E4 Linux: anything else that breaks on Linux (found in M5), fixed minimally.
 
@@ -76,7 +76,7 @@ Any other engine change is an architecture change: escalate.
 
 ### 4.3 Fonts
 
-Windows fonts in templates, prompts and stage today: Segoe UI (21 uses), Georgia (17), Consolas (7), Bahnschrift (6), Times New Roman, Segoe UI Black, Impact, Courier New, Century Gothic. Replace each with an open (OFL or Apache) font with close metrics, vendored in `fonts/` with its licence; candidates: Selawik for Segoe UI (Microsoft's open, metric-compatible fallback), Gelasio for Georgia, Cascadia Mono for Consolas, Tinos for Times New Roman, Cousine for Courier New, Anton for Impact; Bahnschrift and Century Gothic need a pick by look. The stage loads them with `@font-face`; templates and prompts name the new families. Verify by rendering one reel per affected template family before and after.
+Windows fonts in templates, prompts and stages today: Segoe UI (21 uses), Georgia (17), Arial (12, stage_asset.html and the 3D stages), Consolas (7), Bahnschrift (6), Arial Rounded MT Bold (3), Times New Roman, Segoe UI Black, Impact, Courier New, Century Gothic, Trebuchet MS. Replace each with an open (OFL or Apache) font with close metrics, vendored in `fonts/` with its licence; candidates: Selawik for Segoe UI (Microsoft's open, metric-compatible fallback), Gelasio for Georgia, Arimo for Arial, Cascadia Mono for Consolas, Tinos for Times New Roman, Cousine for Courier New, Anton for Impact; Bahnschrift, Century Gothic, Arial Rounded MT Bold and Trebuchet MS need a pick by look. The stage loads them with `@font-face`; templates and prompts name the new families. Verify per replaced font: "before" = frames of an existing fastreel reel; "after" = the same reel's work folder copied, the font names in its code rewritten to the new families, and re-rendered from checkpoints (no model calls).
 
 ## 5. Templates
 
@@ -135,7 +135,7 @@ A request that names a template uses it (fit is still judged). `brief.txt` = the
 Code only. Each gate: `{ name, value, threshold, pass, mode: "block" | "info" }`.
 - `format`: ffprobe 1080x1920, 30 fps, an audio stream, duration = timeline total +-0.1 s. block.
 - `shipped_failing`: engine log lines `using the last` (a shot or asset shipped failing its validator). block.
-- `voice_pitch` (>= 4 st), `music_fit` (engine PASS), `voice_over_music` (10-14 dB): from `audio.json`. block.
+- `voice_pitch` (>= 4 st), `music_fit` (engine PASS), `voice_over_music` (10-14 dB): from `audio.json`. block. Kokoro cannot pass `voice_pitch` (measured 2.2-3.9 st on 10 fastreel reels; it ignores tone tags), so it is never used for gated runs.
 - Frame audit, ported from cutroom `scripts/frame_audit.py` (v1.7): `same_view` <= 14 s, `frame0` detail >= 0.05, `blank` none, `balance`, `flat` <= 60%, `static_band` <= 14 s, `alive` gap <= 3 s and still <= 20%. Caption band left out per the template's `captions:` check. **info until calibrated** (M3 of the plan): fastreel's looks differ from cutroom's (dan-koe is flat by design), so thresholds and per-template modes are set from the 42 local fastreel reels and approved by the user. Per-template overrides are developer lines in the template's `## checks`: `gate <name>: off | info | <threshold>`.
 - Length against the target is passed to the review, not gated.
 
@@ -173,8 +173,9 @@ Order: fewest blocking FAILs, then highest score sum, then the later cut. Approv
 
 - CLI (`npm exec --no-install cutroom -- <cmd>` or `node src/cli.ts`): `make "<request>" [--template k] [--seconds n]` (runs one job in the foreground, same code path), `serve`, `status <id>`, `sync`.
 - HTTP (`node:http`, no framework): `POST /reels {request, template?, seconds?}` -> 202 `{id}`; `GET /reels/:id` -> job status, stage, cuts so far, report when done; `GET /reels/:id/reel.mp4` (selected cut); `GET /reels/:id/report` (run.json); `GET /health`. Bearer `CUTROOM_API_TOKEN`; binds `CUTROOM_HOST:CUTROOM_PORT` (default 127.0.0.1:8080).
-- Queue: jobs are files in `var/runs`; one worker takes the oldest `queued`. On start, a job left `running` is resumed (the engine resumes from checkpoints). `var/engine.lock` (pid, stale-checked) keeps every CLI and service process to one engine run at a time on a machine.
-- Voice model: `CUTROOM_VOICE_MODEL` (engine default `eleven-v4`); development and tests use `kokoro` to save ElevenLabs credits.
+- Queue: jobs are files in `var/runs`; one worker takes the oldest `queued`. On start, a job left `running` is resumed (the engine resumes from checkpoints).
+- `var/engine.lock` keeps every CLI and service process to one engine run at a time on a machine. It records the harness pid and the engine child's pid; it is stale only when the engine pid is gone. On shutdown the harness stops its engine's process tree; on start, a live engine pid in the lock was started by a harness, so its tree is stopped (`taskkill /PID <pid> /T /F` on Windows, the process group on Linux, where the engine is spawned detached) before the job resumes. Two writers never share one `--out`.
+- Voice model: `CUTROOM_VOICE_MODEL` (engine default `eleven-v4`). Development runs use `heygen-paid` (the engine's HeyGen voice through OpenRouter, about $0.003 a reel, measured 4.45-4.57 st, so it passes `voice_pitch`); if it fails that gate in practice, escalate rather than relax the gate.
 
 ## 9. Deploy
 

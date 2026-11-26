@@ -25,7 +25,7 @@ A walking skeleton first: by checkpoint CP1 one real request becomes one reel th
 #2 -> #5, #6, #9, #16      #3 -> #6, #7          #5 -> #7
 #2,#3,#4,#5,#6,#7 -> #8
 #2 -> #10                  #8,#9,#10 -> #11
-#8,#12 -> #13              #11 -> #14 -> #15
+#11,#12 -> #13             #11 -> #14 -> #15
 #15,#16 -> #17             #11,#13,#15,#17 -> #18
 ```
 Each issue body repeats its own `Depends on:` line; this graph is the overview.
@@ -34,6 +34,7 @@ Each issue body repeats its own `Depends on:` line; this graph is the overview.
 
 - After #1: #2, #3, #4, #12 at once (engine/templates/studio; src/config + src/minimax; src/record; src/gates/frames).
 - After #2 and #3: #5, #6, #9, #10, #16 can overlap; #9 and #16 both touch `engine/` but different files (asset_reel.mjs vs stage and fonts).
+- #2's run folder `$CUTROOM_VAR/runs/import-check/` is a shared read-only fixture (#5, #7). An issue that writes to an engine run folder (#9, #16) works on its own copy.
 - At most 3-4 implementers at once. Each owns the files its issue names; integration happens in the dependent issue.
 - Real engine runs (MiniMax, voice, render) are one at a time on the machine: `var/engine.lock` once #5 lands, the orchestrator's sequencing before that.
 
@@ -45,7 +46,7 @@ Each issue body repeats its own `Depends on:` line; this graph is the overview.
 
 ## Real-run budget
 
-At most 20 full reels during implementation, `CUTROOM_VOICE_MODEL=kokoro` except in #18. Each real run is a line in PROGRESS.md (issue, purpose, cost). Going past the budget, or ElevenLabs/OpenRouter credits running out, is a user escalation.
+At most 40 cuts during implementation. A cut = one engine invocation that makes model calls; a re-render from checkpoints with no model calls is free. `CUTROOM_VOICE_MODEL=heygen-paid` except in #18. Each real cut is a line in PROGRESS.md (issue, purpose, cost). Going past the budget, or ElevenLabs/OpenRouter credits running out, is a user escalation.
 
 ## Done
 
