@@ -37,6 +37,7 @@ export interface Config {
   apiToken: string | undefined;
   voiceModels: readonly VoiceModelKey[];
   varDir: string;
+  engineEntry: string;
   host: string;
   port: number;
 }
@@ -84,6 +85,9 @@ export function parseConfig(env: Env): Config {
     apiToken: optional(env, 'CUTROOM_API_TOKEN'),
     voiceModels: parseVoiceModels(optional(env, 'CUTROOM_VOICE_MODELS')),
     varDir: path.resolve(optional(env, 'CUTROOM_VAR') ?? path.join(repoRoot, 'var')),
+    engineEntry: path.resolve(
+      optional(env, 'CUTROOM_ENGINE') ?? path.join(repoRoot, 'engine', 'asset_reel.mjs'),
+    ),
     host: optional(env, 'CUTROOM_HOST') ?? '127.0.0.1',
     port: port.data,
   };
