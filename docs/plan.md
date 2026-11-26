@@ -22,10 +22,10 @@ A walking skeleton first: by checkpoint CP1 one real request becomes one reel th
 
 ```
 #1 -> #2, #3, #4, #12
-#2 -> #5, #9, #16          #3 -> #6, #7          #5 -> #7
+#2 -> #5, #6, #9, #16      #3 -> #6, #7          #5 -> #7
 #2,#3,#4,#5,#6,#7 -> #8
 #2 -> #10                  #8,#9,#10 -> #11
-#8,#12 -> #13              #8 -> #14 -> #15
+#8,#12 -> #13              #11 -> #14 -> #15
 #15,#16 -> #17             #11,#13,#15,#17 -> #18
 ```
 Each issue body repeats its own `Depends on:` line; this graph is the overview.
