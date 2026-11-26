@@ -6,7 +6,7 @@ Motto: **Lightweight. Fast. Simple.**
 
 ## 1. Decisions
 
-2026-11-27. D1-D13 and D21: the user's answers. D14-D19: defaults proposed to the user and not objected to. D20: an assumption the user must confirm (see PROGRESS.md).
+2026-11-27. D1-D13, D20, D21: the user's answers (D20 confirmed 2026-11-27). D14-D19: defaults proposed to the user, then accepted with "yes to all" on 2026-11-27.
 
 | id | decision |
 |---|---|
