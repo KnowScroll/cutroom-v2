@@ -6,7 +6,7 @@ Motto: **Lightweight. Fast. Simple.**
 
 ## 1. Decisions
 
-2026-11-27. D1-D13, D20-D22: the user's answers (D20 confirmed 2026-11-27). D14-D19: defaults proposed to the user, then accepted with "yes to all" on 2026-11-27.
+2026-11-27. D1-D13, D20-D23: the user's answers (D20 confirmed 2026-11-27). D14-D19: defaults proposed to the user, then accepted with "yes to all" on 2026-11-27.
 
 | id | decision |
 |---|---|
@@ -32,6 +32,7 @@ Motto: **Lightweight. Fast. Simple.**
 | D20 | "max 3" = the first cut plus at most 3 fix rounds (at most 4 cuts per job), from "review, re send with fixes (max-3)". A constant (`MAX_FIX_ROUNDS`), so a different answer is a one-line change. |
 | D21 | Voice is not locked to one model or provider (user, 2026-11-27): an ordered list of every engine voice model, with fallback (§6.7). Keys for OpenRouter and ElevenLabs are both optional; a job needs at least one voice that works. |
 | D22 | Deploying to the VM is out of scope for now (user, 2026-11-27). Linux is verified in WSL Ubuntu only; D6 and D10 still shape the code. |
+| D23 | Frame-gate calibration is decided by a fixed rule, not by the user (user, 2026-11-27): for each template and each frame gate, if more than half of that template's existing fastreel reels (every `reel.mp4` cut on disk) fail the gate at cutroom's threshold, the gate is `info` for that template (a `gate <name>: info` line in its `## checks`); otherwise the gate is `block` at cutroom's threshold. A template with no reel on disk gets cutroom's thresholds. The orchestrator applies it and posts the table for the user to look at later. |
 
 ## 2. Scope
 
@@ -138,7 +139,7 @@ Code only. Each gate: `{ name, value, threshold, pass, mode: "block" | "info" }`
 - `format`: ffprobe 1080x1920, 30 fps, an audio stream, duration = timeline total +-0.1 s. block.
 - `shipped_failing`: engine log lines `using the last` (a shot or asset shipped failing its validator). block.
 - `voice_pitch` (>= 4 st), `music_fit` (engine PASS), `voice_over_music` (10-14 dB): from `audio.json`. block. Kokoro cannot pass `voice_pitch` (measured 2.2-3.9 st on 10 fastreel reels; it ignores tone tags), so a reel voiced by Kokoro can never be approved; it stays in the voice list as the last resort so a job still returns a cut (§6.7).
-- Frame audit, ported from cutroom `scripts/frame_audit.py` (v1.7): `same_view` <= 14 s, `frame0` detail >= 0.05, `blank` none, `balance`, `flat` <= 60%, `static_band` <= 14 s, `alive` gap <= 3 s and still <= 20%. Caption band left out per the template's `captions:` check. **info until calibrated** (M3 of the plan): fastreel's looks differ from cutroom's (dan-koe is flat by design), so thresholds and per-template modes are set from the 42 local fastreel reels and approved by the user. Per-template overrides are developer lines in the template's `## checks`: `gate <name>: off | info | <threshold>`.
+- Frame audit, ported from cutroom `scripts/frame_audit.py` (v1.7): `same_view` <= 14 s, `frame0` detail >= 0.05, `blank` none, `balance`, `flat` <= 60%, `static_band` <= 14 s, `alive` gap <= 3 s and still <= 20%. Caption band left out per the template's `captions:` check. **info until calibrated** (M3 of the plan): fastreel's looks differ from cutroom's (dan-koe is flat by design), so per-template modes are set from the 42 local fastreel reels by the rule in D23. Per-template overrides are developer lines in the template's `## checks`: `gate <name>: off | info | <threshold>`.
 - Length against the target is passed to the review, not gated.
 
 ### 6.4 Review

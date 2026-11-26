@@ -13,7 +13,7 @@ A walking skeleton first: by checkpoint CP1 one real request becomes one reel th
 | M0 Foundation | #1 scaffold + CI, #2 import engine/templates/studio | the imported engine makes a reel from the new layout |
 | M1 Walking skeleton | #3 config + MiniMax client, #4 run record, #5 engine runner + fake engine, #6 intake, #7 review, #8 basic gates + pipeline + `make` | **CP1**: one real request -> reel + run.json + report.md |
 | M2 Fix loop | #9 engine `--cut` / `--apply-notes`, #10 template store, #11 fix loop + best cut | **CP2**: a real job runs a notes round and a template round, picks the best cut |
-| M3 Frame gates | #12 frame audit port, #13 calibration (needs the user) + wiring | **CP3a**: thresholds approved by the user, frame gates blocking where approved |
+| M3 Frame gates | #12 frame audit port, #13 calibration by the D23 rule + wiring | **CP3a**: modes set by the rule, table posted, frame gates blocking where the rule says |
 | M4 Service | #14 queue + worker + recovery, #15 HTTP API + CLI | **CP3b**: a real job through the API; a killed service resumes its job |
 | M5 Linux | #16 open fonts, #17 Linux run in WSL | **CP4**: tests and one real job pass in WSL Ubuntu |
 | M6 Acceptance | #18 end-to-end acceptance | **CP5**: five real API jobs on Linux, run records complete, user informed |
