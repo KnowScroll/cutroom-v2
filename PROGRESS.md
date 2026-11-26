@@ -4,7 +4,7 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 
 ## State
 
-2026-11-27: preparation done (docs, labels, milestones, issues #1-#18). Implementation not started.
+2026-11-27: preparation done (docs, labels, milestones, issues #1-#18). Implementation started: M0.
 
 ## Waiting on the user
 
@@ -18,7 +18,7 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 
 | issue | agent / model | branch or worktree | started | note |
 |---|---|---|---|---|
-| none | | | | |
+| #1 | implementer / sonnet | claude/1-scaffold (worktree) | 2026-11-27 | scaffold + CI + ruleset |
 
 ## Real cuts (budget: 40 cuts with model calls, docs/plan.md)
 
@@ -27,4 +27,4 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 
 ## Next action
 
-Run the preflight in HANDOFF.md, then start #1.
+Preflight passed 2026-11-27. #1 in flight; after it merges start #2, #3, #4, #12 in parallel.
