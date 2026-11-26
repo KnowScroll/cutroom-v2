@@ -35,4 +35,4 @@ Free re-renders (no model calls) not counted: #16 radio-lp-e4 resume (fonts-radi
 
 ## Next action
 
-#11 in flight (CP2); then #13, #14 in parallel; #15; #17; #18. Then #7 (after #5), #16, #8 (after #5-#7).
+#11 in flight (CP2). After it merges: #13 and #14 in parallel; then #15 (CP3b), #17 (CP4), #18 (CP5).
