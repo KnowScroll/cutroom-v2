@@ -9,7 +9,7 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 ## Waiting on the user
 
 - [x] `.env` at the repo root: `MINIMAX_API_KEY`, `OPENROUTER_API_KEY`, `CUTROOM_API_TOKEN` present (checked by name, 2026-11-27). No `ELEVENLABS_API_KEY`: eleven-v4 goes through OpenRouter.
-- [ ] Voice credits: OpenRouter has no credits (user, 2026-11-27) and there is no `ELEVENLABS_API_KEY`, so every engine voice except possibly `heygen` (OpenRouter free tier, expires 2026-11-30, rate-limited, not checked at a zero balance) will be refused. Before #2's real run: top up OpenRouter (a few dollars covers the build; heygen-paid is about $0.003 a reel) or add `ELEVENLABS_API_KEY`. Not needed for #1, #3 (MiniMax only), #4, #10, #12.
+- [ ] Voice credits (not blocking): OpenRouter has no credits yet and there is no `ELEVENLABS_API_KEY`. User ruling 2026-11-27: use the free `heygen` voice until the user adds credits; keys stay the same, so the fallback list picks the paid voices up by itself. Free models are rate-limited per day: if `heygen` is refused too, follow HANDOFF "Not escalations".
 - [ ] Confirm design D20: "max 3" means the first cut plus up to 3 fix rounds (up to 4 cuts). Not blocking: it is one constant.
 - [ ] #13: approve the frame-gate calibration table (the issue gets `needs-user` when it is ready).
 - [ ] #17: OK to install Node 22, FFmpeg and Chrome in WSL Ubuntu.
