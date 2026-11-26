@@ -45,6 +45,7 @@ export const HistoryEntry = z.object({
   kind: z.string(),
   job: z.string(),
   cut: z.number().int().positive(),
+  // the fix round that applies the patch (§6.1, D20): round 1 follows cut 1's review and makes cut 2; no round 0
   round: z.number().int().positive(),
   t: z.string(),
   patches: z.array(TemplatePatch),
@@ -196,7 +197,7 @@ export async function syncTemplates(
 // ---------- topic words (§5.3) ----------
 
 // Function words, and the words that frame a request ("make a 45 second reel explaining how X works").
-// Everything else of 3 or more letters or digits is a content word.
+// Everything else of 3 or more letters or digits, or 2 capitals ("AI", "UK"), is a content word.
 const STOPWORDS = new Set(
   `the and but for nor yet not all any are was were been being has have had having does did doing done
   can could will would shall should may might must its our ours your yours you his her hers him she they
@@ -208,26 +209,42 @@ const STOPWORDS = new Set(
   got let lets make makes made making want wants need needs please use uses using used show shows
   showing tell tells telling explain explains explained explaining explainer work works real true
   reel reels video videos short shorts clip clips story stories second seconds minute minutes vertical
-  style template viewer viewers audience`.split(/\s+/),
+  style styles template templates viewer viewers audience`.split(/\s+/),
 );
 
-function tokens(text: string): string[] {
-  return text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
-}
-
-// a trailing "s" is dropped so "engines" in the request catches "engine" in a patch (and back)
-function fold(word: string): string {
-  return word.length > 3 && word.endsWith('s') ? word.slice(0, -1) : word;
-}
-
-/** The content words of a text: lower-cased, plural "s" dropped, at least 3 characters, no stopwords. */
+/** The content words of a text, lower-cased: not stopwords, 3+ letters or digits, or 2 capitals. */
 export function contentWords(text: string): Set<string> {
   const out = new Set<string>();
-  for (const w of tokens(text)) {
-    if (w.length < 3 || STOPWORDS.has(w) || STOPWORDS.has(fold(w))) continue;
-    out.add(fold(w));
+  for (const t of text.match(/[\p{L}\p{N}]+/gu) ?? []) {
+    const w = t.toLowerCase();
+    const acronym = t.length === 2 && t === t.toUpperCase() && /\p{Lu}/u.test(t);
+    if ((w.length >= 3 || acronym) && !STOPWORDS.has(w)) out.add(w);
   }
   return out;
+}
+
+// a word and its singular guesses (-s, -es, -ies -> y), so "volcanoes" meets "volcano", "batteries" "battery"
+function stems(word: string): string[] {
+  if (word.length <= 3) return [word];
+  const out = [word];
+  if (word.endsWith('ies')) out.push(`${word.slice(0, -3)}y`);
+  if (word.endsWith('es')) out.push(word.slice(0, -2));
+  if (word.endsWith('s')) out.push(word.slice(0, -1));
+  return out;
+}
+
+/**
+ * The words of `text` that share a stem with a content word of `request` (§5.3: M3 copies examples
+ * literally, so no topic word may enter a template). Every word of the text counts, in any case.
+ */
+export function topicWordsIn(text: string, request: string): string[] {
+  const topic = new Set([...contentWords(request)].flatMap(stems));
+  const found = new Set<string>();
+  for (const t of text.match(/[\p{L}\p{N}]+/gu) ?? []) {
+    const w = t.toLowerCase();
+    if (stems(w).some((s) => topic.has(s))) found.add(w);
+  }
+  return [...found];
 }
 
 // ---------- patches (§5.3, D16) ----------
@@ -262,7 +279,7 @@ function isPatchable(section: string): section is PatchableSection {
 type Checked =
   { ok: true; text: string; section: PatchableSection } | { ok: false; reason: string };
 
-function patchText(template: string, patch: TemplatePatch, topic: ReadonlySet<string>): Checked {
+function patchText(template: string, patch: TemplatePatch, request: string): Checked {
   const section = patch.section.trim().toLowerCase();
   if (!isPatchable(section)) {
     return {
@@ -270,7 +287,7 @@ function patchText(template: string, patch: TemplatePatch, topic: ReadonlySet<st
       reason: `section "${patch.section}" may not be patched (D16: only ${PATCHABLE_SECTIONS.join(', ')})`,
     };
   }
-  const found = [...contentWords(patch.text)].filter((w) => topic.has(w));
+  const found = topicWordsIn(patch.text, request);
   if (found.length > 0) {
     return {
       ok: false,
@@ -363,9 +380,17 @@ function historyDir(workingDir: string, kind: string): string {
   return join(workingDir, 'history', kind);
 }
 
+// counts both files, so a snapshot left without its entry (a crash between the writes) is never reused
 async function nextK(dir: string): Promise<number> {
-  const ks = (await readdir(dir))
-    .map((f) => /^(\d+)\.json$/.exec(f)?.[1])
+  let names: string[];
+  try {
+    names = await readdir(dir);
+  } catch (err) {
+    if (hasCode(err, 'ENOENT')) return 1;
+    throw err;
+  }
+  const ks = names
+    .map((f) => /^(\d+)\.(md|json)$/.exec(f)?.[1])
     .filter((k) => k !== undefined)
     .map(Number);
   return Math.max(0, ...ks) + 1;
@@ -387,15 +412,13 @@ export async function applyPatches(
   const before = await readFile(file, 'utf8');
   const entry = (await readManifest(workingDir))[`${kind}.md`];
   if (entry === undefined) throw new Error(`${kind}.md has no manifest record: sync first`);
-  const topic = contentWords(ctx.request);
-  for (const w of contentWords(kind)) topic.delete(w); // the template's own name is not a topic word
 
   let text = before;
   const applied: TemplatePatch[] = [];
   const rejected: RejectedPatch[] = [];
   const sections: PatchableSection[] = [];
   for (const patch of patches) {
-    const r = patchText(text, patch, topic);
+    const r = patchText(text, patch, ctx.request);
     if (!r.ok) {
       rejected.push({ patch, reason: r.reason });
       continue;
@@ -407,9 +430,9 @@ export async function applyPatches(
   if (applied.length === 0) return { k: null, applied, rejected, sections };
 
   const dir = historyDir(workingDir, kind);
-  await mkdir(dir, { recursive: true });
   const k = await nextK(dir);
-  const record: HistoryEntry = {
+  // checked before the first write, so a bad entry (say round 0) leaves no history and no change
+  const record = HistoryEntry.parse({
     k,
     kind,
     job: ctx.job,
@@ -423,16 +446,13 @@ export async function applyPatches(
     sha_before: sha256(before),
     sha_after: sha256(text),
     next: null,
-  };
+  } satisfies HistoryEntry);
+  await mkdir(dir, { recursive: true });
   // 'wx': the history is the trail (D19), never overwritten
   await writeFile(join(dir, `${String(k)}.md`), before, { flag: 'wx' });
-  await writeFile(
-    join(dir, `${String(k)}.json`),
-    `${JSON.stringify(HistoryEntry.parse(record), null, 2)}\n`,
-    {
-      flag: 'wx',
-    },
-  );
+  await writeFile(join(dir, `${String(k)}.json`), `${JSON.stringify(record, null, 2)}\n`, {
+    flag: 'wx',
+  });
   await writeAtomic(file, text);
   const manifest = await readManifest(workingDir);
   manifest[`${kind}.md`] = {

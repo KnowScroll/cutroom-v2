@@ -13,6 +13,7 @@ import {
   readManifest,
   recordNextCut,
   syncTemplates,
+  topicWordsIn,
   type PatchableSection,
 } from '../src/templates.ts';
 
@@ -215,16 +216,56 @@ await test('a deleted original keeps its working copy and logs it', async () => 
   });
 });
 
-await test('content words: no stopwords, no request framing, no short words, plural folded', () => {
+await test('content words: no stopwords or request framing; 3+ characters or 2 capitals', () => {
   assert.deepEqual([...contentWords(REQUEST)].sort(), ['engine', 'jet']);
   assert.deepEqual([...contentWords("Why the Earth's oceans are salty (for kids), 1969")].sort(), [
     '1969',
     'earth',
-    'kid',
-    'ocean',
+    'kids',
+    'oceans',
     'salty',
   ]);
-  assert.deepEqual([...contentWords('Jets and ENGINES')].sort(), ['engine', 'jet']);
+  assert.deepEqual([...contentWords('How AI image generators work in the UK')].sort(), [
+    'ai',
+    'generators',
+    'image',
+    'uk',
+  ]);
+});
+
+await test('topic words meet across plurals (-s, -es, -ies) both ways and in any case', () => {
+  const pairs: [string, string][] = [
+    ['Why volcanoes erupt', 'Open on the volcano crater.'],
+    ['How batteries store energy', 'Cut the battery open.'],
+    ['How viruses spread', 'One virus per shot.'],
+    ['How galaxies form', 'A galaxy fills the frame.'],
+    ['Why gases expand', 'Show the gas as dots.'],
+    ['What is inside the box', 'Stack the boxes.'],
+    ['How a jet engine works', 'Draw both Engines big.'],
+    ['How AI image generators work', 'Show an AI chip.'],
+    ['Why the UK drives on the left', 'Put the uk map in the corner.'],
+  ];
+  for (const [request, text] of pairs) {
+    assert.equal(topicWordsIn(text, request).length, 1, `${request} / ${text}`);
+  }
+  assert.deepEqual(topicWordsIn('Open on the strangest true fact.', 'Why volcanoes erupt'), []);
+  assert.deepEqual(topicWordsIn('Show us the map.', 'How AI chips work'), []);
+});
+
+await test("the template's own name is no exception to the topic check", async () => {
+  await withDirs(async (originals, working) => {
+    const kind = 'lowpoly-chain-explainer';
+    await writeFile(join(originals, `${kind}.md`), ALPHA);
+    await syncTemplates(originals, working);
+    const r = await applyPatches(
+      working,
+      kind,
+      [patch({ section: 'look', op: 'append', text: 'Draw the chain links big.' })],
+      { ...ctx, request: 'How a bike chain works' },
+    );
+    assert.equal(r.k, null);
+    assert.match(r.rejected[0]?.reason ?? '', /"chain"/);
+  });
 });
 
 await test('valid patches are applied; the snapshot and entry hold the text before the change', async () => {
@@ -339,7 +380,7 @@ await test('rejected patches leave the copy, the manifest and the history untouc
         patch({ section: 'story', op: 'append', text: 'Show the jet engine fan first.' }),
         /"jet", "engine"/,
       ],
-      [patch({ section: 'look', op: 'append', text: 'Draw both Engines big.' }), /"engine"/],
+      [patch({ section: 'look', op: 'append', text: 'Draw both Engines big.' }), /"engines"/],
       [
         patch({
           section: 'story',
@@ -407,24 +448,42 @@ await test('_base.md is never patchable', async () => {
   });
 });
 
-await test('the snapshot is written before the change: no history, no change', async () => {
+await test('the snapshot is written before the change', async () => {
   await withDirs(async (originals, working) => {
     await writeOriginals(originals);
     await syncTemplates(originals, working);
-    // a folder where the snapshot 1.md would go: the snapshot write fails, so the copy must not change
-    await mkdir(join(working, 'history', 'alpha', '1.md'), { recursive: true });
-    await assert.rejects(
-      applyPatches(
-        working,
-        'alpha',
-        [patch({ section: 'look', op: 'append', text: 'Thin edges.' })],
-        ctx,
-      ),
-      /EEXIST|EISDIR/,
-    );
-    assert.deepEqual(await readdir(join(working, 'history', 'alpha')), ['1.md']);
+    const thin = [patch({ section: 'look', op: 'append', text: 'Thin edges.' })];
+    // a folder where the copy's temp file goes: writing the copy fails after the history writes
+    await mkdir(join(working, 'alpha.md.tmp'));
+    await assert.rejects(applyPatches(working, 'alpha', thin, ctx), /EISDIR|EPERM/);
+    const hist = join(working, 'history', 'alpha');
+    assert.deepEqual((await readdir(hist)).sort(), ['1.json', '1.md']);
+    assert.equal(await read(join(hist, '1.md')), ALPHA);
     assert.equal(await read(join(working, 'alpha.md')), ALPHA);
     assert.equal((await readManifest(working))['alpha.md']?.patched, false);
+
+    await rm(join(working, 'alpha.md.tmp'), { recursive: true });
+    const r = await applyPatches(working, 'alpha', thin, ctx);
+    assert.equal(r.k, 2);
+  });
+});
+
+await test('a bad entry writes nothing, and a snapshot left without its entry blocks no later patch', async () => {
+  await withDirs(async (originals, working) => {
+    await writeOriginals(originals);
+    await syncTemplates(originals, working);
+    const thin = [patch({ section: 'look', op: 'append', text: 'Thin edges.' })];
+    // round 0 does not exist: round 1 is the fix round after cut 1's review (§6.1, D20)
+    await assert.rejects(applyPatches(working, 'alpha', thin, { ...ctx, round: 0 }), /round/);
+    assert.equal((await readdir(working)).includes('history'), false);
+    assert.equal(await read(join(working, 'alpha.md')), ALPHA);
+
+    // a crash between the snapshot and the entry leaves 1.md alone
+    await mkdir(join(working, 'history', 'alpha'), { recursive: true });
+    await writeFile(join(working, 'history', 'alpha', '1.md'), ALPHA);
+    const r = await applyPatches(working, 'alpha', thin, ctx);
+    assert.equal(r.k, 2);
+    assert.match(await read(join(working, 'alpha.md')), /- Thin edges\.\n/);
   });
 });
 
