@@ -46,7 +46,7 @@ Each issue body repeats its own `Depends on:` line; this graph is the overview.
 
 ## Real-run budget
 
-At most 40 cuts during implementation. A cut = one engine invocation that makes model calls; a re-render from checkpoints with no model calls is free. `CUTROOM_VOICE_MODEL=heygen-paid` except in #18. Each real cut is a line in PROGRESS.md (issue, purpose, cost). Going past the budget, or ElevenLabs/OpenRouter credits running out, is a user escalation.
+At most 40 cuts during implementation. A cut = one engine invocation that makes model calls; a re-render from checkpoints with no model calls is free. Dev voice list cheap first (AGENTS.md); #18 uses the production default list. Each real cut is a line in PROGRESS.md (issue, purpose, cost). Going past the budget, or ElevenLabs/OpenRouter credits running out, is a user escalation.
 
 ## Done
 

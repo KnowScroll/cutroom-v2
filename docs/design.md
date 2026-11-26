@@ -6,7 +6,7 @@ Motto: **Lightweight. Fast. Simple.**
 
 ## 1. Decisions
 
-2026-11-27. D1-D13: the user's answers. D14-D19: defaults proposed to the user and not objected to. D20: an assumption the user must confirm (see PROGRESS.md).
+2026-11-27. D1-D13 and D21: the user's answers. D14-D19: defaults proposed to the user and not objected to. D20: an assumption the user must confirm (see PROGRESS.md).
 
 | id | decision |
 |---|---|
@@ -30,6 +30,7 @@ Motto: **Lightweight. Fast. Simple.**
 | D18 | One reel at a time (parallel runs slow every MiniMax call): a FIFO queue with one worker. |
 | D19 | The working folder is not in Git; the template edit history (§5.3) is the trail. |
 | D20 | "max 3" = the first cut plus at most 3 fix rounds (at most 4 cuts per job), from "review, re send with fixes (max-3)". A constant (`MAX_FIX_ROUNDS`), so a different answer is a one-line change. |
+| D21 | Voice is not locked to one model or provider (user, 2026-11-27): an ordered list of every engine voice model, with fallback (§6.7). Keys for OpenRouter and ElevenLabs are both optional; a job needs at least one voice that works. |
 
 ## 2. Scope
 
@@ -122,7 +123,7 @@ sync templates -> intake (M3) -> cut 1 (engine) -> gates -> review (M3)
 - A review that approves while a blocking gate FAILs is asked once more with the FAIL lines ("approve is not allowed"); still no fixes: the loop stops.
 - A round is either a notes round or a template round, never both (a patch makes the shots regenerate anyway).
 - The last cut is reviewed too (its scores grade it); its fixes are recorded, not applied.
-- Engine crash: rerun the same command once (it resumes). Second crash: the job fails with the error; the report covers what exists.
+- Engine crash: rerun the same command once (it resumes). Second crash: the job fails with the error; the report covers what exists. A voice refusal is not a crash: it switches the voice (§6.7) and does not count as a fix round.
 
 ### 6.2 Intake
 
@@ -135,7 +136,7 @@ A request that names a template uses it (fit is still judged). `brief.txt` = the
 Code only. Each gate: `{ name, value, threshold, pass, mode: "block" | "info" }`.
 - `format`: ffprobe 1080x1920, 30 fps, an audio stream, duration = timeline total +-0.1 s. block.
 - `shipped_failing`: engine log lines `using the last` (a shot or asset shipped failing its validator). block.
-- `voice_pitch` (>= 4 st), `music_fit` (engine PASS), `voice_over_music` (10-14 dB): from `audio.json`. block. Kokoro cannot pass `voice_pitch` (measured 2.2-3.9 st on 10 fastreel reels; it ignores tone tags), so it is never used for gated runs.
+- `voice_pitch` (>= 4 st), `music_fit` (engine PASS), `voice_over_music` (10-14 dB): from `audio.json`. block. Kokoro cannot pass `voice_pitch` (measured 2.2-3.9 st on 10 fastreel reels; it ignores tone tags), so a reel voiced by Kokoro can never be approved; it stays in the voice list as the last resort so a job still returns a cut (§6.7).
 - Frame audit, ported from cutroom `scripts/frame_audit.py` (v1.7): `same_view` <= 14 s, `frame0` detail >= 0.05, `blank` none, `balance`, `flat` <= 60%, `static_band` <= 14 s, `alive` gap <= 3 s and still <= 20%. Caption band left out per the template's `captions:` check. **info until calibrated** (M3 of the plan): fastreel's looks differ from cutroom's (dan-koe is flat by design), so thresholds and per-template modes are set from the 42 local fastreel reels and approved by the user. Per-template overrides are developer lines in the template's `## checks`: `gate <name>: off | info | <threshold>`.
 - Length against the target is passed to the review, not gated.
 
@@ -158,6 +159,16 @@ Order: fewest blocking FAILs, then highest score sum, then the later cut. Approv
 
 `fetch` to `https://api.minimax.io/anthropic/v1/messages`, Bearer `MINIMAX_API_KEY`, streamed like the engine's `m3Request` (no header timeout), retries network errors with growing waits, waits on quota error 2056, returns text + usage; price from the engine (`in 0.30, cached 0.06, out 1.20` USD per M tokens). No SDK.
 
+### 6.7 Voice fallback
+
+Every engine voice goes through OpenRouter (`/audio/speech`), except ElevenLabs, which the engine calls directly when `ELEVENLABS_API_KEY` is set. Any provider can be out of credits, so the voice is an ordered list, `CUTROOM_VOICE_MODELS` (engine `--voice-model` keys; default `eleven-v4, heygen-paid, heygen, minimax, gemini-tts, eleven-v4-turbo, eleven-v3, kokoro`; development puts the cheap ones first, AGENTS.md). Measured pitch spread: eleven-v4 4.6-6.4 st, heygen 4.45-4.57, kokoro 2.2-3.9 (fails the gate); minimax and gemini-tts not measured yet.
+- A cut runs with the first model not yet ruled out for this job.
+- The engine stops with a voice refusal: its log's `FAILED` line matches `(OpenRouter|ElevenLabs) speech <id> HTTP <4xx other than 429>` (the engine's own error format, `engine/audio.mjs`). That model is ruled out for the job (and, in the service, for the next hour); the same cut reruns with the next model (the engine resumes from its checkpoints and voices again). This is not a fix round.
+- A blocking `voice_pitch` FAIL: the next fix round also switches to the next model not yet tried (the voice cannot be fixed by notes).
+- No model left: the job fails with every refusal listed. Never a silent default.
+- The model of every cut, and every switch and why, go into events and run.json.
+- Music needs no change: the engine already falls back from the library to Lyria (OpenRouter) to its procedural synth.
+
 ## 7. Run record
 
 `var/runs/<job-id>/` (job id: `YYYYMMDD-HHMMSS-<slug>`):
@@ -175,7 +186,7 @@ Order: fewest blocking FAILs, then highest score sum, then the later cut. Approv
 - HTTP (`node:http`, no framework): `POST /reels {request, template?, seconds?}` -> 202 `{id}`; `GET /reels/:id` -> job status, stage, cuts so far, report when done; `GET /reels/:id/reel.mp4` (selected cut); `GET /reels/:id/report` (run.json); `GET /health`. Bearer `CUTROOM_API_TOKEN`; binds `CUTROOM_HOST:CUTROOM_PORT` (default 127.0.0.1:8080).
 - Queue: jobs are files in `var/runs`; one worker takes the oldest `queued`. On start, a job left `running` is resumed (the engine resumes from checkpoints).
 - `var/engine.lock` keeps every CLI and service process to one engine run at a time on a machine. It records the harness pid and the engine child's pid; it is stale only when the engine pid is gone. On shutdown the harness stops its engine's process tree; on start, a live engine pid in the lock was started by a harness, so its tree is stopped (`taskkill /PID <pid> /T /F` on Windows, the process group on Linux, where the engine is spawned detached) before the job resumes. Two writers never share one `--out`.
-- Voice model: `CUTROOM_VOICE_MODEL` (engine default `eleven-v4`). Development runs use `heygen-paid` (the engine's HeyGen voice through OpenRouter, about $0.003 a reel, measured 4.45-4.57 st, so it passes `voice_pitch`); if it fails that gate in practice, escalate rather than relax the gate.
+- Voice: `CUTROOM_VOICE_MODELS` (§6.7).
 
 ## 9. Deploy
 

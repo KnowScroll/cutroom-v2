@@ -44,7 +44,7 @@ Tests check behaviour (what the harness does with real files, processes and HTTP
 - `.env` (repo root) holds the keys. Never print, log, copy or commit it or any key; load it with `process.loadEnvFile`. The repo is **public**.
 - Never commit `var/`, reference `.mp4` files, run outputs or `node_modules`.
 - Kill only a PID you started, or the engine pid the harness recorded in `var/engine.lock`; kill its whole tree (`taskkill /PID <pid> /T /F` on Windows, the process group on Linux), since the engine starts Chrome. Never `pkill`, `killall` or kill by pattern.
-- Real engine runs cost money and quota: one at a time on the machine (`var/engine.lock`), `--out` absolute under `$CUTROOM_VAR/runs/`, `CUTROOM_VOICE_MODEL=heygen-paid` unless the issue says otherwise (kokoro fails the voice gate), and every cut is logged in PROGRESS.md.
+- Real engine runs cost money and quota: one at a time on the machine (`var/engine.lock`), `--out` absolute under `$CUTROOM_VAR/runs/`, `CUTROOM_VOICE_MODELS=heygen-paid,heygen,minimax,gemini-tts,eleven-v4,eleven-v4-turbo,eleven-v3,kokoro` unless the issue says otherwise (cheap first; the harness falls back down the list, design §6.7), and every cut is logged in PROGRESS.md.
 - Never `npx` a bare package name (a public npm package called `cutroom` exists); use `npm exec --no-install` or `node src/cli.ts`.
 
 ## Git and GitHub

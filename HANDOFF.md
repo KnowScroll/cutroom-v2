@@ -37,7 +37,7 @@ Source of truth: design §1 > the rest of `docs/design.md` > the issue > `docs/p
 1. **Pick** an eligible issue: open, every `Depends on` issue closed, no `blocked` or `needs-user` label, lowest milestone first, then lowest number. Start independent eligible issues in parallel (plan "Parallel lanes"), at most 3-4 implementers at once.
 2. **Brief** an implementer (Agent tool, `model` from the issue's `Model:` line, `isolation: "worktree"`, `run_in_background: true` when running several). The brief: the issue number (it reads the issue itself), `AGENTS.md`, the design sections the issue cites, the files it owns, and these environment facts:
    - `CUTROOM_ENV_FILE=C:\Users\XZNON\cutroom-v2\.env` and `CUTROOM_VAR=C:\Users\XZNON\cutroom-v2\var` (worktrees have no `.env`; all real runs share one var folder, cache and engine lock; removing a worktree deletes everything inside it, so nothing real lives there);
-   - real engine runs: `--out` absolute under `C:\Users\XZNON\cutroom-v2\var\runs\`, `CUTROOM_VOICE_MODEL=heygen-paid`, one at a time; before #5 lands, ask you before starting one; log each cut in PROGRESS.md;
+   - real engine runs: `--out` absolute under `C:\Users\XZNON\cutroom-v2\var\runs\`, `CUTROOM_VOICE_MODELS=heygen-paid,heygen,minimax,gemini-tts,eleven-v4,eleven-v4-turbo,eleven-v3,kokoro` (before #8 lands, pass the first voice model that works with the current keys to `--voice-model`), one at a time; before #5 lands, ask you before starting one; log each cut in PROGRESS.md;
    - run `npm ci` in a new worktree; run `npm run check` before opening the PR;
    - open the PR with the AGENTS.md body and report the PR number, what was checked and what was not.
    Give each agent only the context its issue needs.
