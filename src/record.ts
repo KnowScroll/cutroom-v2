@@ -139,6 +139,42 @@ export const VoiceSwitch = z.object({
 });
 export type VoiceSwitch = z.infer<typeof VoiceSwitch>;
 
+const NoteTargets = z.object({
+  lines: z.array(z.number().int().positive()),
+  shots: z.array(z.number().int().positive()),
+  assets: z.array(z.string()),
+});
+export type NoteTargets = z.infer<typeof NoteTargets>;
+
+// One fix round (design §6.1, D20): round n follows the review of cut n and makes cut n + 1.
+export const FixRound = z.object({
+  n: z.number().int().positive(),
+  cut: z.number().int().positive(),
+  kind: z.enum(['notes', 'template', 'voice']),
+  /** notes-<cut>.json, passed with --apply-notes (notes round). */
+  notes_file: z.string().nullable(),
+  /** Review notes not passed on: on a shot or asset the work plan.json lacks, or skipped by a template round. */
+  ignored_notes: z.array(z.string()),
+  /** The applied patch's history entry and the checkpoints it deleted (template round). */
+  patch: z
+    .object({
+      k: z.number().int().positive(),
+      from: z.string(),
+      deleted: z.array(z.string()),
+    })
+    .nullable(),
+  rejected_patches: z.array(z.object({ patch: TemplatePatch, reason: z.string() })),
+  /** Earlier notes rounds whose changes this template round's rerun drops (the plan and shots are rebuilt). */
+  drops_rounds: z.array(z.number().int().positive()),
+  /** The voice_pitch switch of design §6.7 (trigger 2). */
+  voice: z.object({ from: z.string(), to: z.string() }).nullable(),
+  /** What the engine changed in the checkpoints (notes round, compared before and after). */
+  changed: NoteTargets.nullable(),
+  /** Noted, but the checkpoint is unchanged (a redraw that failed its checks keeps the old code). */
+  unchanged: NoteTargets.nullable(),
+});
+export type FixRound = z.infer<typeof FixRound>;
+
 export const RunRecord = z.object({
   id: z.string(),
   request: JobRequest,
@@ -146,6 +182,10 @@ export const RunRecord = z.object({
   git_commit: z.string(),
   sync_conflicts: z.array(z.string()),
   cuts: z.array(CutRecord),
+  // defaults keep run.json files written before the fix loop readable
+  rounds: z.array(FixRound).default([]),
+  /** Why the loop stopped: approved, rounds used up, no valid fix, or an error. */
+  loop_end: z.string().default(''),
   voice_switches: z.array(VoiceSwitch),
   harness_calls: z.array(HarnessCall),
   selected: z.object({ cut: z.number().int().positive(), why: z.string() }).nullable(),
@@ -361,6 +401,35 @@ export function gateValue(v: Gate['value']): string {
   return String(v);
 }
 
+function targets(t: NoteTargets): string {
+  const parts = [
+    t.lines.length > 0 ? `lines of shot ${t.lines.join(', ')}` : '',
+    t.shots.length > 0 ? `shot ${t.shots.join(', ')}` : '',
+    t.assets.length > 0 ? `asset ${t.assets.join(', ')}` : '',
+  ].filter((p) => p !== '');
+  return parts.length > 0 ? parts.join('; ') : 'nothing';
+}
+
+function roundLine(r: FixRound): string {
+  const parts = [`round ${String(r.n)} -> cut ${String(r.cut)}: ${r.kind}`];
+  if (r.patch !== null) {
+    parts.push(
+      `template patch (history ${String(r.patch.k)}), checkpoints from ${r.patch.from} deleted (${String(r.patch.deleted.length)} files)`,
+    );
+  }
+  if (r.drops_rounds.length > 0) {
+    parts.push(`drops the changes of round ${r.drops_rounds.join(', ')}`);
+  }
+  for (const p of r.rejected_patches) parts.push(`patch rejected (${p.reason})`);
+  if (r.changed !== null) parts.push(`changed: ${targets(r.changed)}`);
+  if (r.unchanged !== null && targets(r.unchanged) !== 'nothing') {
+    parts.push(`noted but unchanged: ${targets(r.unchanged)}`);
+  }
+  if (r.ignored_notes.length > 0) parts.push(`notes not passed on: ${r.ignored_notes.join(', ')}`);
+  if (r.voice !== null) parts.push(`voice ${r.voice.from} -> ${r.voice.to}`);
+  return parts.join('; ');
+}
+
 /** Renders the human summary of run.json. */
 export function renderReport(run: RunRecord): string {
   const out: string[] = [];
@@ -388,6 +457,7 @@ export function renderReport(run: RunRecord): string {
     );
     if (selected.review !== null) out.push(`Review: ${selected.review.summary}`, '');
   }
+  if (run.loop_end !== '') out.push(`Loop: ${run.loop_end}`, '');
 
   if (run.intake !== null) {
     const i = run.intake;
@@ -414,6 +484,10 @@ export function renderReport(run: RunRecord): string {
     );
   }
   out.push('');
+
+  if (run.rounds.length > 0) {
+    out.push('## Fix rounds', '', ...run.rounds.map((r) => `- ${roundLine(r)}`), '');
+  }
 
   const wrong: string[] = [];
   if (run.status === 'failed') wrong.push(`job failed: ${run.error ?? 'no error recorded'}`);
