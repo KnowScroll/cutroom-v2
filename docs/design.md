@@ -112,6 +112,8 @@ The harness deletes the checkpoints from the earliest step that reads the patche
 
 "Delete from X" means X and every checkpoint after it in the chain of §4.1 (the implementer confirms whether music.json must go too). The implementer re-verifies this table against the imported code.
 
+2026-11-27 (#10, re-verified in the imported engine): the readers and the "delete from" column are right; the sheet review (asset_reel.mjs:633) also reads look, assets and the director (732) reads every section but writes no checkpoint. Correction to the chain: music.json goes with the script, not after the shots. The track is picked for the script's music field (writer.mjs:409, 429, copied into the plan unchanged at asset_reel.mjs:365) and reused while music.json exists (audio.mjs:335-338); the plan step changes no line, music or payoff, so a plan.json rerun keeps it. Exact sets in `src/templates.ts`: from facts.json: facts.json, then the spine.json set; from spine.json: spine.json, script.json, script.md, music.json, music_lyria.mp3, music_synth.wav, then the plan.json set; from plan.json: plan.json, poses.json, photos.json, photos/, kit.js, asset_*, sheet*.jpg, sheet-review*.json, shot_<n>.js, rejected_*.js. Never deleted: reference.txt (from the brief; the facts step only adds articles to it) and calls.json (the live cost log, never read back).
+
 ## 6. Harness
 
 ### 6.1 Flow of one job
