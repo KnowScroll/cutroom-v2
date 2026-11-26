@@ -565,7 +565,7 @@ function applyPoses(plan, P) {
   }
 }
 
-// save: checkpoint the result (first drawings and sprite-sheet fixes; director-round redraws are not checkpointed)
+// save: checkpoint the result (first drawings and sprite-sheet fixes; redraws from director notes are checkpointed too)
 async function makeAsset(plan, stage, a, notes = null, save = !notes) {
   // a character with many poses: draw the character with its 3 most-used poses first (full attention on the identity),
   // then add the rest to that code from the same inner functions. Ten poses in one go lost the face and the craft.
@@ -752,7 +752,7 @@ async function applyNotes(plan, stage, notes, dir) {
     if (nl.length) { s.lines = nl; relined.add(+k); } else log(`director lines for shot ${k} ignored: no speaker is in the cast (${ls.map(l => l?.who).join(', ')})`);
   }
   await voiceAll(plan);
-  ckSave('plan.json', planJson(plan)); // the changed lines persist
+  const saved = JSON.parse(ckLoad('plan.json')); saved.shots.forEach((s, i) => { s.lines = plan.shots[i].lines.map(({ _clip, ...l }) => l); }); ckSave('plan.json', saved); // only the lines change in the plan checkpoint; code lives in kit.js, asset_*.js and shot_*.js
   notes.shots = notes.shots || {};
   for (const k of relined) { const s = plan.shots[k - 1]; if (/\bh\.cue\(/.test(s.code || '') && !notes.shots[k]) notes.shots[k] = `The lines of this shot changed to: ${s.lines.map(l => `"${l.text}"`).join(' ')}. Keep the staging; time every h.cue(...) to a word the new lines say.`; }
   if (!NOASSETS) await pool(Object.entries(notes.assets || {}).map(([id, n]) => () => { const a = plan.assets.find(x => x.id === id); if (a && D3MODE() && a.kind === 'character') { log(`director note on 3D character ${id} not applied (the engine builds it from look3d): ${String(n).slice(0, 120)}`); return null; } return a ? (D3MODE() ? makeProp3d(plan, stage, a, n, true) : makeAsset(plan, stage, a, n, true)) : null; }), 8);
