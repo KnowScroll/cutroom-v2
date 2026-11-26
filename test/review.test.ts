@@ -98,6 +98,7 @@ const gates: Gate[] = [
   },
   { name: 'shipped_failing', value: 1, threshold: 0, pass: false, mode: 'block' },
   { name: 'same_view', value: 20.5, threshold: 14, pass: false, mode: 'info' },
+  { name: 'alive', value: { gap_s: 1.2, still: 0.1 }, threshold: null, pass: true, mode: 'info' },
 ];
 
 const valid = {
@@ -215,6 +216,7 @@ await test('the packet: asset sheet, one strip per shot, every gate line, facts,
   assert.match(text, /- PASS format \[block\]: 1080x1920 30 fps/);
   assert.match(text, /- FAIL shipped_failing \[block\]: 1 \(threshold 0\)/);
   assert.match(text, /- FAIL same_view \[info\]: 20\.5 \(threshold 14\)/);
+  assert.match(text, /- PASS alive \[info\]: gap_s 1\.2, still 0\.1 \(threshold null\)/);
   assert.match(text, /\(the payoff: f2\)/);
   assert.match(text, /- f2 \[reference\]: The Sun's diameter is about 109 times Earth's\./);
   assert.match(text, /- shipped failing: shot4: after kit\.bg you paint/);

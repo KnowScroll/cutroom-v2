@@ -4,7 +4,7 @@ import path from 'node:path';
 import { z } from 'zod';
 import type { CutResult } from './engine.ts';
 import type { ContentBlock, M3Request, M3Result, Message } from './minimax.ts';
-import { Review, type Gate, type HarnessCall } from './record.ts';
+import { gateValue, Review, type Gate, type HarnessCall } from './record.ts';
 
 const PROMPT_FILE = new URL('./prompts/review.txt', import.meta.url);
 
@@ -160,7 +160,7 @@ async function assetSheets(dir: string): Promise<string[]> {
 }
 
 function gateLine(g: Gate): string {
-  return `${g.pass ? 'PASS' : 'FAIL'} ${g.name} [${g.mode}]: ${String(g.value)} (threshold ${String(g.threshold)})`;
+  return `${g.pass ? 'PASS' : 'FAIL'} ${g.name} [${g.mode}]: ${gateValue(g.value)} (threshold ${String(g.threshold)})`;
 }
 
 function parseJson(text: string): unknown {

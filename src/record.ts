@@ -352,7 +352,7 @@ function secs(s: number): string {
   return `${s.toFixed(0)} s`;
 }
 
-function gateValue(v: Gate['value']): string {
+export function gateValue(v: Gate['value']): string {
   if (v !== null && typeof v === 'object') {
     return Object.entries(v)
       .map(([k, n]) => `${k} ${String(n)}`)
