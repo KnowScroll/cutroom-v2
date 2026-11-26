@@ -30,7 +30,7 @@ A funny true story about an ordinary person, in a toon-shaded 3D cartoon look: b
   - Always moving: the lamp's swing and breathing pool, the clock's second hand, 12 to 20 small cream dust motes (3 to 5 px, 20 to 30%) drifting in the lamp light.
   - No readable words in kit.bg (signs, posters, screens and labels are colour blocks and stripes): the shots zoom into the room, and a word cut by the frame edge fails the engine's text check. Draw the room as shapes every frame, no h.cache: shots zoom into it up to 2.6 times and a cached picture turns soft.
 - kit.panel(ctx, x, y, w, hgt, opts) draws the face that holds words: by default a paper (cream, corners rounded 8 px, a 5 px ink outline, and a 10 px strip of cream mixed 25% toward the ink along its bottom and right edge as its thickness); with opts.accent a screen (the accent colour mixed 45% toward the ink as the glass, a lighter band across its top quarter, inside a 24 px dark bezel of the ground colour with an ink outline). kit.title(ctx, text, x, y, opts) draws text only, no box and no outline: bold, opts.color (default palette.ink; on a screen pass the cream or the accent).
-- Type (kit.font): "Segoe UI", weights 800 to 900. kit.post: nothing but a faint warm grain is allowed (or nothing at all); the vignette belongs to kit.bg.
+- Type (kit.font): "Selawik", weights 800 to 900. kit.post: nothing but a faint warm grain is allowed (or nothing at all); the vignette belongs to kit.bg.
 
 ## motion
 - Sitcom timing: holds, then snaps. An expression changes in one frame or over 0.1 s on the word it belongs to, never as a slow fade.

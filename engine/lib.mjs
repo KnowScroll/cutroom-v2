@@ -15,6 +15,7 @@ const HERE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'); /
 const VAR = path.resolve(process.env.CUTROOM_VAR || path.join(HERE, 'var')); // runs/, cache/ live here
 const TEMPLATE_DIR = path.resolve(process.env.CUTROOM_TEMPLATE_DIR || path.join(HERE, 'templates'));
 const STAGE_URL = pathToFileURL(path.join(HERE, 'engine', 'stage_asset.html')).href;
+const FONTS_URL = pathToFileURL(path.join(HERE, 'fonts')).href + '/'; // bundled open fonts, loaded by stage_asset.html
 const SR = 48000;
 const PRICES = { // USD per million tokens (list prices, research 11)
   'MiniMax-M3.1-Flash': { in: 0.15, cached: 0.015, out: 0.60 },
@@ -85,7 +86,7 @@ function findChrome() {
   return hit;
 }
 
-// Browser with every network request blocked except the local stage page and the files beside it: map data (world.js) and the 3D stages (three.js, stage3d.js, stage3d_lowpoly.js).
+// Browser with every network request blocked except the local stage page and the files beside it: the bundled fonts (fonts/), map data (world.js) and the 3D stages (three.js, stage3d.js, stage3d_lowpoly.js).
 async function launchStage(STAGE_URL_ = STAGE_URL) {
   const STAGE_URL = STAGE_URL_, ALLOWED = new Set([STAGE_URL, ...['world.js', 'three.js', 'stage3d.js', 'stage3d_lowpoly.js'].map(f => new URL(f, STAGE_URL).href)]);
   const browser = await puppeteer.launch({ executablePath: findChrome(), headless: true, args: ['--no-first-run', '--disable-extensions', '--mute-audio', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--force-device-scale-factor=1'] });
@@ -96,8 +97,10 @@ async function launchStage(STAGE_URL_ = STAGE_URL) {
   const newPage = async () => {
     const page = await browser.newPage();
     await page.setRequestInterception(true);
-    page.on('request', r => (ALLOWED.has(r.url()) ? r.continue() : r.abort()));
+    page.on('request', r => (ALLOWED.has(r.url()) || r.url().startsWith(FONTS_URL) ? r.continue() : r.abort()));
     await page.goto(STAGE_URL);
+    // every bundled face is loaded before validation or render (a canvas draws a fallback font while a face is still loading); a missing file rejects here
+    await page.evaluate(() => Promise.all([...document.fonts].map(f => f.load())).then(() => document.fonts.ready));
     return page;
   };
   return { browser, newPage };

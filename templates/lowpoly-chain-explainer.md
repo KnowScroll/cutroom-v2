@@ -19,7 +19,7 @@ A calm, clean, game-like low-poly 3D explainer that builds one idea out of the p
   - Apart from the mountain ring, nothing stands in the world: no platforms, slabs, terrain, buildings or extra peaks.
   - The sweep (kit.bg, both): every 4 s a wide wedge of the data hue at 8 to 12% opacity rotates across the frame in about 1 s. Subtle: it never competes with the model or the card.
 - kit.panel: a dark plate (ground colour lightened to lightness 0.22, 88% opaque), corners rounded 14 px, a 2 px border at 20% of the text colour. Used for the header, the card, the name tag and the comparison boxes.
-- kit.title draws text only (no box). Type: kit.font "Segoe UI", bold. kit.post: a very light vignette only.
+- kit.title draws text only (no box). Type: kit.font "Selawik", bold. kit.post: a very light vignette only.
 
 ## motion
 - One thing at a time. Each shot starts with the previous shot's model flying out to the right (0.4 s, easeIn), then the new model glides in from the left (0.7 s, easeOut) to the centre, where it keeps cruising: a gentle bank and bob (2 to 4 degrees, 2.5 s period) and a soft dark ellipse shadow on the floor under it.

@@ -41,8 +41,8 @@ A calm second-person explainer on a dark stage, built on one idea: a small every
   }
   ```
 - kit.panel(ctx, x, y, w, hgt, opts): a pill whose TOP-LEFT corner is (x, y), exactly h.rr(x, y, w, hgt, hgt / 2) then fill (and stroke): never centred on (x, y) (the shots pass the top-left corner and centre their text at (x + w / 2, y + hgt / 2); a panel drawn centred on (x, y) leaves the text hanging outside its pill). opts.style 'tag' (default): fill chip, 2 px border; 'word': fill word, no border. opts.alpha multiplies its opacity.
-- kit.title(ctx, text, x, y, {size, align, color, k}): bold "Segoe UI" text, no box, no stroke, a soft black shadow (blur 8); centred on (x, y) with textBaseline 'middle'. A number k pops it in (scale 0.6 to 1 with easeBack over 0.25 s, opacity 0 to 1 over 0.15 s); a missing k shows it at once; a negative k hides it.
-- kit.font "Segoe UI". kit.post: nothing (an empty function).
+- kit.title(ctx, text, x, y, {size, align, color, k}): bold "Selawik" text, no box, no stroke, a soft black shadow (blur 8); centred on (x, y) with textBaseline 'middle'. A number k pops it in (scale 0.6 to 1 with easeBack over 0.25 s, opacity 0 to 1 over 0.15 s); a missing k shows it at once; a negative k hides it.
+- kit.font "Selawik". kit.post: nothing (an empty function).
 - Canvas helpers, exactly as the engine defines them: h.rng(seed) returns a FUNCTION (const r = h.rng(7); then r(), r(), r() give numbers from 0 to 1); never use h.rng(seed) itself as a number. h.rr(x, y, w, hgt, r) and h.poly([[x, y], ...]) take NO ctx argument and only build a path: call ctx.fill() or ctx.stroke() after them. h.asset('id', x, y, scale, params) takes NO ctx either.
 
 ## motion

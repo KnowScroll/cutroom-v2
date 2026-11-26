@@ -25,7 +25,7 @@ A calm, sourced documentary explainer of how a real thing is made, extracted or 
   - A cool second accent only when two things flow against each other (cold water in, hot water out): slate blue, lightness 0.55, chroma 0.08, hue 250 to 260.
   - Text: white (lightness 0.97); earlier caption words grey. The brightest things in the picture (labels, the big number, photo frames, the tips of growing pipes) are near-white, so the frame has strong contrast against the near-black ground (the reference measures 13 to 1).
   - palette.accent = the amber accent, palette.accent2 = the slate blue.
-- kit.panel: a dark plate (lightness 0.20, 85% opaque), corners 6 px, a 1 px border at 15% white. kit.title: text only, bold, white, a soft dark shadow (blur 8). kit.font: "Segoe UI". kit.post: a very light vignette and fine film grain (2% noise, seeded per frame); no colour wash.
+- kit.panel: a dark plate (lightness 0.20, 85% opaque), corners 6 px, a 1 px border at 15% white. kit.title: text only, bold, white, a soft dark shadow (blur 8). kit.font: "Selawik". kit.post: a very light vignette and fine film grain (2% noise, seeded per frame); no colour wash.
 - Canvas helpers, exactly as the engine defines them: h.rng(seed) returns a FUNCTION (const r = h.rng(7); then r(), r() give 0 to 1); never use h.rng(seed) itself as a number. h.rr(x, y, w, hgt, r) and h.poly([[x, y], ...]) take NO ctx argument and only build a path: call ctx.fill() or ctx.stroke() after them. Slow static layers (strata streaks, rock texture, a map) are drawn once with h.cache(key, w, hgt, g => ...) and placed with ctx.drawImage.
 
 ## motion

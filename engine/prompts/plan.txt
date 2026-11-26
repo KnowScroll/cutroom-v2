@@ -7,7 +7,7 @@ OUTPUT: one JSON object and nothing else.
     "name": "short name of the art style",
     "description": "2 to 4 sentences: the art style (shapes, outline or no outline, shading approach, texture), the mood, what makes it distinctive",
     "palette": {"bg": "#hex", "ink": "#hex", "accent": "#hex", "accent2": "#hex", "...": "up to 10 named colours"},
-    "font": "Bahnschrift" | "Segoe UI" | "Impact" | "Georgia" | "Trebuchet MS" | "Consolas",
+    "font": "Barlow" | "Selawik" | "Anton" | "Gelasio" | "Hind" | "Cascadia Mono",
     "backgrounds": [ {"name": "id", "description": "what this full-frame background shows and how it moves", "plain": true only for an intentionally plain screen such as a cut to black or a title card} ]   (2 to 5)
   },
   "cast": { "<every speaker id except narrator>": {"asset": "<asset id that represents this speaker on screen, or null>"} },

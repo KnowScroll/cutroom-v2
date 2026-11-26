@@ -3,7 +3,24 @@
 <head>
 <meta charset="utf-8">
 <title>fastreel asset stage</title>
-<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style>
+<style>
+/* bundled open fonts (fonts/, OFL): the stage never uses a system font; launchStage waits for them (lib.mjs) */
+@font-face{font-family:"Selawik";src:url("../fonts/selawik/Selawik-Regular.ttf");font-weight:400}
+@font-face{font-family:"Selawik";src:url("../fonts/selawik/Selawik-Semibold.ttf");font-weight:500 600}
+@font-face{font-family:"Selawik";src:url("../fonts/selawik/Selawik-Bold.ttf");font-weight:700 900}
+@font-face{font-family:"Gelasio";src:url("../fonts/gelasio/Gelasio-VF.ttf");font-weight:400 700}
+@font-face{font-family:"Gelasio";src:url("../fonts/gelasio/Gelasio-Italic-VF.ttf");font-weight:400 700;font-style:italic}
+@font-face{font-family:"Arimo";src:url("../fonts/arimo/Arimo-VF.ttf");font-weight:400 700}
+@font-face{font-family:"Cascadia Mono";src:url("../fonts/cascadia-mono/CascadiaMono-VF.ttf");font-weight:200 700}
+@font-face{font-family:"Barlow";src:url("../fonts/barlow/Barlow-Regular.ttf");font-weight:100 500}
+@font-face{font-family:"Barlow";src:url("../fonts/barlow/Barlow-Bold.ttf");font-weight:600 900}
+@font-face{font-family:"Outfit";src:url("../fonts/outfit/Outfit-VF.ttf");font-weight:100 900}
+@font-face{font-family:"Nunito";src:url("../fonts/nunito/Nunito-VF.ttf");font-weight:200 1000}
+@font-face{font-family:"Hind";src:url("../fonts/hind/Hind-Regular.ttf");font-weight:100 500}
+@font-face{font-family:"Hind";src:url("../fonts/hind/Hind-Bold.ttf");font-weight:600 900}
+@font-face{font-family:"Kalam";src:url("../fonts/kalam/Kalam-Bold.ttf");font-weight:100 900}
+@font-face{font-family:"Anton";src:url("../fonts/anton/Anton-Regular.ttf");font-weight:100 900}
+html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style>
 </head>
 <body>
 <canvas id="c" width="1080" height="1920"></canvas>
@@ -428,7 +445,7 @@ function graph(x, y, w, hgt, values, k, o = {}) {
   ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   for (let j = 0; j < 3; j++) { const g = easeOut((k - j * 0.06) / 0.45); if (g <= 0) continue; ctx.strokeStyle = grid; ctx.lineWidth = j ? 2 : 3; ctx.beginPath(); ctx.moveTo(x, Y0 - j * hgt / 2); ctx.lineTo(x + w * g, Y0 - j * hgt / 2); ctx.stroke(); }
   const labs = Array.isArray(o.labels) ? o.labels : [], every = Math.max(1, Math.ceil(labs.length / 7));
-  if (labs.length) { ctx.font = o.font || '600 38px "Segoe UI", Arial'; ctx.fillStyle = tc; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  if (labs.length) { ctx.font = o.font || '600 38px "Selawik", Arimo'; ctx.fillStyle = tc; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
     labs.forEach((m, i) => { if (i >= V.length || (i % every && i !== V.length - 1)) return; const a = clamp((k - 0.1 - i * 0.03) / 0.3); if (a <= 0) return; ctx.globalAlpha = a * 0.7; ctx.fillText(String(m), P[i][0], Y0 + 26); });
     ctx.globalAlpha = 1; }
   const p = easeInOut((k - 0.3) / dur); let tip = { x: P[0][0], y: P[0][1] };
@@ -480,7 +497,7 @@ async function loadPhotos(list) {
   return Object.keys(PHOTOS).length;
 }
 window.loadPhotos = loadPhotos;
-const smallFont = (size, weight = 400) => `${weight} ${size}px "Segoe UI", Arial, sans-serif`;
+const smallFont = (size, weight = 400) => `${weight} ${size}px "Selawik", Arimo, sans-serif`;
 function smallLines(text, maxW, max = 2) { const ls = wrap(text, maxW); if (ls.length > max) { ls.length = max; ls[max - 1] = ls[max - 1].replace(/\s*\S*$/, '') + '...'; } return ls; }
 const kOf = o => (o.k == null || !Number.isFinite(+o.k) ? 10 : +o.k);
 // h.photo(id, x, y, w, hgt, o): the real photo cover-cropped into the box (x, y is its TOP-LEFT), in a paper frame with a drop
@@ -540,7 +557,7 @@ function quote(id, x, y, w, o = {}) {
   if (![x, y, w].every(Number.isFinite) || w < 300) { if (STRICT) throw new Error(`h.quote("${id}", x, y, w): x, y and w must be numbers, w at least 300 (x, y is the top-left corner)`); return null; }
   const k = kOf(o); if (k < 0) return { x0: x, y0: y, x1: x + w, y1: y + 230, shown: false };
   const size = clamp(+o.size || 32, 26, 44), lh = Math.round(size * 1.55), pad = 24, maxL = Math.max(1, Math.min(5, +o.lines || 3));
-  ctx.save(); ctx.font = `400 ${size}px Georgia, "Times New Roman", serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.save(); ctx.font = `400 ${size}px Gelasio, serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   const m0 = Q.text.toLowerCase().indexOf(String(Q.mark).toLowerCase()), m1 = m0 < 0 ? -1 : m0 + String(Q.mark).length;
   const toks = []; for (const mm of Q.text.matchAll(/\S+/g)) toks.push({ t: mm[0], m: m0 >= 0 && mm.index < m1 && mm.index + mm[0].length > m0 });
   const sp = ctx.measureText(' ').width, maxW = w - 2 * pad, rows = [[]]; let cw = 0;
@@ -640,7 +657,7 @@ const hint = m => /non-finite/.test(m) ? '. A number passed here is NaN or Infin
 const compileKit = code => { const f = new Function('h', `"use strict";\n${code}\nreturn makeKit(h);`); return hk => { for (const k in CACHE) delete CACHE[k]; return f(hk); }; };
 const compileAsset = code => new Function('ctx', 'p', 'h', 'kit', `"use strict";\n${code}\nreturn drawAsset(${argsFor(code, 'drawAsset', ['ctx', 'p', 'h', 'kit'])});`);
 const compileShot = code => new Function('ctx', 'lt', 'sh', 'h', 'kit', `"use strict";\n${code}\nreturn draw(${argsFor(code, 'draw', ['ctx', 'lt', 'sh', 'h', 'kit'])});`);
-const kfont = (size, weight = 800) => { try { return KIT.font(size, weight); } catch { return `${weight} ${size}px "Segoe UI", Arial`; } };
+const kfont = (size, weight = 800) => { try { return KIT.font(size, weight); } catch { return `${weight} ${size}px "Selawik", Arimo`; } };
 
 // ---------- captions and bubbles (host) ----------
 function bubble(text, ax, ay, k) {
@@ -849,7 +866,7 @@ window.poseSheet = (assets, kitCode) => {
     part.forEach((t, i) => {
       ctx.reset(); ctx.fillStyle = '#8c8c8c'; ctx.fillRect(0, 0, W, H); ctx.strokeStyle = '#555'; ctx.lineWidth = 6; ctx.strokeRect(3, 3, W - 6, H - 6);
       ctx.save(); ctx.translate(540, 1040); ctx.scale(t.s, t.s); try { t.fn(ctx, { ...t.st, t: 0.4 }, HK, KIT); } catch (e) { } ctx.restore();
-      ctx.fillStyle = '#111'; ctx.font = 'bold 60px Arial'; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; _fillText.call(ctx, t.label, 36, 30);
+      ctx.fillStyle = '#111'; ctx.font = 'bold 60px Arimo'; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; _fillText.call(ctx, t.label, 36, 30);
       g.drawImage(cv, (i % cols) * tw, Math.floor(i / cols) * th, tw, th);
     });
     sheets.push(c.toDataURL('image/jpeg', 0.85));
