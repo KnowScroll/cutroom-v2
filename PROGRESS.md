@@ -4,7 +4,7 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 
 ## State
 
-2026-11-27: preparation done (docs, labels, milestones, issues #1-#18). Implementation started. #1 merged (PR #19, 3107663).
+2026-11-27: preparation done (docs, labels, milestones, issues #1-#18). Implementation started. #1 merged (PR #19, 3107663). #4 merged (PR #20, 8dbef11).
 
 ## Waiting on the user
 
@@ -19,8 +19,7 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 | issue | agent / model | branch or worktree | started | note |
 |---|---|---|---|---|
 | #2 | implementer / sonnet | claude/2-import (worktree) | 2026-11-27 | cleared for its 2 real runs (import-check) |
-| #3 | implementer / sonnet | claude/3-config-minimax (worktree) | 2026-11-27 | one real MiniMax call |
-| #4 | implementer / sonnet | claude/4-record (worktree) | 2026-11-27 | |
+| #3 | implementer / sonnet | claude/3-config-minimax (worktree) | 2026-11-27 | PR #21 in review |
 | #12 | implementer / opus | claude/12-frame-audit (worktree) | 2026-11-27 | parity on 3 fastreel reels |
 
 ## Real cuts (budget: 40 cuts with model calls, docs/plan.md)
