@@ -5,7 +5,10 @@
 //   FAKE_ENGINE_REFUSE=<voice key>  refuse that --voice-model with the engine's own error format
 //   FAKE_ENGINE_REFUSE_STATUS=402   HTTP status of that refusal (default 402)
 //   FAKE_ENGINE_SLEEP_MS=n          wait before writing outputs
-import { spawnSync } from 'node:child_process';
+//   FAKE_ENGINE_CHROME=<file>       start a detached grandchild (like puppeteer's Chrome) and write its pid to <file>;
+//                                   then idle; on SIGTERM kill the grandchild and exit (like the real engine's handlers)
+//   FAKE_ENGINE_NULL_PITCH=1        audio.json voice without measured pitch (engine/audio.mjs: too little voiced audio)
+import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -48,6 +51,22 @@ if (crash === 'always' || (crash === 'once' && !fs.existsSync(marker))) {
   log('script: restored from checkpoint');
   console.error('FAILED: Error: fake crash\n    at main (file:///engine/asset_reel.mjs:1:1)');
   process.exit(1);
+}
+
+const chromeFile = process.env['FAKE_ENGINE_CHROME'];
+if (chromeFile) {
+  const chrome = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+    detached: process.platform !== 'win32',
+    stdio: 'ignore',
+    windowsHide: true,
+  });
+  fs.writeFileSync(chromeFile, String(chrome.pid));
+  process.on('SIGTERM', () => {
+    chrome.kill('SIGKILL');
+    process.exit(0);
+  });
+  setInterval(() => {}, 1000);
+  await new Promise(() => {});
 }
 
 const sleep = Number(process.env['FAKE_ENGINE_SLEEP_MS'] ?? 0);
@@ -113,6 +132,14 @@ const audio = {
     pass: true,
   },
 };
+if (process.env['FAKE_ENGINE_NULL_PITCH'] === '1') {
+  audio.voice = {
+    model,
+    voice: 'meredith',
+    pitch_st_sd: null,
+    note: 'too little voiced audio to measure',
+  };
+}
 const write = (f, v) => fs.writeFileSync(f, typeof v === 'string' ? v : JSON.stringify(v, null, 2));
 write(path.join(dir, 'timeline.json'), timeline);
 write(path.join(dir, 'plan.json'), { brief, seconds, shots: [], assets: [] });

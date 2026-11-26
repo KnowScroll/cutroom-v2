@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn, type ChildProcess } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { copyFile, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFile, mkdir, mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
@@ -9,6 +9,7 @@ import {
   EngineBusyError,
   EngineCrashError,
   killTree,
+  parseLog,
   parseOutputs,
   runCut,
   type CutResult,
@@ -17,6 +18,10 @@ import {
 } from '../src/engine.ts';
 
 const fakeEngine = path.join(import.meta.dirname, 'fixtures', 'fake-engine.mjs');
+const tempRoots: string[] = [];
+process.on('exit', () => {
+  for (const d of tempRoots) rmSync(d, { recursive: true, force: true });
+});
 
 interface Setup {
   opts: RunCutOptions;
@@ -26,7 +31,9 @@ interface Setup {
 }
 
 async function setup(env: Record<string, string> = {}): Promise<Setup> {
-  const varDir = path.join(await mkdtemp(path.join(tmpdir(), 'cutroom-engine-')), 'var');
+  const root = await mkdtemp(path.join(tmpdir(), 'cutroom-engine-'));
+  tempRoots.push(root);
+  const varDir = path.join(root, 'var');
   const runDir = path.join(varDir, 'runs', 'job1');
   await mkdir(runDir, { recursive: true });
   const briefFile = path.join(runDir, 'brief.txt');
@@ -183,7 +190,7 @@ await test('a held lock blocks a second run', async () => {
     assert.ok(existsSync(s.lockFile), 'the holder keeps its lock');
     assert.equal(s.invocations(), 0);
   } finally {
-    killTree(live.pid);
+    await killTree(live.pid);
   }
 });
 
@@ -224,16 +231,21 @@ await test('a live engine of a dead harness is stopped, then the run starts', as
     cutOf(await runCut(s.opts));
     assert.ok(!alive(orphan.pid), 'the orphan engine tree was stopped');
   } finally {
-    killTree(orphan.pid);
+    await killTree(orphan.pid);
   }
 });
 
-const real = 'C:\\Users\\XZNON\\cutroom-v2\\var\\runs\\import-check';
+const real = path.join(
+  process.env['CUTROOM_VAR'] ?? path.join(import.meta.dirname, '..', 'var'),
+  'runs',
+  'import-check',
+);
 await test(
   'the parser matches the real output of the import check',
   { skip: !existsSync(real) },
   async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'cutroom-real-'));
+    tempRoots.push(dir);
     await mkdir(path.join(dir, 'reel-v1'));
     for (const f of ['reel-summary.json', 'reel-cost.txt', 'engine-1.log'])
       await copyFile(path.join(real, f), path.join(dir, f));
@@ -267,6 +279,120 @@ await test(
       ['shot4', 'shot5'],
     );
     assert.equal(r.rejections.length, 7);
-    await rm(dir, { recursive: true });
+  },
+);
+
+await test('two runs racing for an orphaned lock: only one runs', async () => {
+  const s = await setup({ FAKE_ENGINE_SLEEP_MS: '1500' });
+  const orphan = sleeper();
+  try {
+    writeFileSync(
+      s.lockFile,
+      JSON.stringify({
+        harness_pid: await deadPid(),
+        engine_pid: orphan.pid,
+        started_at: new Date().toISOString(),
+      }),
+    );
+    const results = await Promise.allSettled([runCut(s.opts), runCut(s.opts)]);
+    const ok = results.filter((r) => r.status === 'fulfilled');
+    const busy = results.filter(
+      (r) => r.status === 'rejected' && r.reason instanceof EngineBusyError,
+    );
+    assert.equal(ok.length, 1);
+    assert.equal(busy.length, 1);
+    assert.equal(s.invocations(), 1);
+    assert.ok(!alive(orphan.pid));
+  } finally {
+    await killTree(orphan.pid);
+  }
+});
+
+await test('an unreadable lock is never deleted', async () => {
+  const s = await setup();
+  writeFileSync(s.lockFile, '{"harness_pid": ');
+  await assert.rejects(runCut(s.opts), EngineBusyError);
+  assert.equal(readFileSync(s.lockFile, 'utf8'), '{"harness_pid": ');
+});
+
+await test('the lock carries an owner token and its owner releases it', async () => {
+  const s = await setup({ FAKE_ENGINE_SLEEP_MS: '600' });
+  const run = runCut(s.opts);
+  await new Promise((r) => setTimeout(r, 300));
+  assert.match(readFileSync(s.lockFile, 'utf8'), /"token"/);
+  await run;
+  assert.ok(!existsSync(s.lockFile));
+});
+
+await test('stopping an orphan engine also stops the Chrome it started in its own group', async () => {
+  const s = await setup();
+  const chromeFile = path.join(s.varDir, 'chrome.pid');
+  const brief = path.join(s.varDir, 'brief.txt');
+  writeFileSync(brief, 'x');
+  const engine = spawn(
+    process.execPath,
+    [fakeEngine, '--brief-file', brief, '--out', path.join(s.varDir, 'o', 'reel')],
+    {
+      env: { ...process.env, FAKE_ENGINE_CHROME: chromeFile },
+      stdio: 'ignore',
+      detached: process.platform !== 'win32',
+      windowsHide: true,
+    },
+  );
+  const enginePid = engine.pid;
+  assert.ok(enginePid !== undefined);
+  let chromePid = 0;
+  try {
+    for (let i = 0; i < 100 && !existsSync(chromeFile); i++)
+      await new Promise((r) => setTimeout(r, 50));
+    chromePid = Number(readFileSync(chromeFile, 'utf8'));
+    assert.ok(alive(chromePid));
+    writeFileSync(
+      s.lockFile,
+      JSON.stringify({
+        harness_pid: await deadPid(),
+        engine_pid: enginePid,
+        started_at: new Date().toISOString(),
+      }),
+    );
+    cutOf(await runCut(s.opts));
+    assert.ok(!alive(enginePid), 'engine stopped');
+    assert.ok(!alive(chromePid), 'chrome stopped');
+  } finally {
+    await killTree(enginePid);
+    if (chromePid > 0 && alive(chromePid)) process.kill(chromePid, 'SIGKILL');
+  }
+});
+
+await test('a null measured pitch does not fail a finished cut', async () => {
+  const s = await setup({ FAKE_ENGINE_NULL_PITCH: '1' });
+  const r = cutOf(await runCut(s.opts));
+  assert.equal(r.audio.pitchStSd, null);
+  assert.equal(r.audio.mixPass, true);
+});
+
+await test('every rejection log format of the engine is matched', () => {
+  const log = [
+    '[ 1.0s] facts rejected: fact f14: "calc" uses 12742',
+    '[ 2.0s] script-revise rejected: shot 1 opens with a definition',
+    '[ 3.0s] plan rejected: bad shot count',
+    '[ 4.0s] poses rejected: unknown pose',
+    '[ 5.0s] shot3 attempt 2: rejected: after kit.bg you paint a solid rectangle',
+    '[ 6.0s] shot3 craft pass rejected (some error), one repair try',
+    '[ 7.0s] shot3 craft pass: improvement rejected (some error), keeping first version',
+    '[ 8.0s] shot3 attempt 1: valid',
+    '[ 9.0s] shot3 craft pass: KEEP',
+  ].join('\n');
+  assert.equal(parseLog(log).rejections.length, 7);
+});
+
+await test(
+  'rejection lines of both real import-check logs are found',
+  { skip: !existsSync(real) },
+  async () => {
+    const until = parseLog(await readFile(path.join(real, 'until-script.log'), 'utf8'));
+    assert.equal(until.rejections.length, 13);
+    const engine = parseLog(await readFile(path.join(real, 'engine-1.log'), 'utf8'));
+    assert.equal(engine.rejections.length, 7);
   },
 );

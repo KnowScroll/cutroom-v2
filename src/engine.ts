@@ -1,10 +1,22 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { closeSync, openSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import {
+  closeSync,
+  linkSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { copyFile, mkdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 import type { Config, VoiceModelKey } from './config.ts';
 import type { PhaseCost } from './record.ts';
+
+const repoRoot = path.resolve(import.meta.dirname, '..');
 
 export interface RunCutOptions {
   config: Pick<Config, 'varDir' | 'engineEntry'>;
@@ -44,7 +56,7 @@ export interface CutResult {
   cost: Record<string, PhaseCost>;
   shots: { start: number; dur: number; background: string | undefined }[];
   audio: AudioNumbers;
-  /** Log lines with `rejected:`, without the timestamp. */
+  /** Log lines where a validator rejected something (`rejected:`, `craft pass rejected (`), without the timestamp. */
   rejections: string[];
   /** Steps the engine shipped although no attempt passed every check ("using the last one that runs"). */
   failingSteps: FailingStep[];
@@ -58,10 +70,10 @@ export interface VoiceRefused {
 }
 
 export interface AudioNumbers {
-  wordsPerS: number;
-  pitchStSd: number;
-  pitchRangeSt: number;
-  loudRangeDb: number;
+  wordsPerS: number | null;
+  pitchStSd: number | null;
+  pitchRangeSt: number | null;
+  loudRangeDb: number | null;
   musicSource: string;
   musicFitPass: boolean | null;
   voiceOverMusicDb: number | null;
@@ -92,10 +104,11 @@ const Timeline = z.object({
 
 const AudioJson = z.object({
   voice: z.object({
-    words_per_s: z.number(),
-    pitch_st_sd: z.number(),
-    pitch_range_st: z.number(),
-    loud_range_db: z.number(),
+    words_per_s: z.number().nullish(),
+    // null when the engine measured too little voiced audio; the voice_pitch gate fails it later.
+    pitch_st_sd: z.number().nullish(),
+    pitch_range_st: z.number().nullish(),
+    loud_range_db: z.number().nullish(),
   }),
   music: z.object({
     source: z.string(),
@@ -115,11 +128,18 @@ const LockFile = z.object({
   harness_pid: z.number().int(),
   engine_pid: z.number().int().nullable(),
   started_at: z.string(),
+  token: z.string().optional(),
 });
 type LockFile = z.infer<typeof LockFile>;
 
 export class EngineBusyError extends Error {}
 export class EngineCrashError extends Error {}
+
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
+function errCode(e: unknown): string | undefined {
+  return e instanceof Error && 'code' in e && typeof e.code === 'string' ? e.code : undefined;
+}
 
 function pidAlive(pid: number): boolean {
   try {
@@ -127,12 +147,16 @@ function pidAlive(pid: number): boolean {
     return true;
   } catch (e) {
     // EPERM: the process exists but is not ours.
-    return e instanceof Error && 'code' in e && e.code === 'EPERM';
+    return errCode(e) === 'EPERM';
   }
 }
 
-/** Stop a process and everything it started (the engine starts Chrome). Only ever called with a pid we started or the lock recorded. */
-export function killTree(pid: number): void {
+/**
+ * Stop a process and everything it started. Only ever called with a pid we started or the lock recorded.
+ * Linux: SIGTERM the engine's group first (the engine's handlers stop Chrome, which puppeteer launches in a group of
+ * its own, so a SIGKILL to our group would leave it running), wait for the engine, then SIGKILL what is left.
+ */
+export async function killTree(pid: number): Promise<void> {
   if (process.platform === 'win32') {
     spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], {
       stdio: 'ignore',
@@ -141,78 +165,180 @@ export function killTree(pid: number): void {
     return;
   }
   try {
+    process.kill(-pid, 'SIGTERM');
+  } catch {
+    return; // the group is already gone (ESRCH)
+  }
+  for (let i = 0; i < 60 && pidAlive(pid); i++) await sleep(50);
+  try {
     process.kill(-pid, 'SIGKILL');
   } catch {
-    // The group is already gone (ESRCH); nothing left to stop.
+    // Nothing left in the group.
   }
 }
 
 async function waitGone(pid: number): Promise<void> {
-  for (let i = 0; i < 100 && pidAlive(pid); i++) {
-    await new Promise((r) => setTimeout(r, 50));
-  }
+  for (let i = 0; i < 100 && pidAlive(pid); i++) await sleep(50);
   if (pidAlive(pid)) throw new Error(`engine pid ${String(pid)} did not stop`);
 }
 
+/** Windows refuses a rename over a file another process has open at that instant (EPERM/EBUSY); it clears within milliseconds. */
+function renameWithRetry(from: string, to: string): void {
+  for (let i = 0; ; i++) {
+    try {
+      renameSync(from, to);
+      return;
+    } catch (e) {
+      const code = errCode(e);
+      if (i >= 40 || (code !== 'EPERM' && code !== 'EBUSY' && code !== 'EACCES')) throw e;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
+    }
+  }
+}
+
+/** Write a temp file, then publish it whole: `link` creates the target only if absent, `rename` replaces it. */
+function publish(file: string, content: string, mode: 'link' | 'rename'): void {
+  const tmp = `${file}.${String(process.pid)}.${randomUUID()}.tmp`;
+  writeFileSync(tmp, content);
+  try {
+    if (mode === 'link') linkSync(tmp, file);
+    else renameWithRetry(tmp, file);
+  } finally {
+    rmSync(tmp, { force: true });
+  }
+}
+
+function safeText(file: string): string {
+  try {
+    return readFileSync(file, 'utf8');
+  } catch {
+    return '';
+  }
+}
+
+function safeJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+}
+
+/** null: no lock. An unreadable lock is never deleted automatically. */
 function readLock(file: string): LockFile | null {
+  let text: string;
   try {
-    return LockFile.parse(JSON.parse(readFileSync(file, 'utf8')));
+    text = readFileSync(file, 'utf8');
+  } catch (e) {
+    if (errCode(e) === 'ENOENT') return null;
+    throw e;
+  }
+  const parsed = LockFile.safeParse(safeJson(text));
+  if (!parsed.success) {
+    throw new EngineBusyError(`${file} is unreadable; check it and remove it by hand`);
+  }
+  return parsed.data;
+}
+
+interface Held {
+  file: string;
+  token: string;
+}
+
+/** Only the owner (matching token) releases its lock. */
+function release(held: Held): void {
+  try {
+    if (readLock(held.file)?.token === held.token) rmSync(held.file, { force: true });
   } catch {
-    return null;
+    // Unreadable or gone: not ours to delete.
   }
 }
 
-function removeLock(file: string): void {
+function recordEnginePid(held: Held, pid: number | null): void {
+  const lock = readLock(held.file);
+  if (lock?.token !== held.token) return;
+  publish(held.file, JSON.stringify({ ...lock, engine_pid: pid }), 'rename');
+}
+
+/** stale: nothing runs. orphan: a live engine whose harness is dead. busy: a live harness holds it. */
+function judge(lock: LockFile): 'busy' | 'stale' | 'orphan' {
+  const engineAlive = lock.engine_pid !== null && pidAlive(lock.engine_pid);
+  if (lock.engine_pid !== null && !engineAlive) return 'stale';
+  if (lock.harness_pid === process.pid || pidAlive(lock.harness_pid)) return 'busy';
+  return engineAlive ? 'orphan' : 'stale';
+}
+
+/**
+ * Replace a stale or orphaned lock. Only one process at a time does this (a mutex file created with `link`), and
+ * staleness is checked again while holding it. Returns true when we now hold the lock.
+ */
+async function takeOver(file: string, mineJson: string): Promise<boolean> {
+  const mutex = `${file}.takeover`;
   try {
-    unlinkSync(file);
-  } catch {
-    // Already removed.
+    publish(mutex, String(process.pid), 'link');
+  } catch (e) {
+    if (errCode(e) !== 'EEXIST') throw e;
+    const owner = Number(safeText(mutex));
+    if (owner !== process.pid && !pidAlive(owner)) {
+      // Its owner died; moving it aside is atomic, so only one waiter clears it.
+      try {
+        renameSync(mutex, `${mutex}.dead.${randomUUID()}`);
+      } catch {
+        // Another waiter got there first.
+      }
+    }
+    return false;
+  }
+  try {
+    const held = readLock(file);
+    if (held !== null) {
+      const verdict = judge(held);
+      if (verdict === 'busy') return false;
+      if (verdict === 'orphan' && held.engine_pid !== null) {
+        await killTree(held.engine_pid);
+        await waitGone(held.engine_pid);
+      }
+      if (readLock(file)?.token !== held.token) return false;
+      rmSync(file, { force: true });
+    }
+    publish(file, mineJson, 'link');
+    return true;
+  } catch (e) {
+    if (errCode(e) === 'EEXIST') return false;
+    throw e;
+  } finally {
+    rmSync(mutex, { force: true });
   }
 }
 
-/** Take var/engine.lock (design §8). Stale means the engine pid is gone; a live engine whose harness is dead is stopped first. */
-async function acquireLock(file: string): Promise<void> {
+/** Take var/engine.lock (design §8): never two holders, readers never see partial content. */
+async function acquireLock(file: string): Promise<Held> {
   await mkdir(path.dirname(file), { recursive: true });
-  const mine: LockFile = {
+  const held: Held = { file, token: randomUUID() };
+  const mine = JSON.stringify({
     harness_pid: process.pid,
     engine_pid: null,
     started_at: new Date().toISOString(),
-  };
-  for (let attempt = 0; attempt < 3; attempt++) {
+    token: held.token,
+  } satisfies LockFile);
+  for (let i = 0; i < 200; i++) {
     try {
-      writeFileSync(file, JSON.stringify(mine), { flag: 'wx' });
-      return;
+      publish(file, mine, 'link');
+      return held;
     } catch (e) {
-      if (!(e instanceof Error && 'code' in e && e.code === 'EEXIST')) throw e;
+      if (errCode(e) !== 'EEXIST') throw e;
     }
-    const held = readLock(file);
-    if (held === null) {
-      removeLock(file);
-      continue;
-    }
-    const engineAlive = held.engine_pid !== null && pidAlive(held.engine_pid);
-    const harnessAlive = held.harness_pid !== process.pid ? pidAlive(held.harness_pid) : true;
-    if (held.engine_pid !== null && !engineAlive) {
-      removeLock(file);
-    } else if (held.engine_pid === null && !harnessAlive) {
-      removeLock(file);
-    } else if (held.engine_pid !== null && !harnessAlive) {
-      killTree(held.engine_pid);
-      await waitGone(held.engine_pid);
-      removeLock(file);
-    } else {
+    const lock = readLock(file);
+    if (lock === null) continue;
+    if (judge(lock) === 'busy') {
       throw new EngineBusyError(
-        `engine busy: harness pid ${String(held.harness_pid)} since ${held.started_at}`,
+        `engine busy: harness pid ${String(lock.harness_pid)} since ${lock.started_at}`,
       );
     }
+    if (await takeOver(file, mine)) return held;
+    await sleep(50);
   }
   throw new EngineBusyError('engine lock could not be taken');
-}
-
-function recordEnginePid(file: string, pid: number | null): void {
-  const held = readLock(file);
-  if (held === null || held.harness_pid !== process.pid) return;
-  writeFileSync(file, JSON.stringify({ ...held, engine_pid: pid }));
 }
 
 interface Attempt {
@@ -223,7 +349,7 @@ function runEngineOnce(
   args: readonly string[],
   env: NodeJS.ProcessEnv,
   logPath: string,
-  lockFile: string,
+  held: Held,
 ): Promise<Attempt> {
   const fd = openSync(logPath, 'a');
   return new Promise<Attempt>((resolve, reject) => {
@@ -234,9 +360,12 @@ function runEngineOnce(
       windowsHide: true,
     });
     const stop = (signal: NodeJS.Signals): void => {
-      if (child.pid !== undefined) killTree(child.pid);
-      removeLock(lockFile);
-      process.exit(signal === 'SIGINT' ? 130 : 143);
+      const code = signal === 'SIGINT' ? 130 : 143;
+      const stopped = child.pid === undefined ? Promise.resolve() : killTree(child.pid);
+      void stopped.finally(() => {
+        release(held);
+        process.exit(code);
+      });
     };
     process.once('SIGINT', stop);
     process.once('SIGTERM', stop);
@@ -250,11 +379,11 @@ function runEngineOnce(
       reject(e);
     });
     child.once('close', (code) => {
-      recordEnginePid(lockFile, null);
+      recordEnginePid(held, null);
       done();
       resolve({ code });
     });
-    if (child.pid !== undefined) recordEnginePid(lockFile, child.pid);
+    if (child.pid !== undefined) recordEnginePid(held, child.pid);
   });
 }
 
@@ -297,7 +426,7 @@ export function parseLog(log: string): { rejections: string[]; failingSteps: Fai
       );
     if (last?.[1] !== undefined && last[2] !== undefined) {
       failingSteps.push({ step: last[1], reason: last[2] });
-    } else if (line.includes(': rejected:')) {
+    } else if (/\brejected(?::| \()/.test(line)) {
       rejections.push(line);
     }
   }
@@ -349,10 +478,10 @@ export async function parseOutputs(
     cost,
     shots: timeline.shots.map((s) => ({ start: s.start, dur: s.dur, background: s.background })),
     audio: {
-      wordsPerS: audio.voice.words_per_s,
-      pitchStSd: audio.voice.pitch_st_sd,
-      pitchRangeSt: audio.voice.pitch_range_st,
-      loudRangeDb: audio.voice.loud_range_db,
+      wordsPerS: audio.voice.words_per_s ?? null,
+      pitchStSd: audio.voice.pitch_st_sd ?? null,
+      pitchRangeSt: audio.voice.pitch_range_st ?? null,
+      loudRangeDb: audio.voice.loud_range_db ?? null,
       musicSource: audio.music.source,
       musicFitPass: audio.music.fit?.pass ?? null,
       voiceOverMusicDb: audio.mix?.voice_over_music_db ?? null,
@@ -395,11 +524,12 @@ export async function runCut(opts: RunCutOptions): Promise<CutResult | VoiceRefu
     ...process.env,
     CUTROOM_VAR: config.varDir,
     CUTROOM_TEMPLATE_DIR: path.join(config.varDir, 'templates'),
+    CUTROOM_ENV_FILE: process.env['CUTROOM_ENV_FILE'] ?? path.join(repoRoot, '.env'),
     ...opts.env,
   };
 
   await mkdir(runDir, { recursive: true });
-  await acquireLock(lockFile);
+  const held = await acquireLock(lockFile);
   try {
     for (let attempt = 1; ; attempt++) {
       const before = (() => {
@@ -409,7 +539,7 @@ export async function runCut(opts: RunCutOptions): Promise<CutResult | VoiceRefu
           return 0;
         }
       })();
-      const { code } = await runEngineOnce(args, env, logPath, lockFile);
+      const { code } = await runEngineOnce(args, env, logPath, held);
       const thisRun = readFileSync(logPath, 'utf8').slice(before);
       if (code === 0) return await parseOutputs(runDir, cut, logPath);
       const refusal = REFUSAL.exec(thisRun);
@@ -428,6 +558,6 @@ export async function runCut(opts: RunCutOptions): Promise<CutResult | VoiceRefu
       }
     }
   } finally {
-    removeLock(lockFile);
+    release(held);
   }
 }
