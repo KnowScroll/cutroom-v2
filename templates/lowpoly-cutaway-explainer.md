@@ -17,7 +17,7 @@ A PS1-style low-poly 3D explainer hosted by a cartoon animal in a suit. The engi
   - Text: white (lightness 0.98) with a near-black outline (lightness about 0.15, slightly violet, palette "ink"); the header numeral and the label in a warm yellow (lightness about 0.87, chroma 0.16, hue about 90, palette "accent").
   - Inside parts: each its own clear hue (cold things blue to cyan, hot things orange to red, moving parts grey metal, fluids their real colour), never the casing's colour.
 - The host is a cartoon animal in a suit that fits the brief (for example a penguin or a polar bear for something cold, a fox or a dog for a machine, an owl for a body part): never a raccoon, and never a yellow suit with a red striped tie. Big eyes with a coloured iris; a mask patch only if the real animal has one.
-- Type: "Arial Rounded MT Bold", heavy, white with a thick dark outline. The step header top left: "k/N" in the yellow accent, then the step's name in white, 64 px, one or two lines.
+- Type: "Nunito", heavy, white with a thick dark outline. The step header top left: "k/N" in the yellow accent, then the step's name in white, 64 px, one or two lines.
 
 ## motion
 - A new pose on every sentence: the host snaps (0.16 s) into a different pose at the start of each sentence of the narration and holds it, while the engine breathes it, blinks it and moves its mouth with the voice. The pose acts the sentence: point or present at the part being explained, shrug at a wrong idea, count for a number, shiver or fan for cold or heat, think at a question, arms_up at the payoff, wave to open and close.

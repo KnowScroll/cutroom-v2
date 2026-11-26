@@ -478,7 +478,7 @@ const D3 = (() => {
 
   // ---------- the default kit for 3D reels: palette, font, paper or screen panels, plain text ----------
   function defaultKit() {
-    const P = pal(), font = (s, w = 800) => `${w} ${s}px "${(STYLE && STYLE.font) || 'Segoe UI'}", "Segoe UI", Arial`;
+    const P = pal(), font = (s, w = 800) => `${w} ${s}px "${(STYLE && STYLE.font) || 'Selawik'}", "Selawik", Arimo`;
     return {
       palette: P, font,
       bg: (c, lt, name) => { c.fillStyle = P.bg; c.fillRect(0, 0, W, H); },
@@ -525,7 +525,7 @@ const D3 = (() => {
   // the cast sheet: every character (and role) standing in neutral and surprised, and every prop, for the director
   function castSheet() {
     clearPool(); const tiles = [], save = FRAME;
-    const one = (draw) => { if (ctx.reset) ctx.reset(); const F0 = CUR; CUR = { sh: { lines: [] }, lt: 0.5 + tiles.length * 0.01 }; scene.background = new T.Color('#8c8c8c'); draw(); scene.background = null; CUR = F0; const c = document.createElement('canvas'); c.width = 270; c.height = 480; c.getContext('2d').drawImage(glc, 0, 0, 270, 480); const g = c.getContext('2d'); g.fillStyle = '#111'; g.font = 'bold 22px Arial'; _fillText.call(g, tiles.label, 10, 26); tiles.push(c); };
+    const one = (draw) => { if (ctx.reset) ctx.reset(); const F0 = CUR; CUR = { sh: { lines: [] }, lt: 0.5 + tiles.length * 0.01 }; scene.background = new T.Color('#8c8c8c'); draw(); scene.background = null; CUR = F0; const c = document.createElement('canvas'); c.width = 270; c.height = 480; c.getContext('2d').drawImage(glc, 0, 0, 270, 480); const g = c.getContext('2d'); g.fillStyle = '#111'; g.font = 'bold 22px Arimo'; _fillText.call(g, tiles.label, 10, 26); tiles.push(c); };
     for (const [id, c] of Object.entries(CAST)) for (const role of [null, ...Object.keys((c.look3d && c.look3d.roles) || {})]) for (const expr of ['neutral', 'surprised']) {
       tiles.label = `${id}${role ? ' (' + role + ')' : ''}: ${expr}`;
       one(() => { for (const k in POOL) POOL[k].obj.visible = false; FRAME = { cur: CUR, room: null, actors: [], things: [], used: {}, cam: null, errs: [] }; API.actor(id, { x: 0, z: 0, role, expr, pose: expr === 'surprised' ? 'hands_up' : 'stand' }); resolveFacing(FRAME); cam.fov = 34; cam.position.set(0.6, 1.1, 3.6); cam.lookAt(0, 0.85, 0); cam.aspect = W / H; cam.updateProjectionMatrix(); renderer().render(scene, cam); });

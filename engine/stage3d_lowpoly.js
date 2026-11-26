@@ -561,7 +561,7 @@ const LP = (() => {
   }
 
   // ---------- the default kit: palette, rounded heavy font, outlined text, a wooden board panel, the step header ----------
-  const kitFont = (s, w = 900) => `${w} ${s}px ${(STYLE && STYLE.font) ? `"${STYLE.font}", ` : ''}"Arial Rounded MT Bold", "Segoe UI Black", "Segoe UI", Arial`;
+  const kitFont = (s, w = 900) => `${w} ${s}px ${(STYLE && STYLE.font) ? `"${STYLE.font}", ` : ''}"Nunito", "Selawik", Arimo`;
   function outlined(c, text, x, y, size, fill, align = 'center') { c.save(); c.font = kitFont(size); c.textAlign = align; c.textBaseline = 'middle'; c.lineJoin = 'round'; c.lineWidth = Math.max(8, size * 0.2); c.strokeStyle = pal().ink; c.strokeText(text, x, y); c.fillStyle = fill; c.fillText(text, x, y); c.restore(); }
   function defaultKit() {
     const P = pal();
@@ -636,7 +636,7 @@ const LP = (() => {
   // the cast sheet: the host in several poses and expressions, each subject whole and sliced
   function castSheet() {
     clearPool(); const tiles = [], save = FRAME, F0 = CUR;
-    const tile = (label, fn) => { CUR = { sh: { lines: [] }, lt: 0.4 + tiles.length * 0.01 }; for (const k in POOL) POOL[k].obj.visible = false; FRAME = { cur: CUR, set: null, actors: [], things: [], cam: null, labels: [], errs: [] }; fn(); const c = shot(); const g = c.getContext('2d'); g.fillStyle = '#111'; g.font = 'bold 16px Arial'; _fillText.call(g, label, 6, 18); tiles.push(c); };
+    const tile = (label, fn) => { CUR = { sh: { lines: [] }, lt: 0.4 + tiles.length * 0.01 }; for (const k in POOL) POOL[k].obj.visible = false; FRAME = { cur: CUR, set: null, actors: [], things: [], cam: null, labels: [], errs: [] }; fn(); const c = shot(); const g = c.getContext('2d'); g.fillStyle = '#111'; g.font = 'bold 16px Arimo'; _fillText.call(g, label, 6, 18); tiles.push(c); };
     for (const id of Object.keys(CAST)) for (const [pose, expr] of [['stand', 'neutral'], ['wave', 'happy'], ['point', 'surprised'], ['shrug', 'worried'], ['think', 'thinking'], ['arms_up', 'happy'], ['shiver', 'cold'], ['fan', 'hot']]) tile(`${id}: ${pose}, ${expr}`, () => { API.actor(id, { x: 0, z: 0, pose, expr, at: null }); FRAME.things = []; resolveFacing(FRAME); const a = FRAME.actors[0]; frameOn(a.rig.body, 15, 0.75); });
     for (const id of Object.keys(PROPS)) for (const sl of [0, 1]) tile(`${id}${sl ? ' sliced' : ''}`, () => { const t = API.thing(id, { x: 0, z: 0, slice: sl }); if (t) frameOn(t.P.wrap, 22, 0.8); });
     FRAME = save; CUR = F0; clearPool();

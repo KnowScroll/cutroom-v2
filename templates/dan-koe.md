@@ -21,7 +21,7 @@ A minimal line-art idea reel: one idea, principle or mental model (a habit, a wa
   - Palette names: bg (ground), ink (dot), line, dim, soft, text. palette.accent = dim (the engine colours its caption bar with it, so it stays quiet); palette.accent2 = line.
 - Line weights: 1 to 3.2 px, thickest at a drawing's start (its root, base or centre) and thinner each level away from it (width = Math.max(1, 3.2 - level * 0.28)); rings and orbits 2 px; the completion pulse ring 3 px. ctx.lineCap = 'round'. Never thicker than 4 px.
 - Dots: solid white discs, radius 2 to 31 px; a drawing's start dot is 16 px.
-- Type: kit.font uses "Segoe UI" at weight 400 ALWAYS, whatever weight is asked: font = (size, weight) => `400 ${size}px "Segoe UI", Arial`, so the engine's own caption stays plain too. All on-screen text is lowercase and ends with a full stop: no capitals, no bold, no exclamation marks, no emojis.
+- Type: kit.font uses "Selawik" at weight 400 ALWAYS, whatever weight is asked: font = (size, weight) => `400 ${size}px "Selawik", Arimo`, so the engine's own caption stays plain too. All on-screen text is lowercase and ends with a full stop: no capitals, no bold, no exclamation marks, no emojis.
 - Backgrounds (kit.bg): exactly two, named exactly "void" and "void_specks" (with the underscore), both with "plain": true in the plan's style:
   - "void": fill the whole frame pure black. Nothing else.
   - "void_specks": pure black plus 30 specks: const r = h.rng(5); for each speck x = r() * 1080, y = ((r() * 1920 - lt * 6) % 1920 + 1920) % 1920, radius 1.5 + r() * 1.5, opacity 0.15 + 0.25 * (0.5 + 0.5 * Math.sin(lt * 0.7 + r() * 6.28)), white. Nothing else.

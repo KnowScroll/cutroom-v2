@@ -32,7 +32,7 @@ A PS1-era low-poly story reel: a true, emotional or strange story told by a quie
   for (const [rp, cp, col, a] of [[0, 0, palette.ink, 0.07], [1, 1, palette.ink, 0.03], [0, 1, palette.cream, 0.03], [1, 0, palette.cream, 0.07]]) { ctx.beginPath(); for (let j = rp; j < 640; j += 2) { ctx.moveTo(3 * cp, 3 * j + 1.5); ctx.lineTo(1080, 3 * j + 1.5); } ctx.strokeStyle = h.rgba(col, a); ctx.stroke(); }
   ctx.restore();
   Nothing else in kit.post: no vignette, grain, wash or pixelation of its own.
-- Type (kit.font): "Segoe UI", bold. kit.title draws text only, in the reference's caption look: lowercase as given, palette.accent fill, an 8 px palette.ink outline (lineJoin round) and a second ink copy 4 px lower behind it as a drop; no box. kit.panel is a plain dark plate (palette.ink at 80%, square corners, no border); the style shows no panels, so shots never draw one.
+- Type (kit.font): "Selawik", bold. kit.title draws text only, in the reference's caption look: lowercase as given, palette.accent fill, an 8 px palette.ink outline (lineJoin round) and a second ink copy 4 px lower behind it as a drop; no box. kit.panel is a plain dark plate (palette.ink at 80%, square corners, no border); the style shows no panels, so shots never draw one.
 - Canvas helpers, exactly as the engine defines them: h.rng(seed) returns a FUNCTION (const r = h.rng(7); then r(), r(), r() give numbers from 0 to 1); never use h.rng(seed) itself as a number. h.rr(x, y, w, hgt, r) and h.poly([[x, y], ...]) take NO ctx argument and only build a path: call ctx.fill() after them. h.asset(id, x, y, scale, params) takes no ctx either. h.mix and h.rgba take hex colour strings.
 
 ## motion

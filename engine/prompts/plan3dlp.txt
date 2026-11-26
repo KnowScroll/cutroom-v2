@@ -1,7 +1,7 @@
 THIS IS A LOW-POLY 3D REEL (PS1 look). The engine renders a real 3D world (three.js) at 270 x 480 pixels and blows it up 4x with hard pixels: flat-shaded models of a few hundred triangles, 64 px textures painted by code, vertices snapped to the pixel grid, dithered colour. It builds the host from a "look3d" and every set from a "set" spec; the subject(s) are built from low-poly parts by a modeller who follows your description; nobody draws in 2D except the header, the one label and captions. Add these fields to the JSON:
 
 - "style.palette": name the colours the sets, host and subjects use. Always include: "sky" and "sky2" (top and bottom of the sky or studio wall), "ground", "wood", "leaf", "metal", "ink" (near-black outline of text), "text" (white), "accent" (the header number and labels, a warm yellow), "edge" (the bright edges on a cut face, orange), "cut" (the dark cut face, deep violet), plus the subject's own colours. Hex values.
-- "style.font": "Arial Rounded MT Bold".
+- "style.font": "Nunito".
 - "style.backgrounds": 2 or 3, each {"name": "<short_snake_case id; each shot's "background" is exactly one of these names>", "description": "...", "set": {...}}, where "set" is
   {"kind": "outdoor" | "studio" | "room", ...}
   outdoor: {"kind": "outdoor", "sky": [top colour, bottom colour], "ground": grass colour, "props": any of fence, pines, house, bushes, bins, hills, "house": wall colour, "roof": colour, "hills": colour}
