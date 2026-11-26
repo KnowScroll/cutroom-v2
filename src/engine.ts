@@ -200,6 +200,15 @@ function renameWithRetry(from: string, to: string, owned: (() => boolean) | unde
   }
 }
 
+/**
+ * Create the lock file only if absent. Not `link` + removing a temp file: on Windows a file made that way refuses a
+ * rename over it (EPERM) for up to ~1.3 s (measured under load); a file written in place does not. The file is briefly
+ * empty or partial, which `readLock` waits out.
+ */
+function createExclusive(file: string, content: string): void {
+  writeFileSync(file, content, { flag: 'wx' });
+}
+
 /** Write a temp file, then publish it whole: `link` creates the target only if absent, `rename` replaces it. */
 function publish(
   file: string,
@@ -235,15 +244,18 @@ function safeJson(text: string): unknown {
 
 /** null: no lock. An unreadable lock is never deleted automatically. */
 function readLock(file: string): LockFile | null {
-  let text: string;
-  try {
-    text = readFileSync(file, 'utf8');
-  } catch (e) {
-    if (errCode(e) === 'ENOENT') return null;
-    throw e;
+  let parsed: ReturnType<typeof LockFile.safeParse> | undefined;
+  // A lock being created is empty or partial for an instant; only a lock that stays bad is unreadable.
+  for (let i = 0; i < 20 && parsed?.success !== true; i++) {
+    if (i > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+    try {
+      parsed = LockFile.safeParse(safeJson(readFileSync(file, 'utf8')));
+    } catch (e) {
+      if (errCode(e) === 'ENOENT') return null;
+      throw e;
+    }
   }
-  const parsed = LockFile.safeParse(safeJson(text));
-  if (!parsed.success) {
+  if (parsed?.success !== true) {
     throw new EngineBusyError(`${file} is unreadable; check it and remove it by hand`);
   }
   return parsed.data;
@@ -309,7 +321,7 @@ async function takeOver(file: string, mineJson: string): Promise<boolean> {
       if (readLock(file)?.token !== held.token) return false;
       rmSync(file, { force: true });
     }
-    publish(file, mineJson, 'link');
+    createExclusive(file, mineJson);
     return true;
   } catch (e) {
     if (errCode(e) === 'EEXIST') return false;
@@ -331,7 +343,7 @@ async function acquireLock(file: string): Promise<Held> {
   } satisfies LockFile);
   for (let i = 0; i < 200; i++) {
     try {
-      publish(file, mine, 'link');
+      createExclusive(file, mine);
       return held;
     } catch (e) {
       if (errCode(e) !== 'EEXIST') throw e;

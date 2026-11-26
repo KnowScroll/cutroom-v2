@@ -407,7 +407,8 @@ export function renderReport(run: RunRecord): string {
   );
   for (const c of run.cuts) {
     const sum = scoreSum(c);
-    const approved = c.review === null ? '-' : c.review.approve ? 'yes' : 'no';
+    const approved =
+      c.review === null ? '-' : c.review.approve && blockingFails(c) === 0 ? 'yes' : 'no';
     out.push(
       `| ${String(c.n)} | ${c.voice_model} | ${sum === null ? '-' : String(sum)} | ${String(blockingFails(c))} | ${approved} | ${secs(c.film_s)} | ${secs(c.wall_s)} | ${money(engineUsd(c))} |`,
     );
@@ -436,7 +437,7 @@ export function renderReport(run: RunRecord): string {
 
     for (const g of selected.gates) if (!g.pass) wrong.push(`gate ${g.name} fails (${g.mode})`);
     for (const r of selected.engine_rejections) wrong.push(`engine rejection: ${r}`);
-    if (selected.review !== null && !selected.review.approve) {
+    if (selected.review !== null && !run.approved) {
       const n = selected.review.notes;
       for (const [shot, text] of Object.entries(n.shots ?? {})) wrong.push(`shot ${shot}: ${text}`);
       for (const [id, text] of Object.entries(n.assets ?? {})) wrong.push(`asset ${id}: ${text}`);
