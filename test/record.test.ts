@@ -41,6 +41,13 @@ function sampleRun(id: string): RunRecord {
       mode: 'block',
     },
     { name: 'same_view', value: 16, threshold: 14, pass: false, mode: 'info' },
+    {
+      name: 'balance',
+      value: { lower_half: 0.54, centre: 0.55 },
+      threshold: 'lower half >= 0.33, centre 0.42-0.62',
+      pass: true,
+      mode: 'info',
+    },
   ];
   const cost = {
     script: { usd: 0.12, tokens_in: 9000, tokens_out: 2000 },
@@ -201,6 +208,7 @@ await test('report.md shows the cut, why, scores, gates, flags and costs', async
     assert.match(text, /hook 4, clarity 4/);
     assert.match(text, /FAIL same_view \[info\]/);
     assert.match(text, /PASS voice_pitch \[block\]/);
+    assert.match(text, /PASS balance \[info\]: lower_half 0\.54, centre 0\.55 \(threshold lower/);
     assert.match(text, /fit: none \(no template/);
     assert.match(text, /sync conflict: explainer/);
     assert.match(text, /Total \$0\.85 \(engine \$0\.84, harness \$0\.01\)/);
