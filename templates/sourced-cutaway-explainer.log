@@ -1,0 +1,107 @@
+# sourced-cutaway-explainer: fix log
+
+## epoch 0 (2026-11-24): made from reference references/oil-type.mp4 (analysis reference-lab/refs/oil-type)
+Reference: a 130 s, 464x832 documentary explainer of how a resource is extracted from rock (topic not copied). One continuous
+camera through a muted, semi-realistic cut-away of the ground (strata bands with fine streak texture, a well drawn as thin double
+lines, close-ups of rock grains and machine parts as soft-shaded 3D-like renders), real black-and-white photos in paper frames
+with a credit line ("<what>. Photo: <artist>, <licence>, via Wikimedia Commons"), clippings of source sentences with the key
+words underlined and the source under them, honesty notes at the bottom of every picture ("Cut-away view, illustration",
+"Time compressed", "Not to scale") and a source line under the picture. Words appear one at a time at the top (y about 360 on
+1920), said words grey, newest white, one keyword per phrase in a blue text-selection box with two round handles. Fixed three-band
+frame: caption band y 0 to 500, picture band y 520 to 1460, print band below. Narration: plain second-person documentary
+("You drill down to it"), misconception hook, a 3-verb preview of the steps, "First, ... Then ..." procedure, one scale number
+with its year, callback to the hook's picture.
+
+Taken: the three-band layout with px positions, the cut-away drawing technique (strata as banded greys with cached streaks,
+pipes as double lines, close-ups as soft-shaded polygons), colour as OKLCH relations (near-neutral cool greys, ONE amber accent
+for what moves or matters, a slate blue only for a second, cold flow; measured: ground L 0.13, amber L 0.75 to 0.80 C 0.07 to 0.09
+h 77 to 95, selection blue L 0.57 C 0.13 h 256), label style (uppercase 40 px with a leader line and dot), the evidence system,
+the story shape as topic-free beats (hook, truth, question, preview, step x3, number, payoff/callback).
+Not taken: the topic, its machines, place names, numbers, the source names and the patent figure.
+
+Engine limits met and changed (asked for by the user's brief: "use real images and references from the internet"):
+- The template engine had no real images (only classic/ toon plans with hand-downloaded files). Added "photos: commons":
+  engine/photos.mjs (Commons search for free-licence bitmaps, download, M3 picks by looking, credit line), plan contract
+  engine/prompts/planphotos.txt, shot helpers in engine/prompts/shotphotos.txt, stage helpers h.photo / h.quote / h.note
+  (stage_asset.html; photos reach the network-blocked stage as JPEG bytes through window.loadPhotos), a check that a shot draws
+  the photo or quote its storyboard pins, photo credits in CREDITS.md. Quotes are snapped to the reference's own sentence.
+- The reference's caption style did not exist: added "captions: select" (stage_asset.html selectCaption), keyword = the shot's
+  cue word, else a number, else the longest word; the timeline now carries each shot's cue word.
+- rea-video's extract_frames crashed on this 130 s reference (one ffmpeg select of 120 eq() terms: "Cannot allocate memory" on
+  Windows): batched to 40 frames per decode (reference-lab/rea-video/rea_video/media.py).
+
+## epoch 1 (2026-11-24): first reel, reels/geothermal-e1-v2 ("How is geothermal energy made", 60 s target), 63.7 s, MiniMax $0.385
+Run notes: the first launch was stopped by Claude Code for low memory (rea-video decompose with its stem separation ran beside
+the reel render), then the ElevenLabs account hit quota_exceeded at the voice step, and OpenRouter now serves MiniMax speech only
+with a MiniMax key (BYOK); resumed from the checkpoints with Kokoro (bm_george, pitch spread 3.24 st, under the 4 st gate) on the
+user's choice. Cost: $0.161 for the first launch (writer, plan, photos, kit, assets) + $0.224 for the resume (shots, director).
+Right: the reference's evidence system came across: three bands, words appearing at the top with the keyword in a blue selection
+box, a framed black-and-white Commons photo with its credit line (Larderello, public domain), a reference clipping with the key
+words underlined and its source, honesty notes on every frame, amber flow dots in the well, muted streaked strata. Plan passed
+first try; quote snapped to the reference sentence; kit valid first try; sound mix passed every gate.
+Flaws -> fixes (epoch 2):
+- The cut-away was an ASSET (a 920x1320 box of ground), so every shot showed a narrow box with dark margins, and shot 1 stacked
+  two scenes -> the ground is the kit's job, full width, with four named backgrounds (surface, section, deep, close); assets are
+  structures only (the well with depth and flow params, the machine opened up, the surface plant), nothing behind them.
+- Story: payoff fact was Earth's total heat flow (44.2 TW), not how much the world gets from it; step 5 was the enhanced
+  (EGS) variant; shot 6 listed three plant types; the preview shot ("you drill, bring it up, and use it") reused the step facts
+  (spine rejected twice for fact reuse) and lost the test viewer -> ## story rewritten: the most common method in real order, one
+  physical step per shot, never a list of kinds, payoff = real-world scale (a named country's share, a site's output, homes);
+  preview beat removed (beats: hook, truth, question, step, number, callback).
+- Only 1 of 3 photos found: Commons search needs every word ("Chena Hot Springs geothermal plant" 0 hits, "Chena Hot Springs"
+  24) -> engine/photos.mjs tries each query with its last words dropped down to 2 words (up to 6 searches), filters schematic
+  and drawing titles; planphotos.txt asks for 2 or 3 search words (a famous site's name alone, or the common name).
+- A label at y 268 (in the caption band) shipped -> stage check under "captions: select": shot text above y 500 or below
+  y 1465 is rejected.
+- Label panels kept failing "text spills out of the panel" (12 rejections; letter spacing made measured widths too small) ->
+  labels have no panel (text shadow) and no letter spacing.
+- Caption chunks split spoken numbers ("surface at forty four" / "point two terawatts", "eighty" / "one degrees") -> number words
+  stay in one chunk.
+- h.note sources were descriptions ("Geothermal enhanced reservoir concept") -> the shot request lists the reference article
+  titles, and the template asks for 'Wikipedia: <one of them>'.
+- Engine bug: the writer's payoff check turned 44.2 into "forty-undefined" (numWords on a decimal) -> checks the whole part.
+
+## epoch 2 (2026-11-24): reels/geothermal-e2-v2, 58.3 s for 60, MiniMax $0.309 (Kokoro voice am_michael, $0.0005), 718 s wall
+Grade vs reference: rendering 0.05, colour 0.13 (e1 0.16; contrast 5.8 vs 13.1), rhythm 0.55 (e1 0.52; 7.2 changes a minute vs 27).
+Right: the epoch-1 fixes held. The ground is now kit.bg, full width, and the well, plant and turbine are clean structures standing
+in it (continuity across shots: the well at the same x, the surface line fixed). Story: the common method (drill into a hot
+aquifer, the well carries it up, the plant, turbine and generator), payoff = real-world scale ("more than fifteen percent of
+electricity in each of six countries") on a map; test viewer 4/4/4/4. Photos 4 of 4 found (Mutnovsky, Blundell, Wairakei,
+a turbine-generator set), all credited; quotes snapped; no text in the caption band; number words kept together in captions.
+Flaws -> fixes (epoch 3):
+- Credit lines collided with labels and the quote (shot 6 had a photo AND a quote; its photo was a 320 x 115 strip) -> plan check:
+  one photo or quote per shot; h.photo rejects anything under 360 x 200 px; validator rejects the shot's text over a photo or its
+  credit line; template photo inset is 420 to 560 wide with its 90 px credit strip kept clear.
+- h.photo returned null before its entrance, so M3's leader lines crashed (photo.x0 of null, twice) -> h.photo / h.quote always
+  return their box with a "shown" flag.
+- Shots 2 (quote) and 7 (map) failed the generic "largest subject 400 px" rule every try -> template check "subject size: off"
+  (engine key: no subject-size rule for this template).
+- The number shot's bar (0 to 20%) was filled to about 3% while saying 15% -> never a bar or scale unless filled to the real value.
+- The map was hand-drawn blobs -> maps use the engine's real map helpers (h.countryView, h.landPath, h.countryPath, h.borderPath,
+  h.countryCentre + h.geo), with the exact calls written into ## look.
+- Rhythm: 8 shots of 7 s with mostly still compositions -> 10 to 12 short shots of one 6-to-12-word line, adding the reference's
+  "place" beat ("Imagine [standing] at [real site]") and an optional "turn" (a real limit or side effect) before the callback.
+- Steps opened with "Then" three times, never "First," -> the first step's line starts with the word "First,".
+- Still open: two shots shipped with "a solid rectangle over 100% of the frame" that the saved code does not reproduce in a
+  harness (watch in e3); a leader line ran up into the caption band (lines are not checked, only text).
+
+## epoch 3 (2026-11-24): reels/geothermal-e3-v2, 56.9 s for 60, MiniMax about $0.27 (first launch about $0.21 estimated from its
+## logged output tokens: its calls.json was overwritten by the resumes; resume $0.062), Kokoro am_michael ($0.0002)
+Run notes: the first launch got to the render, then Claude Code stopped it for low memory and ffmpeg failed to start
+(0xC0000142); the user gave a new ElevenLabs key (first the key ID, then the sk_ key), but that account also had 0 credits, so the
+render and director round were resumed with Kokoro on the user's choice. Engine fix on the way: an "invalid_api_key" answer no
+longer turns off ElevenLabs word timestamps for the rest of the run (engine/audio.mjs).
+Grade vs reference: rendering 0.05, colour 0.11 (e2 0.13; contrast 7.2, e2 5.8), rhythm 0.50 (e2 0.55; 9.5 changes a minute, e2 7.2).
+Right: the epoch-2 fixes held and no shot shipped failing (first epoch with zero "using the last" fallbacks). 10 short shots; story
+test viewer 4/5/5/4: "Not buried fuel, but heat from inside the crust" hook, the question, "First, the plant drills a well into a
+hot aquifer", fluid rises, steam turns the turbine, the generator, payoff "sixteen gigawatts of geothermal capacity" (2025),
+callback. 5 of 5 photos found and credited (Mutnovsky, a Te Mihi drilling rig, Nga Awa Purua pipework, a station's steam pipes,
+a generator); a real world map (engine helpers) for the plate-boundary shot; the director fixed a tilting turbine in shot 7.
+Flaws still seen (not yet fixed; 3 rounds done, waiting for the user):
+- The number shot puts a world total on a zoomed patch of map (Canada and Greenland), which says nothing.
+- The generator photo is a portable petrol generator: the search ("electrical generator") and the pick took a real thing out of
+  the topic's context.
+- Photo credit lines still run over the drawing in shots 6 and 7 (the photo sits over the plant asset).
+- Rhythm: still a third of the reference's changes a minute; compositions hold 4 to 6 s.
+- Music picked "Energizing" although the script asked for Calming 80-100 bpm.
+- Voice: Kokoro is flat (pitch spread 3.2 st, gate 4); ElevenLabs needs credits.

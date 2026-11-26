@@ -1,0 +1,152 @@
+{
+ "by": "claude",
+ "shots": [
+  {
+   "id": "shot_001",
+   "time": "0.00-4.00",
+   "label_probs": {
+    "code_render": 0.93,
+    "anim_2d": 0.06,
+    "screen_capture": 0.01
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Pure flat vector fills and smooth gradients, no material texture or sensor noise; every edge is a perfect circle, ellipse or rounded rectangle",
+    "Stars twinkle by opacity only, planets slide in on exact eased paths with a small overshoot: parametric (GSAP-style) timeline motion, not drawn frame by frame",
+    "Text tags are crisp HTML-like rounded pills with a single geometric sans (Poppins-like), placed beside each body: rendered with the scene, not burned-in subtitles",
+    "One continuous scene with a static camera; 96% of background pixels never change while elements enter"
+   ],
+   "description": "One continuous flat-vector space scene on a deep violet-navy vertical gradient with a soft purple haze in the middle, about 170 small star dots (violet and pale lavender, 1 to 4 px, some breathing in opacity) and about 14 four-point sparkles. A tiny Earth (blue disc with green land blotches) sits near the top at x 540, y 390; a dotted violet measuring line runs straight down to a tiny Moon at y 1360, each with a rounded colour tag to the right (\"Earth\" blue, a long distance tag violet). From 0.45 s the bodies slide in one at a time every 0.29 s from alternate sides (left, right) with a rotation that unwinds and a small overshoot, stacking to scale in a column on the line: three tiny rocky bodies share one grey tag on the left, then a huge banded orange-cream body, a banded cream body with a tilted ring, a cyan body and a blue body; each body is a flat disc with darker bands or blotches clipped inside, a large dark night-side ellipse over its left part leaving a lit crescent on the right, a faint soft highlight top-right and a blurred halo of its own colour. Each body gets a pill tag in its own saturated hue that pops in (scale 0 to 1 with overshoot) 0.2 s after it lands. At 2.53 s (payoff) the last body lands, the scene pulses (scale 1.035 then settles), the measuring line turns mint green, a mint bracket marks the spare gap with a mint tag holding a number with its unit, and a hot-pink chip with a yellow check disc pops in at the top, tilted -3 degrees. One white caption line (about 46 px, medium weight, sentence case, soft dark shadow) sits low at y about 1435 and swaps in place three times: question part 1, question part 2, answer.",
+   "narrative": {
+    "role": "payoff",
+    "point": "A two-part question about whether things fit, answered by stacking them to scale on a measured line and stamping the answer with a check tag"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   }
+  }
+ ],
+ "aspects": {
+  "camera": {
+   "setups": "",
+   "gear_guess": ""
+  },
+  "lighting": {
+   "lighting_overall": ""
+  },
+  "grade": {
+   "grade_overall": ""
+  },
+  "editing": {
+   "editing": ""
+  },
+  "format": {
+   "format": ""
+  },
+  "style": {
+   "render_style": "flat vector illustration (Kurzgesagt-like science explainer): solid fills, a few soft gradients, glow halos; code-rendered SVG",
+   "outline": "none: shapes are separated by colour and value only, never an ink line",
+   "shading": "one light direction for everything (from the right): each body is a flat base colour with a big dark night-side ellipse over its left side in the ground hue at about 78% opacity, leaving a lit crescent on the right; a faint soft white highlight spot top-right; a blurred halo of the base colour around it",
+   "shape_language": "perfect circles and ellipses, rounded pills, horizontal bands and soft blotches clipped inside circles; a tilted thin ellipse for a ring; four-point sparkles made of curved concave diamonds",
+   "texture": "none on objects; the ground is a smooth vertical gradient with a soft radial haze; texture only from the star field",
+   "type_ui": "one geometric rounded sans (Poppins): white medium-weight caption in sentence case low in the frame with a soft dark shadow; small bold labels in bright rounded pills (radius about 12 px) in each object's own saturated hue with white text (dark text on the mint pill); one bigger hot-pink answer chip with a yellow check disc, tilted -3 degrees",
+   "motion_style": "things drop or slide in one at a time with a little overshoot (back.out), tags pop from scale 0 with overshoot, stars breathe in opacity, slow drift of the whole scene, and a small scale pulse when the payoff lands",
+   "signature": "glowing flat bodies with a dark crescent night side on a deep violet star field, each with its own bright colour tag, shown to scale on a dotted measuring line, the answer stamped by a pink check chip",
+   "do_not_copy": "the topic (planets stacked between Earth and the Moon), its object list, its words, numbers and distances, the Kurzgesagt name, characters (birds) and artwork; no watermark or handle seen"
+  }
+ },
+ "story": {
+  "summary": "A 4-second flat-vector space shot that asks a yes/no scale question in two caption parts and answers it by stacking objects to scale on a measured line.",
+  "hook": "0 to 1.3 s: a near-empty star field with one tiny object at the top and a dotted line to a second tiny object far below, while the caption asks the first half of a surprising question; the empty gap is the question.",
+  "highlights": [
+   "0.45 to 2.5 s: objects slide in one at a time, alternating sides, each landing in the gap with an overshoot and its own colour tag: a steady rhythm that makes the viewer count along.",
+   "2.53 s: the payoff lands on a visual hit: the scene pulses, the line turns green, a bracket shows the leftover room with its real number, and a pink check chip stamps the answer: the answer is seen, not only read.",
+   "Everything is drawn to scale on one measured line, so the comparison is honest and instantly readable (tiny things share one tag, big ones get their own)."
+  ]
+ },
+ "cast": {
+  "style": "Kurzgesagt-like flat vector space art: deep violet-navy star field, glowing flat bodies lit from the right with a dark crescent night side, bright rounded colour tags, white caption low and centred",
+  "characters": [],
+  "scenes": [
+   {
+    "id": "S1",
+    "where": "deep space, a vertical column between two bodies",
+    "when": "timeless",
+    "look": "deep violet-navy vertical gradient, purple haze in the middle, violet and lavender star dots, four-point sparkles",
+    "shots": [
+     1
+    ]
+   }
+  ],
+  "props": [
+   {
+    "name": "flat glowing bodies",
+    "note": "discs with bands or blotches, night-side crescent, halo; one with a tilted ring",
+    "shots": [
+     1
+    ]
+   },
+   {
+    "name": "dotted measuring line",
+    "note": "violet dashes between the two end bodies, turns mint at the payoff",
+    "shots": [
+     1
+    ]
+   },
+   {
+    "name": "colour tags and answer chip",
+    "note": "rounded pills in each body's hue; hot-pink chip with a yellow check disc",
+    "shots": [
+     1
+    ]
+   }
+  ]
+ },
+ "packaging": {
+  "stickers": [],
+  "text": [
+   {
+    "id": "text_001",
+    "kind": "label"
+   },
+   {
+    "id": "text_003",
+    "kind": "label"
+   },
+   {
+    "id": "text_004",
+    "kind": "label"
+   },
+   {
+    "id": "text_005",
+    "kind": "label"
+   },
+   {
+    "id": "text_007",
+    "kind": "label"
+   },
+   {
+    "id": "text_008",
+    "kind": "label"
+   },
+   {
+    "id": "text_009",
+    "kind": "title"
+   },
+   {
+    "id": "text_010",
+    "kind": "label"
+   },
+   {
+    "id": "text_011",
+    "kind": "label"
+   }
+  ],
+  "missed": []
+ }
+}

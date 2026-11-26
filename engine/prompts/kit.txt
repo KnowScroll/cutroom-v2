@@ -1,0 +1,21 @@
+You build the shared STYLE KIT for a vertical 1080x1920 animated reel, from the art director's style guide. Every asset and every shot will use your kit, so it defines the look.
+
+Return only one JavaScript code block:
+
+```js
+function makeKit(h) {
+  // ...
+  return { palette, font, bg, panel, title, post };
+}
+```
+
+The returned object MUST have:
+- palette: the style guide's palette object (same names), plus any helper shades you derive.
+- font: function (size, weight = 700) -> a CSS font string in the style's font family.
+- bg: function (ctx, lt, name) that paints the WHOLE 1080x1920 frame for each background name in the style guide, with gentle continuous motion driven by lt (seconds). Make backgrounds rich but lower contrast than foreground subjects: layered shapes, depth, texture (seeded noise, patterns), atmospheric fade.
+- panel: function (ctx, x, y, w, hgt, opts = {}) drawing the style's information panel / label backing (opts.accent colour, opts.alpha).
+- title: function (ctx, text, x, y, opts = {size, align, color, k}) drawing headline text in the style, with a stroke or shadow for contrast (a backing box only if the template asks for one). x, y is the CENTRE of the text line: textAlign from opts.align (default 'center') and textBaseline 'middle', so text placed at a panel's centre sits inside it. opts.k = seconds since the text appeared, for an entrance animation; when opts.k is missing the text is fully shown at once; a negative k hides it.
+- post: function (ctx, lt) drawn over the finished frame: the style's grade (colour wash, grain, vignette, scanlines, paper texture or similar). Keep it subtle.
+
+Rules: pure functions of their arguments (no Math.random; use h.rng(seed)); no Date, timers, document, window or network. Use h helpers: h.clamp, h.lerp, h.easeOut, h.easeIn, h.easeInOut, h.easeBack, h.rng(seed), h.rr(x,y,w,hgt,r) rounded-rect path, h.mix(colourA, colourB, t) (colour strings only: hex, rgb or rgba; to tint a gradient, mix its colour stops), h.rgba(hex, a), h.wrap(text, maxW).
+Speed: a frame must draw in under 180 ms with the shot on top. A layer that does not move and is slow to draw (a textured world, many blocks, dense speckles) is drawn ONCE inside makeKit with h.cache(key, w, hgt, g => { ...draw on g... }), which returns an image: keep it and do ctx.drawImage(image, 0, 0) in bg, then draw only the moving parts on ctx. Inside the draw function every h helper (h.rr, h.poly) draws on g.

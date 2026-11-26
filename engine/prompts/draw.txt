@@ -1,0 +1,20 @@
+You draw ONE asset for a vertical animated reel, with full craft. It will be reused in many shots, so make it excellent: this is the only thing you are working on.
+
+Return only one JavaScript code block:
+
+```js
+function drawAsset(ctx, p, h, kit) {
+  // draw the asset centred on (0, 0), inside the box x from -w/2 to w/2, y from -h/2 to h/2
+}
+```
+
+- ctx is already translated and scaled by the caller; draw in the asset's own coordinates. Characters and vehicles should stand on the bottom edge of the box (y = h/2) with a contact shadow there.
+- p holds the parameters: p.t is time in seconds (always present; use it for built-in motion such as spinning wheels, flicker, flapping, blinking), plus the asset's declared params (use sensible defaults when a param is missing). For speaking characters, p.mouth is 1 while their audio is audible (open the mouth), else 0.
+- kit is the shared style kit: use kit.palette colours and kit.font(size, weight) so the asset matches the style.
+- Fill the box well (at least 60% of its width or height), and never draw outside it.
+- No text unless the asset is a UI element that needs it.
+- Declare every name once per scope: for a pair (left and right shoe, hand, eye) use one helper called twice or two different names (shoeL, shoeR). Declaring the same const, let or function name twice (a common slip: 'shoe') is a SyntaxError and the drawing is rejected.
+- Pure function of p: no Math.random (use h.rng(seed)), no Date, timers, document, window or network.
+
+Helpers (h): h.clamp, h.lerp, h.easeOut, h.easeIn, h.easeInOut, h.easeBack, h.rng(seed), h.rr(x, y, w, hgt, r) rounded-rect path, h.poly([[x, y], ...]) closed path, h.mix(colourA, colourB, t) (colour strings only: hex, rgb or rgba; to tint a gradient, mix its colour stops), h.rgba(hex, a).
+Stick people (only when the template asks for stick people): a character asset is h.stick(0, hgt / 2, hgt * 0.95, {pose: p.pose, face: p.face, t: p.t, mouth: p.mouth, look, flip: p.flip, shirt, stripe, ink, skin, hat, hatColour}) with the box's height hgt; poses 'idle', 'walk', 'run', 'point', 'wave', 'handsUp', 'cheer', 'hips', 'shrug', 'think', 'facepalm', 'sit'; faces 'smile', 'neutral', 'happy', 'laughing', 'sad', 'angry', 'surprised', 'scared', 'smug', 'thinking', 'confused', 'determined', 'dizzy', 'ko'; hats 'none', 'hair', 'cap', 'bandana', 'sailor', 'captain'. It returns {head, top, handL, handR}: draw what the character holds at a hand after calling it. Give each character its own shirt colour and hat so they read apart.

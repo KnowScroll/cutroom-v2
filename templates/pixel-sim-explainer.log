@@ -1,0 +1,52 @@
+# pixel-sim-explainer fix log
+
+## epoch 0 (2026-11-18): created from a reference reel
+Made by Claude from the rea-video breakdown of references/test1.mp4 (pixel-art fission explainer, 180 art pixels across), see reference-lab/runs/ref-test1/. Train brief: "supernova explosion". Reel: reference-lab/runs/ref-test1/test-1-claude-template/reel-v2 ($0.237, 55 s film for a 45 s target).
+
+## epoch 1 (2026-11-18): fixes after reviewing the epoch-0 reel
+Flaws seen -> fix:
+- Panel text pixelated into mush -> engine pixel mode (check "pixel grid: 180"): the stage pixelates the artwork and draws text crisp on top; kit.post no longer pixelates.
+- Empty boxes (3 at the end, an empty label box) -> validator rejects any visible kit.panel with no text inside and text spilling out of its panel; template: panels only with their text.
+- Hard to follow: an invented mechanism (a star "splitting into pink and blue products that trigger neighbouring stars"), tiny sprites, several changes at once -> template: simulate the topic's REAL mechanism with labelled real parts, one event at a time named by the caption, cause-and-effect trails and arrows, big subjects (35 to 60% width), one large hero instance in the buildup.
+- Labels "PINK" / "BLUE" (copied from a colour example) and filler titles ("COSMIC EVENT MONITOR", "LATTICE POPULATION") -> no colour examples; "labels: from narration"; counter = one real quantity with its unit.
+- Reference topic leaking (mushroom puffs on a ground horizon for a supernova) -> macro world = where the event really happens; asset gets the topic's true shape.
+- White flash held about 3 s -> 0.6 s brighten, 0.4 s white, 0.3 s fade in.
+- 55 s for a 45 s target -> engine word budget follows the narrator's measured rate (bm_george 2.05, bf_emma 2.8 words/s); template narrator is bf_emma.
+- Beats renamed: rule -> mechanism, cascade -> buildup (the reference's doubling chain was too specific).
+
+## epoch 2 (2026-11-18): fixes after reviewing the epoch-1 reel (reels/supernova-pixel-e1-v2, $0.209, 42.4 s)
+Epoch 1 got crisp text, the real mechanism, big subjects, a short flash and the loop right. Flaws seen -> fix:
+- "labels: from narration" rejected stat units ("PER CENTURY", "YEARS") a 13-word line cannot say; 3 shots never passed and the counter showed words ("COLLAPSE", "IRON CORE") -> check removed; plan rule now "real things, steps or numbers, in the narration's terms"; counter = digits + unit line, a word is wrong.
+- Stat cards stacked on each other, small lines overlapping the numbers -> validator rejects overlapping panels and overlapping texts; template: one stat card at a time in one place, rows 12 px apart.
+- Giant purple/teal rings behind every subject (read as a target, the star core unreadable) -> no halo/disc wider than 1.2x the subject; the subject is the brightest thing, true colour.
+- Climax shot had no caption panel -> every shot shows its caption panel for its whole length.
+- Floating dark rectangles in the space haze -> haze is full-width bands or soft round clouds.
+
+## epoch 3 (2026-11-18): fixes after reviewing the epoch-2 reel (reels/supernova-pixel-e2-v2, $0.226, 38 s)
+Epoch 2 got a readable star, a clear mechanism shot (labelled fusion shell, iron shell, iron core) and a big supernova shell in space. Flaws seen -> fix:
+- Panels empty for whole shots: shot code passed kit.title(..., { k: "bold" }); k is seconds since the text appeared, so every position became NaN and nothing drew; the validator said "empty panel" but not why, so M3 never fixed it -> stage treats a non-number k as fully shown, and rejects text drawn at NaN with a message naming the cause.
+- kit.title drew its own box inside the shot's kit.panel (double boxes) -> template: kit.title draws text only, kit.panel draws boxes.
+
+## epoch 4 (2026-11-18): fixes after reviewing the epoch-3 reel (reels/supernova-pixel-e3-v2, $0.237, 43.8 s), not yet run
+Epoch 3 is the best so far: every panel holds its text, crisp; real mechanism (iron fusion fails, gravity wins, core collapse, shock wave, flash); SN 1987A as a big glowing shell in space; stat cards one at a time; the loop lands. Flaws seen -> fix:
+- Panel text sitting on the bottom border -> validator now also rejects text that spills vertically, and says to centre it (textBaseline middle at the panel centre).
+- Buildup counter showed the galaxy's supernova rate while the line talked about core temperature -> the counter's quantity is the one this shot's narration talks about.
+- "1000S", "10S" -> numbers written the way people read them (1,000, 1.2 BILLION, 10+).
+- The iron-core sprite half off the left edge; the hook star bloomed to a white blob -> every subject fully inside x 60 to 1020; glows stay under the subject's brightness.
+
+## epoch 5 (2026-11-18): held-out brief "volcanic eruption" with the epoch-4 rules (reels/volcano-pixel-e4-v2, $0.192, 41.2 s)
+Transferred well: the real mechanism (gas expands as pressure falls, pushes magma up the vent), white flash, Vesuvius 79 AD at real scale on a landscape (correctly not space), "30+ KILOMETRES" stat card with digits and unit, loop, pixel grid, crisp text. Flaws seen -> fix:
+- Empty panels in shots 1-3 (4 shots never passed): shot code passed kit.title(..., { k: 0 }) meaning "no animation"; the kit treats k as seconds since the text appeared, so 0 = opacity 0. Root cause: the shot step's kit API listed k without saying what it is -> kitApi and asset_shot_prompt now explain k (leave it out to simply show text); the empty-panel rejection now names invisible text and its opacity, or text drawn beside the panel.
+- Panels drawn beside their text -> labels each on their own kit.panel centred on the text; no other boxes anywhere.
+- Hero "magma chamber" an unreadable orange donut, volcano not shown until the scale shot -> hook shows the whole familiar thing with the micro part at its heart (cut-away, core, inset).
+- Vesuvius cone in the caption band -> the whole event fits y 380 to 1380, horizon at y 1100 to 1350.
+- Still far less motion than the reference -> "never still" rule: three things moving in every frame, counter shots animate the process.
+
+## epoch 6 (2026-11-18): after reels/volcano-pixel-e5-v2 ($0.195, 42.6 s): every shot failed on empty panels (70 rejections)
+Cause was the kit, not the shots: its kit.title reads a missing k as 0 (opacity 0), so the epoch-5 advice "leave k out" hid every title; and each kit anchors kit.title's x, y differently (baseline, top), so shots placed text above or beside their panels. Engine fix (helps every template): the kit contract (asset_kit_prompt.txt) now fixes kit.title's x, y as the CENTRE of the text line (textBaseline middle) and a missing k as fully shown; the stage forces a missing or non-number k to "fully shown"; the shot step and kitApi say to pass the panel's centre.
+
+## epoch 7 (2026-11-18): after reels/volcano-pixel-e6-v2 ($0.203, 42.0 s), not yet run
+The kit.title contract fix worked: empty-panel rejections went from 70 to 2, every panel holds centred crisp text, one shot fell back (a title wider than its panel). The hook now shows a cut-away volcano with the magma chamber and vent. Flaws seen -> fix:
+- Invented counter quantities and units ("MAGMA INDEX 1 to 8", "MILLION ENERGY UNITS") -> the quantity's name and unit must appear in the reference; no invented units or indexes.
+- Hero still a small abstract part in the mechanism shots -> the hero asset is the real thing in cut-away (outside plus the inner part), the hook shows it whole, mechanism and buildup push in on the inner part.
+- Eruption column drawn as a capped T / mushroom (reference look leaking) -> true-shape line for volcanic eruptions.

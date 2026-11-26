@@ -1,0 +1,507 @@
+{
+ "by": "claude",
+ "shots": [
+  {
+   "id": "shot_001",
+   "time": "0.00-9.03",
+   "label_probs": {
+    "code_render": 0.8,
+    "cg_3d": 0.15,
+    "still_motion": 0.05
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Orthographic globe and zoomed map views with hillshade relief on the land, stable geometry, perfectly smooth camera zooms, pans and spins: a map animation tool / GIS render (code or template driven), not a 3D scene with materials and not AI video",
+    "Overlays (glowing coastlines, distance circles with node dots, candy-striped pole markers, big rolling number counters, country labels, a year ruler) are crisp vector graphics placed by geographic coordinates and synced to the narration",
+    "No texture boiling, no warping of coastlines between frames; text and numbers render perfectly"
+   ],
+   "description": "Hook: the whole globe in dark space, an inland region outlined by a bright glowing ice-blue line with 3 to 4 fainter offset contour lines around it (distance bands), the ocean navy, the land warm dark grey with relief. The region shrinks toward one point while the camera zooms down onto it; a candy-striped red/cream pole marker with a small orange flag and a thin ellipse ring at its foot drops onto the point. The map recolours: the country containing the point fills ochre-orange with a thin light border, a neighbouring country fills pale grey, the shared border glows hot magenta; white uppercase country labels with dark shadows pop in; a two-line white title (place name, smaller second line) types in at the top (y about 15%). Word-by-word white captions at about 71% of the height.",
+   "narrative": {
+    "role": "hook",
+    "point": "A superlative claim about one spot on Earth, then zoom down and name it on the map"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_002",
+   "time": "9.03-35.88",
+   "label_probs": {
+    "code_render": 0.8,
+    "cg_3d": 0.15,
+    "still_motion": 0.05
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Orthographic globe and zoomed map views with hillshade relief on the land, stable geometry, perfectly smooth camera zooms, pans and spins: a map animation tool / GIS render (code or template driven), not a 3D scene with materials and not AI video",
+    "Overlays (glowing coastlines, distance circles with node dots, candy-striped pole markers, big rolling number counters, country labels, a year ruler) are crisp vector graphics placed by geographic coordinates and synced to the narration",
+    "No texture boiling, no warping of coastlines between frames; text and numbers render perfectly"
+   ],
+   "description": "One continuous map camera over the same globe. Overlays fade; a big rolling counter (heavy rounded sans, gold with dark outline, small 'KM' after it) appears top-left at y about 21% while a gold line grows from the marker to the nearest coast, then a gold distance circle sweeps round the marker touching the coast; the camera pulls back so the circle reads on the globe; a comparison line between two named cities (small gold node dots, white uppercase labels) gets its own counter; a short white tag ('N KM SHORT') where the line stops short of the coast. Twist: the camera pans north along the circle to a coastal water feature, its outline traced in bright cyan, an italic serif ice-blue label names it; a year ruler (ticks, decade numbers, gold pointer, the year in large orange serif) slides in at the top; the land around turns pale ice blue (the feature recounted as ocean), new contour bands appear and the marker splits into two new markers. Then an orange glowing outline of the country, orange circles with ripple nodes where they touch coasts, the counter rolls to the new value in orange.",
+   "narrative": {
+    "role": "info",
+    "point": "Measure the spot with a rolling number and a ring, compare it with a familiar distance, then a correction moves the spot and changes the number"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_003",
+   "time": "35.88-59.40",
+   "label_probs": {
+    "code_render": 0.8,
+    "cg_3d": 0.15,
+    "still_motion": 0.05
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Orthographic globe and zoomed map views with hillshade relief on the land, stable geometry, perfectly smooth camera zooms, pans and spins: a map animation tool / GIS render (code or template driven), not a 3D scene with materials and not AI video",
+    "Overlays (glowing coastlines, distance circles with node dots, candy-striped pole markers, big rolling number counters, country labels, a year ruler) are crisp vector graphics placed by geographic coordinates and synced to the narration",
+    "No texture boiling, no warping of coastlines between frames; text and numbers render perfectly"
+   ],
+   "description": "Zoom out to the small whole globe, spin to the other side of the Earth, zoom back in on open ocean: a red/cream striped buoy marker with a white ellipse ring; a white uppercase title names the second spot; the coasts around it glow as cloud-like offset bands, then an ice-blue counter rolls up and an ice-blue circle with 3 node dots where it touches land. The gold circle of the first spot is laid over it: the two numbers sit side by side at the top (gold left, ice blue right), two nearly equal concentric rings; a cut-in to an extreme close-up of the two ring edges as two near-parallel horizontal arcs with tiny km ticks and the difference as a small counter; a pull back to the whole globe with a dashed comparison circle and a translucent filled disc overlapping the buoy's circle; ends held on the globe with both numbers on top.",
+   "narrative": {
+    "role": "payoff",
+    "point": "A second, opposite spot gets its own number, and the two numbers side by side land the surprise that they are almost equal"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  }
+ ],
+ "aspects": {
+  "camera": {
+   "setups": "One virtual map camera over an orthographic globe: continuous zooms, pans and a spin to the far side",
+   "gear_guess": "map animation tool or code-rendered globe"
+  },
+  "lighting": {
+   "lighting_overall": "No lighting model beyond the globe: a light pool on the ocean facing the viewer, darkening to the limb, a thin blue atmosphere rim and halo; land relief from hillshade"
+  },
+  "grade": {
+   "grade_overall": "Dark navy space (L about 0.12), navy ocean (L 0.22 to 0.35, hue about 273), warm dark grey land (L 0.33, nearly neutral), bright accents only in overlays: gold, ice blue, orange, magenta, cyan"
+  },
+  "editing": {
+   "editing": "One continuous camera for the whole reel; the detected cuts are a fade of overlays and a zoom-out-and-spin; word-by-word captions; counters roll on each new number"
+  },
+  "format": {
+   "format": "Vertical 9:16 globe and map geography explainer, male TTS voice-over at about 3.5 words/s, sound effects on each pop, no music bed, word-by-word captions"
+  },
+  "style": {
+   "render_style": "Orthographic 3D globe and zoomed map with hillshade relief (map animation look), crisp vector overlays on top",
+   "outline": "No ink outlines; coastlines and borders as thin light lines; selected outlines as glowing lines (bright core with a soft wider halo)",
+   "shading": "Land: flat warm grey with hillshade relief texture; ocean: smooth radial light pool; globe limb darkening plus atmospheric rim glow",
+   "shape_language": "Real coastlines and borders; perfect circles of equal distance on the sphere; thin straight measurement lines with small round node dots",
+   "texture": "Hillshade relief on land (mountain ridges), faint graticule lines on the ocean, glowing offset contour bands around coasts",
+   "type_ui": "Counters: heavy rounded geometric sans, gold / ice blue / orange / white with a dark outline, small uppercase unit after; place labels: white bold uppercase with dark shadow; water labels: italic serif, ice blue; title: two lines, white heavy uppercase, smaller second line; captions: white medium sans, word by word, no box, at about 71% of the height",
+   "motion_style": "Never still: the camera always glides (zoom, pan, spin) with ease in and out; lines draw on, circles sweep round, counters roll up, labels pop; markers wobble their flag",
+   "signature": "Measure on a real globe: a striped pole marker, a distance line and an equal-distance circle drawn on the sphere, a big rolling km counter; two key numbers side by side in gold and ice blue",
+   "do_not_copy": "The reference's topic (the remotest places on Earth), its places, countries, cities, numbers, years and lines; any watermark or handle"
+  }
+ },
+ "story": {
+  "summary": "A map explainer that makes one geographic superlative concrete: it zooms from the globe to the spot, measures it with a rolling number and a distance ring, compares it with a familiar trip, corrects it, then flips to the opposite spot and shows the two numbers are almost equal.",
+  "hook": "0 to 4 s: the whole globe with one region glowing in contour bands and the claim \"this is the furthest you can get from X\"; by 4 s the camera has zoomed onto a marker and the place is named on a coloured map.",
+  "highlights": [
+   "9 to 12 s: a big gold counter rolls up while a line grows to the coast: the number lands with motion, not as text",
+   "12 to 15 s: a familiar city-to-city distance drawn on the same map with its own counter makes the number feel huge",
+   "16 to 34 s: a \"but\" twist with a year ruler: the spot moves and the counter changes colour and value, so the viewer learns the number is a measurement, not a given",
+   "42 to 52 s: two numbers side by side in gold and ice blue with two nearly equal rings: the surprise is visual before it is spoken"
+  ]
+ },
+ "cast": {
+  "style": "Dark orthographic globe with hillshaded warm-grey land and navy ocean, glowing vector overlays, big rolling counters",
+  "characters": [],
+  "scenes": [
+   {
+    "id": "S1",
+    "where": "the globe in dark space, zoomed from whole Earth down to a regional map",
+    "when": "timeless",
+    "look": "navy ocean, warm grey relief land, blue atmosphere rim, faint graticule",
+    "shots": [
+     1,
+     2,
+     3
+    ]
+   }
+  ],
+  "props": [
+   {
+    "name": "pole marker",
+    "note": "red/cream candy-striped pole, small orange flag, thin ellipse ring at its foot; a striped buoy at sea",
+    "shots": [
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "name": "distance circle and line",
+    "note": "equal-distance circle drawn on the sphere, thin glowing line with node dots",
+    "shots": [
+     2,
+     3
+    ]
+   },
+   {
+    "name": "counter",
+    "note": "big rolling number with a small unit, coloured per quantity",
+    "shots": [
+     2,
+     3
+    ]
+   }
+  ]
+ },
+ "packaging": {
+  "stickers": [
+   {
+    "id": "sticker_01",
+    "is_overlay": false,
+    "what": "the candy-striped pole marker with its flag on the map: part of the map animation"
+   }
+  ],
+  "text": [
+   {
+    "id": "text_001",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_002",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_003",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_004",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_005",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_006",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_007",
+    "kind": "label"
+   },
+   {
+    "id": "text_008",
+    "kind": "label"
+   },
+   {
+    "id": "text_009",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_010",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_011",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_012",
+    "kind": "label"
+   },
+   {
+    "id": "text_013",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_014",
+    "kind": "label"
+   },
+   {
+    "id": "text_015",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_016",
+    "kind": "counter"
+   },
+   {
+    "id": "text_017",
+    "kind": "counter"
+   },
+   {
+    "id": "text_018",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_019",
+    "kind": "counter"
+   },
+   {
+    "id": "text_020",
+    "kind": "counter"
+   },
+   {
+    "id": "text_021",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_022",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_023",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_024",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_025",
+    "kind": "counter"
+   },
+   {
+    "id": "text_026",
+    "kind": "label"
+   },
+   {
+    "id": "text_027",
+    "kind": "counter"
+   },
+   {
+    "id": "text_028",
+    "kind": "label"
+   },
+   {
+    "id": "text_029",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_030",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_032",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_033",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_034",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_035",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_036",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_037",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_038",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_039",
+    "kind": "label"
+   },
+   {
+    "id": "text_040",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_041",
+    "kind": "label"
+   },
+   {
+    "id": "text_042",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_043",
+    "kind": "label"
+   },
+   {
+    "id": "text_044",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_045",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_046",
+    "kind": "label"
+   },
+   {
+    "id": "text_047",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_049",
+    "kind": "label"
+   },
+   {
+    "id": "text_048",
+    "kind": "label"
+   },
+   {
+    "id": "text_050",
+    "kind": "label"
+   },
+   {
+    "id": "text_051",
+    "kind": "label"
+   },
+   {
+    "id": "text_052",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_053",
+    "kind": "label"
+   },
+   {
+    "id": "text_054",
+    "kind": "label"
+   },
+   {
+    "id": "text_055",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_056",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_057",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_058",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_059",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_060",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_061",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_062",
+    "kind": "label"
+   },
+   {
+    "id": "text_063",
+    "kind": "counter"
+   },
+   {
+    "id": "text_064",
+    "kind": "counter"
+   },
+   {
+    "id": "text_066",
+    "kind": "label"
+   },
+   {
+    "id": "text_067",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_065",
+    "kind": "counter"
+   },
+   {
+    "id": "text_068",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_069",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_070",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_071",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_072",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_073",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_074",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_075",
+    "kind": "label"
+   },
+   {
+    "id": "text_076",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_077",
+    "kind": "counter"
+   },
+   {
+    "id": "text_078",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_079",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_080",
+    "kind": "subtitle"
+   },
+   {
+    "id": "text_081",
+    "kind": "counter"
+   }
+  ],
+  "missed": []
+ }
+}

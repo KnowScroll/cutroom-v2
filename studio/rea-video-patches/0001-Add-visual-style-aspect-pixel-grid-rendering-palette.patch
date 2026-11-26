@@ -1,0 +1,581 @@
+From 136f33612790b5976942eddb56f32a8f6a3be949 Mon Sep 17 00:00:00 2001
+From: XZNON <noreply@local>
+Date: Wed, 18 Nov 2026 14:19:57 +0530
+Subject: [PATCH 1/2] Add visual-style aspect (pixel grid, rendering, palette
+ as colour relations) and video/style.md
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ rea_video/aspects/__init__.py |   2 +-
+ rea_video/aspects/style.py    | 525 ++++++++++++++++++++++++++++++++++
+ rea_video/videomd.py          |   2 +
+ 3 files changed, 528 insertions(+), 1 deletion(-)
+ create mode 100644 rea_video/aspects/style.py
+
+diff --git a/rea_video/aspects/__init__.py b/rea_video/aspects/__init__.py
+index 2f2be5c..0c96912 100644
+--- a/rea_video/aspects/__init__.py
++++ b/rea_video/aspects/__init__.py
+@@ -10,7 +10,7 @@ import json
+ 
+ from ..i18n import T, semi
+ 
+-from . import framing, camera, lighting, grade, editing, fmt  # noqa: F401  (registration order matters)
++from . import framing, camera, lighting, grade, editing, fmt, style  # noqa: F401  (registration order matters)
+ from .base import FILMED, PHOTOGRAPHIC, REGISTRY, ShotCtx, get
+ from .subject import subject
+ 
+diff --git a/rea_video/aspects/style.py b/rea_video/aspects/style.py
+new file mode 100644
+index 0000000..16edd6f
+--- /dev/null
++++ b/rea_video/aspects/style.py
+@@ -0,0 +1,525 @@
++"""Visual style: how the picture is drawn and coloured, written so a remake can keep the look without copying colours.
++
++Measured on every shot (drawn, animated and filmed alike), per sampled frame:
++  palette      k-means in OKLab: up to 6 colours per frame with share, lightness L (0-1), chroma C, hue h (OKLCH degrees)
++  grid         pixel-art grid: the period of hard edges along x and y (FFT of the edge profile); `across` = art pixels
++               across the frame width; `conf` = peak over the spectrum's median (about 4+ is a real grid)
++  flat / smooth / hard   share of pixels in flat fills, gentle gradients, hard edges
++  outline      share of hard edges that are thin dark lines (dark rims drawn around shapes)
++  dither       share of busy art pixels that sit in 2x2 checkerboards (only when a pixel grid is found)
++  detail       fastreel's background-detail score: mean neighbour brightness step on a 108x192 copy (0-255 scale;
++               a flat gradient scores about 0.2, six outlined boxes 1.45)
++  colours      colours covering 95% of pixels at 4 bits a channel (from the forensic features)
++  dup          share of repeated consecutive frames: drawings held for 2+ frames (animation "on twos")
++
++Summarised per colour scene (a stretch of frames whose palettes stay close) and for the whole video, as relations
++that hold for any base hue: harmony (analogous, complementary, split-complementary, triadic ...), each hue family's
++offset from the base hue, lightness and chroma levels by role (ground, mid, accent, highlight), hue-shifted ramps,
++warm / cool split and contrast. The measured hex values are kept, but only as a reference: the recipe is the relations.
++
++The image readers (VLM / agent) answer what pixels cannot: rendering style, outline, shading, shape language, texture,
++type and UI, motion, the signature traits and what a remake must not copy."""
++from __future__ import annotations
++
++import math
++
++import cv2
++import numpy as np
++
++from ..i18n import T, semi
++from .base import Aspect, Field, ShotCtx, field_table, register, weighted_median
++
++K_FRAME = 6            # colours per frame
++CHROMATIC = 0.045      # OKLCH chroma above this counts as a hue (below: a neutral, maybe tinted)
++SCENE_GAP = 0.085      # palette distance that starts a new colour scene
++HUE_FAMILY = 28.0      # hues closer than this (degrees) are one family
++
++# ------------------------------------------------------------------ colour maths ---------------------------------
++
++
++def _srgb_to_oklab(rgb: np.ndarray) -> np.ndarray:
++    """rgb: (..., 3) floats 0-1 -> OKLab (..., 3)."""
++    c = np.where(rgb <= 0.04045, rgb / 12.92, ((rgb + 0.055) / 1.055) ** 2.4)
++    m1 = np.array([[0.4122214708, 0.5363325363, 0.0514459929],
++                   [0.2119034982, 0.6806995451, 0.1073969566],
++                   [0.0883024619, 0.2817188376, 0.6299787005]])
++    lms = np.cbrt(c @ m1.T)
++    m2 = np.array([[0.2104542553, 0.7936177850, -0.0040720468],
++                   [1.9779984951, -2.4285922050, 0.4505937099],
++                   [0.0259040371, 0.7827717662, -0.8086757660]])
++    return lms @ m2.T
++
++
++def _lch(lab) -> tuple[float, float, float]:
++    L, a, b = (float(x) for x in lab)
++    return L, math.hypot(a, b), (math.degrees(math.atan2(b, a)) + 360.0) % 360.0
++
++
++def _hex(rgb) -> str:
++    r, g, b = (int(round(float(np.clip(v, 0, 1)) * 255)) for v in rgb)
++    return f"#{r:02x}{g:02x}{b:02x}"
++
++
++def _hdiff(a: float, b: float) -> float:
++    """Signed hue difference b - a in (-180, 180]."""
++    d = (b - a + 180.0) % 360.0 - 180.0
++    return 180.0 if d == -180.0 else d
++
++
++def _lum(rgb) -> float:
++    c = np.where(np.asarray(rgb) <= 0.04045, np.asarray(rgb) / 12.92, ((np.asarray(rgb) + 0.055) / 1.055) ** 2.4)
++    return float(0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2])
++
++
++def contrast(rgb1, rgb2) -> float:
++    a, b = sorted((_lum(rgb1), _lum(rgb2)))
++    return (b + 0.05) / (a + 0.05)
++
++
++HUE_NAMES = ((29, "red", "红"), (55, "orange", "橙"), (90, "amber", "琥珀"), (110, "yellow", "黄"), (130, "lime", "黄绿"),
++             (145, "green", "绿"), (175, "teal", "青绿"), (205, "cyan", "青"), (235, "sky blue", "天蓝"), (264, "blue", "蓝"),
++             (290, "violet", "紫罗兰"), (315, "purple", "紫"), (345, "magenta", "品红"))
++
++
++def hue_name(h: float) -> str:
++    best = min(HUE_NAMES, key=lambda x: abs(_hdiff(x[0], h)))
++    return T(best[2], best[1])
++
++
++def warmth(h: float) -> str:
++    if h < 115 or h >= 330:
++        return "warm"
++    if 150 <= h < 300:
++        return "cool"
++    return "between"
++
++
++# ------------------------------------------------------------------ per frame ------------------------------------
++
++
++def frame_palette(bgr: np.ndarray, k: int = K_FRAME) -> list[dict]:
++    small = cv2.resize(bgr, (96, int(round(96 * bgr.shape[0] / bgr.shape[1]))), interpolation=cv2.INTER_AREA)
++    rgb = small[..., ::-1].reshape(-1, 3).astype(np.float32) / 255.0
++    lab = _srgb_to_oklab(rgb).astype(np.float32)
++    k = min(k, len(np.unique((rgb * 31).astype(np.int32), axis=0)))
++    if k < 1:
++        return []
++    crit = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 1e-3)
++    _, lbl, _ = cv2.kmeans(lab, k, None, crit, 2, cv2.KMEANS_PP_CENTERS)
++    lbl = lbl.ravel()
++    out = []
++    for i in range(k):
++        sel = lbl == i
++        if not sel.any():
++            continue
++        L, C, h = _lch(lab[sel].mean(0))
++        out.append({"hex": _hex(rgb[sel].mean(0)), "L": round(L, 3), "C": round(C, 3), "h": round(h, 1),
++                    "share": round(float(sel.mean()), 3)})
++    return sorted(out, key=lambda c: -c["share"])
++
++
++def _period(profile: np.ndarray, lo: float = 2.2, hi: float = 14.0) -> tuple[float, float]:
++    """Dominant period of an edge-count profile (FFT), and its peak / median ratio. The longest strong period wins:
++    an edge train at period s also peaks at s/2, s/3 ..."""
++    p = profile.astype(np.float64) - profile.mean()
++    if len(p) < 32 or not p.any():
++        return 0.0, 0.0
++    n = 8192
++    mag = np.abs(np.fft.rfft(p * np.hanning(len(p)), n))
++    f = np.arange(len(mag)) / n
++    band = (f >= 1 / hi) & (f <= 1 / lo)
++    if not band.any():
++        return 0.0, 0.0
++    idx = np.where(band)[0]
++    m = mag[idx]
++    med = float(np.median(m)) or 1e-9
++    peaks = [i for i in range(1, len(m) - 1) if m[i] >= m[i - 1] and m[i] >= m[i + 1]]
++    if not peaks:
++        return 0.0, 0.0
++    top = max(m[i] for i in peaks)
++    strong = [i for i in peaks if m[i] >= 0.6 * top]
++    best = min(strong, key=lambda i: f[idx[i]])  # lowest frequency = longest period
++    return round(float(1.0 / f[idx[best]]), 3), round(float(m[best] / med), 2)
++
++
++def frame_grid(gray: np.ndarray) -> dict:
++    g = gray.astype(np.float32)
++    dx = np.abs(np.diff(g, axis=1)) > 18
++    dy = np.abs(np.diff(g, axis=0)) > 18
++    px, cx = _period(dx.mean(0))
++    py, cy = _period(dy.mean(1))
++    if not (px and py):
++        return {"period": 0.0, "conf": 0.0}
++    agree = abs(px - py) / max(px, py) < 0.15
++    period = (px + py) / 2 if agree else (px if cx >= cy else py)
++    conf = min(cx, cy) if agree else max(cx, cy) * 0.5
++    return {"period": round(period, 3), "conf": round(conf, 2)}
++
++
++def detail_score(bgr: np.ndarray) -> float:
++    """fastreel stage_asset.html detail(): mean |left-right| and |up-down| brightness step on a 108x192 copy."""
++    s = cv2.resize(bgr, (108, 192), interpolation=cv2.INTER_AREA).astype(np.float32).mean(2)
++    return round(float((np.abs(s[:191, :107] - s[:191, 1:108]).mean() + np.abs(s[:191, :107] - s[1:192, :107]).mean()) / 2), 3)
++
++
++def frame_texture(bgr: np.ndarray, period: float) -> dict:
++    gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY).astype(np.float32)
++    gx, gy = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3), cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3)
++    mag = np.hypot(gx, gy) / 8.0  # roughly a per-pixel brightness step
++    flat, hard = mag < 1.5, mag > 20
++    smooth = (~flat) & (mag <= 6)
++    # thin dark lines: black-hat (closing minus image) picks out lines darker than both sides
++    bh = cv2.morphologyEx(gray, cv2.MORPH_BLACKHAT, cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)))
++    dark_line = (bh > 30) & (gray < 90)
++    outline = float(dark_line.sum() / max(1, hard.sum()))
++    dither = 0.0
++    if period >= 2.2:
++        w, h = max(8, int(round(bgr.shape[1] / period))), max(8, int(round(bgr.shape[0] / period)))
++        a = cv2.resize(bgr, (w, h), interpolation=cv2.INTER_AREA).astype(np.int16)
++        tl, tr, bl, br = a[:-1, :-1], a[:-1, 1:], a[1:, :-1], a[1:, 1:]
++        same = lambda p, q: np.abs(p - q).max(2) <= 10
++        differ = np.abs(tl - tr).max(2) > 24
++        checker = same(tl, br) & same(tr, bl) & differ
++        busy = differ | (np.abs(tl - bl).max(2) > 24)
++        dither = float(checker.sum() / max(1, busy.sum()))
++    return {"flat": round(float(flat.mean()), 3), "smooth": round(float(smooth.mean()), 3), "hard": round(float(hard.mean()), 3),
++            "outline": round(min(outline, 1.0), 3), "dither": round(dither, 3)}
++
++
++def measure_frames(frames: list, features: dict | None = None) -> dict:
++    frames = [f for f in frames if f is not None]
++    if not frames:
++        return {}
++    W = frames[0].shape[1]
++    grids = [frame_grid(cv2.cvtColor(f, cv2.COLOR_BGR2GRAY)) for f in frames]
++    good = [g for g in grids if g["conf"] >= 4.0]
++    period = float(np.median([g["period"] for g in good])) if len(good) >= max(1, len(grids) // 3) else 0.0
++    tex = [frame_texture(f, period) for f in frames]
++    out = {"frames": [{"pal": frame_palette(f)} for f in frames],
++           "grid": {"period": round(period, 3), "across": round(W / period, 1) if period else 0.0,
++                    "conf": round(float(np.median([g["conf"] for g in grids])), 2), "frames_with_grid": round(len(good) / len(grids), 2)},
++           **{k: round(float(np.median([t[k] for t in tex])), 3) for k in ("flat", "smooth", "hard", "outline", "dither")},
++           "detail": round(float(np.median([detail_score(f) for f in frames])), 3)}
++    f = features or {}
++    if "palette95" in f:
++        out["colours"] = int(f["palette95"])
++    if "dup_ratio" in f:
++        out["dup"] = round(float(f["dup_ratio"]), 3)
++    return out
++
++
++# ------------------------------------------------------------------ palettes over time -------------------------
++
++
++def _lab(c: dict) -> np.ndarray:
++    r = math.radians(c["h"])
++    return np.array([c["L"], c["C"] * math.cos(r), c["C"] * math.sin(r)])
++
++
++def pal_distance(p: list[dict], q: list[dict]) -> float:
++    """Symmetric share-weighted nearest-colour distance between two palettes (OKLab units)."""
++    if not p or not q:
++        return 1.0
++    A, B = np.array([_lab(c) for c in p]), np.array([_lab(c) for c in q])
++    wa, wb = np.array([c["share"] for c in p]), np.array([c["share"] for c in q])
++    d = np.linalg.norm(A[:, None] - B[None], axis=2)
++    return float((wa * d.min(1)).sum() / wa.sum() + (wb * d.min(0)).sum() / wb.sum()) / 2
++
++
++def merge_palette(items: list[tuple[dict, float]], tol: float = 0.06, keep: int = 10) -> list[dict]:
++    """items: (colour, weight). Greedy merge of near colours (OKLab), weights summed; small vivid accents are kept."""
++    groups: list[dict] = []
++    for c, w in sorted(items, key=lambda x: -x[1]):
++        if w <= 0:
++            continue
++        v = _lab(c)
++        g = next((g for g in groups if np.linalg.norm(g["v"] / g["w"] - v) < tol), None)
++        if g is None:
++            groups.append({"v": v * w, "w": w, "hexes": {c["hex"]: w}})
++        else:
++            g["v"] += v * w
++            g["w"] += w
++            g["hexes"][c["hex"]] = g["hexes"].get(c["hex"], 0) + w
++    tot = sum(g["w"] for g in groups) or 1.0
++    out = []
++    for g in groups:
++        L, a, b = g["v"] / g["w"]
++        C, h = math.hypot(a, b), (math.degrees(math.atan2(b, a)) + 360) % 360
++        out.append({"hex": max(g["hexes"], key=g["hexes"].get), "L": round(float(L), 3), "C": round(C, 3), "h": round(h, 1),
++                    "share": round(g["w"] / tot, 3)})
++    out.sort(key=lambda c: -c["share"])
++    main = [c for c in out if c["share"] >= 0.02]
++    accents = [c for c in out if c["share"] < 0.02 and c["C"] >= 0.1 and c["share"] >= 0.003]
++    return (main + accents)[:keep]
++
++
++def timeline(shots: list[dict], key: str) -> list[dict]:
++    """Every sampled frame's palette with an (evenly spread) time."""
++    out = []
++    for r in shots:
++        m = ((r.get("aspects") or {}).get(key) or {}).get("measured") or {}
++        fr = m.get("frames") or []
++        for i, f in enumerate(fr):
++            t = r["start"] + (i + 0.5) * r["duration"] / len(fr)
++            out.append({"t": round(t, 2), "w": r["duration"] / len(fr), "pal": f.get("pal") or [], "shot": r.get("id")})
++    return out
++
++
++def colour_scenes(tl: list[dict]) -> list[dict]:
++    scenes: list[dict] = []
++    for f in tl:
++        if scenes and pal_distance(scenes[-1]["last"], f["pal"]) < SCENE_GAP:
++            s = scenes[-1]
++            s["end"], s["last"] = f["t"], f["pal"]
++            s["items"] += [(c, c["share"] * f["w"]) for c in f["pal"]]
++            s["shots"].add(f["shot"])
++        else:
++            scenes.append({"start": f["t"], "end": f["t"], "last": f["pal"], "items": [(c, c["share"] * f["w"]) for c in f["pal"]],
++                           "shots": {f["shot"]}})
++    out = []
++    for s in scenes:
++        pal = merge_palette(s["items"])
++        out.append({"start": s["start"], "end": s["end"], "shots": sorted(x for x in s["shots"] if x), "palette": pal,
++                    "recipe": recipe(pal)})
++    return out
++
++
++# ------------------------------------------------------------------ colour theory --------------------------------
++
++
++def hue_families(pal: list[dict]) -> list[dict]:
++    """Chromatic colours grouped by hue. Weight = sqrt(share) * chroma, so a small vivid accent still counts."""
++    chroma = sorted((c for c in pal if c["C"] >= CHROMATIC), key=lambda c: -math.sqrt(c["share"]) * c["C"])
++    fams: list[dict] = []
++    for c in chroma:
++        f = next((f for f in fams if abs(_hdiff(f["h"], c["h"])) < HUE_FAMILY), None)
++        if f is None:
++            fams.append({"h": c["h"], "members": [c]})
++        else:
++            f["members"].append(c)
++    for f in fams:
++        ws = [math.sqrt(m["share"]) * m["C"] for m in f["members"]]
++        base = f["members"][0]["h"]
++        f["h"] = round((base + sum(w * _hdiff(base, m["h"]) for w, m in zip(ws, f["members"])) / sum(ws)) % 360, 1)
++        f["weight"] = round(sum(ws), 4)
++        f["share"] = round(sum(m["share"] for m in f["members"]), 3)
++        f["L"] = [min(m["L"] for m in f["members"]), max(m["L"] for m in f["members"])]
++        f["C"] = round(max(m["C"] for m in f["members"]), 3)
++    return sorted(fams, key=lambda f: -f["weight"])
++
++
++def harmony(fams: list[dict]) -> dict:
++    if not fams:
++        return {"name": "neutral", "offsets": []}
++    base = fams[0]["h"]
++    offs = [round(_hdiff(base, f["h"])) for f in fams]
++    big = [o for o, f in zip(offs, fams) if f["weight"] >= 0.15 * fams[0]["weight"]]
++    span = max(big) - min(big) if big else 0
++    if len(big) == 1:
++        name = "monochromatic"
++    elif span <= 75 and all(abs(o) <= 75 for o in big):
++        name = "analogous"
++    elif len(big) == 2 and abs(abs(big[1]) - 180) <= 50:  # OKLCH opposites (blue / orange) sit 130-230 degrees apart
++        name = "complementary"
++    else:
++        rest = sorted(big[1:])
++        if len(rest) == 2 and all(110 <= abs(o) <= 175 for o in rest) and rest[0] * rest[1] < 0:
++            name = "split-complementary" if abs(abs(rest[0]) + abs(rest[1]) - 360) > 40 or max(abs(o) for o in rest) > 140 else "triadic"
++        elif len(rest) == 2 and all(95 <= abs(o) <= 145 for o in rest) and rest[0] * rest[1] < 0:
++            name = "triadic"
++        elif any(abs(abs(o) - 180) <= 50 for o in rest):
++            name = "complementary with extra hues" if len(big) > 2 else "complementary"
++        else:
++            name = "multi-hue"
++    return {"name": name, "offsets": offs}
++
++
++def ramps(fams: list[dict]) -> list[dict]:
++    """A family with 3+ colours spread over lightness is a ramp; report how its hue turns from shadow to highlight."""
++    out = []
++    for f in fams:
++        m = sorted(f["members"], key=lambda c: c["L"])
++        if len(m) >= 3 and m[-1]["L"] - m[0]["L"] >= 0.2:
++            out.append({"hue": f["h"], "steps": len(m), "L": [m[0]["L"], m[-1]["L"]],
++                        "shift": round(_hdiff(m[0]["h"], m[-1]["h"])), "chroma_peak_L": max(m, key=lambda c: c["C"])["L"]})
++    return out
++
++
++def recipe(pal: list[dict]) -> dict:
++    """Roles and relations of one palette, independent of its actual hues."""
++    if not pal:
++        return {}
++    ground = pal[0]
++    neutrals = [c for c in pal if c["C"] < CHROMATIC]
++    fams = hue_families(pal)
++    base = fams[0]["h"] if fams else None
++    accents = sorted((c for c in pal if c["C"] >= 0.1), key=lambda c: -c["C"])
++    light = max(pal, key=lambda c: c["L"])
++    hexrgb = lambda c: np.array([int(c["hex"][i:i + 2], 16) / 255 for i in (1, 3, 5)])
++    hm = harmony(fams)
++    fam_rows = []
++    for f, o in zip(fams, hm["offsets"]):
++        fam_rows.append({"offset": o, "share": f["share"], "L": f["L"], "C": f["C"], "temp": warmth(f["h"]), "hue": f["h"]})
++    key = "dark" if ground["L"] < 0.3 else "light" if ground["L"] > 0.75 else "mid"
++    return {
++        "key": key,
++        "ground": {"L": ground["L"], "C": ground["C"], "share": ground["share"],
++                   "tint_offset": round(_hdiff(base, ground["h"])) if base is not None and ground["C"] >= 0.015 else None,
++                   "temp": warmth(ground["h"]) if ground["C"] >= 0.015 else "neutral"},
++        "harmony": hm["name"],
++        "families": fam_rows,
++        "neutrals": len(neutrals),
++        "accent_L": [min(c["L"] for c in accents), max(c["L"] for c in accents)] if accents else None,
++        "accent_C": [min(c["C"] for c in accents), max(c["C"] for c in accents)] if accents else None,
++        "ramps": ramps(fams),
++        "contrast": round(contrast(hexrgb(ground), hexrgb(light)), 1),
++        "colours": len(pal),
++    }
++
++
++# ------------------------------------------------------------------ words ----------------------------------------
++
++
++def _pct(x: float) -> str:
++    return "<1%" if 0 < x < 0.005 else f"{x:.0%}"
++
++
++def _deg(o) -> str:
++    return "0°" if not o else f"{o:+d}°"
++
++
++def recipe_lines(r: dict, base_word: str | None = None) -> list[str]:
++    """The palette as rules that work with any base hue."""
++    if not r:
++        return []
++    L = []
++    g = r["ground"]
++    key = {"dark": T("暗调", "dark key"), "light": T("亮调", "light key"), "mid": T("中间调", "mid key")}[r["key"]]
++    tint = (T("，带一点{t}色偏（与主色相差 {o}）", ", tinted slightly {t} ({o} from the base hue)", t=g["temp"], o=_deg(g["tint_offset"]))
++            if g.get("tint_offset") is not None else T("，接近无彩色", ", close to neutral"))
++    L.append(T("底色：{k}，亮度 L {l:.2f}、彩度 C {c:.2f}，占画面 {s:.0%}{t}", "Ground: {k}, lightness L {l:.2f}, chroma C {c:.2f}, {s:.0%} of the frame{t}",
++               k=key, l=g["L"], c=g["C"], s=g["share"], t=tint))
++    if r["families"]:
++        L.append(T("配色关系：{h}；色相族（相对主色相）：", "Harmony: {h}; hue families (offset from the base hue):", h=r["harmony"]))
++        for i, f in enumerate(r["families"]):
++            role = T("主色", "base") if i == 0 else T("辅色", "support") if f["share"] >= 0.08 else T("点缀", "accent")
++            L.append(T("  - {o}（{r}，{w}）：亮度 {l0:.2f}–{l1:.2f}，最高彩度 {c:.2f}，占 {s}",
++                       "  - {o} ({r}, {w}): lightness {l0:.2f}–{l1:.2f}, peak chroma {c:.2f}, {s} of the frame",
++                       o=_deg(f["offset"]), r=role, w=f["temp"], l0=f["L"][0], l1=f["L"][1], c=f["C"], s=_pct(f["share"])))
++    if r["accent_L"]:
++        L.append(T("高彩度色：亮度 {a:.2f}–{b:.2f}，彩度 {c:.2f}–{d:.2f}", "Vivid colours sit at lightness {a:.2f}–{b:.2f}, chroma {c:.2f}–{d:.2f}",
++                   a=r["accent_L"][0], b=r["accent_L"][1], c=r["accent_C"][0], d=r["accent_C"][1]))
++    for rp in r["ramps"]:
++        L.append(T("色阶：{n} 级，亮度 {a:.2f}→{b:.2f}，从暗到亮色相偏移 {s}，彩度在亮度 {p:.2f} 处最高",
++                   "Ramp: {n} steps, lightness {a:.2f}→{b:.2f}, hue turns {s} from shadow to highlight, chroma peaks at lightness {p:.2f}",
++                   n=rp["steps"], a=rp["L"][0], b=rp["L"][1], s=_deg(rp["shift"]), p=rp["chroma_peak_L"]))
++    L.append(T("最亮色与底色对比度 {c}:1；共 {n} 个主要颜色，其中 {m} 个中性色", "Contrast lightest vs ground {c}:1; {n} main colours, {m} of them neutral",
++               c=r["contrast"], n=r["colours"], m=r["neutrals"]))
++    return L
++
++
++def rendering_words(m: dict) -> list[str]:
++    out = []
++    g = m.get("grid") or {}
++    if g.get("across"):
++        out.append(T("像素画：约 {a:.0f} 个像素格横跨画面（每格约为画面宽度的 1/{a:.0f}；1080 宽时约 {p:.1f} px），{f:.0%} 的帧检出网格",
++                     "Pixel art: about {a:.0f} art pixels across the frame (each about 1/{a:.0f} of the width; {p:.1f} px at 1080 wide); grid found in {f:.0%} of frames",
++                     a=g["across"], p=1080 / g["across"], f=g.get("frames_with_grid", 0)))
++    else:
++        out.append(T("没有像素网格（不是像素画，或格子太细）", "No pixel grid (not pixel art, or a grid too fine to measure)"))
++    out.append(T("平涂 {f:.0%}、柔和渐变 {s:.0%}、硬边 {h:.0%}；深色描边约占硬边的 {o:.0%}；抖动（棋盘点）{d:.0%}",
++                 "Flat fills {f:.0%}, gentle gradients {s:.0%}, hard edges {h:.0%}; dark outlines on about {o:.0%} of hard edges; dithering (checkerboard) {d:.0%}",
++                 f=m.get("flat", 0), s=m.get("smooth", 0), h=m.get("hard", 0), o=m.get("outline", 0), d=m.get("dither", 0)))
++    extra = []
++    if m.get("colours") is not None:
++        extra.append(T("覆盖 95% 画面的颜色数 {n}", "{n} colours cover 95% of the picture", n=int(round(m["colours"]))))
++    if m.get("detail") is not None:
++        extra.append(T("细节分 {d:.2f}（fastreel 背景细节分：平渐变约 0.2，六个描边方块 1.45）",
++                       "detail score {d:.2f} (fastreel background-detail scale: flat gradient about 0.2, six outlined boxes 1.45)", d=m["detail"]))
++    if m.get("dup") is not None:
++        extra.append(T("重复帧 {d:.0%}（越高越像一拍二 / 低帧率动画）", "repeated frames {d:.0%} (higher = held drawings, animated on twos or lower)", d=m["dup"]))
++    if extra:
++        out.append(semi().join(extra))
++    return out
++
++
++# ------------------------------------------------------------------ the aspect ----------------------------------
++
++
++class Style(Aspect):
++    def __init__(self):
++        super().__init__(key="style", title="视觉风格", title_en="Visual style", shot_fields=[], video_fields=[
++            Field("render_style", "画风", "画面是什么画风：低分辨率像素画 / 扁平矢量 / 手绘 / 3D 质感 / 拼贴…，几个词写清", prefer="seen", en="rendering style"),
++            Field("outline", "描边", "形体有没有描边：颜色（比填充色深一级 / 黑色 / 无）、粗细（相对像素格或画面）", prefer="seen", en="outlines"),
++            Field("shading", "明暗", "怎么画明暗：平涂、2–4 级色阶（赛璐璐）、抖动、平滑渐变、发光；光从哪边来", prefer="seen", en="shading"),
++            Field("shape_language", "造型", "造型语言和比例：圆润 / 方块 / 尖锐，主体画多大、多简单（几块组成）", prefer="seen", en="shape language"),
++            Field("texture", "质感", "质感和颗粒：抖动图案、噪点、扫描线、网点，或没有", prefer="seen", en="texture"),
++            Field("type_ui", "文字与界面", "文字和界面：字体（像素体 / 无衬线 / 衬线）、大小写、颜色、底框（边框、填充）、放在哪", prefer="seen", en="type and UI"),
++            Field("motion_style", "动态", "东西怎么动：逐格 / 低帧率、平滑缓动、粒子、镜头推拉、闪白和震屏", prefer="seen", en="motion style"),
++            Field("signature", "风格标志", "让人一眼认出这个风格的 3–5 个特征（复刻必须保留的）", prefer="seen", en="signature traits"),
++            Field("do_not_copy", "不要照搬", "画面里复刻不能照搬的东西：作者账号、水印、Logo、原片专属的物体或文字", prefer="seen", en="do not copy"),
++        ])
++
++    def measure(self, ctx: ShotCtx) -> dict:
++        return measure_frames(ctx.frames, ctx.features)
++
++    def summarize(self, shots: list[dict], b: dict) -> dict:
++        ms = [(r, ((r.get("aspects") or {}).get(self.key) or {}).get("measured") or {}) for r in shots]
++        ms = [(r, m) for r, m in ms if m.get("frames")]
++        if not ms:
++            return {}
++        tl = timeline([r for r, _ in ms], self.key)
++        scenes = colour_scenes(tl)
++        whole = merge_palette([(c, c["share"] * f["w"]) for f in tl for c in f["pal"]], keep=12)
++        w = lambda k: weighted_median([((m.get(k)), r["duration"]) for r, m in ms if m.get(k) is not None])
++        grid_shots = [(m["grid"]["across"], r["duration"]) for r, m in ms if (m.get("grid") or {}).get("across")]
++        grid_share = sum(d for _, d in grid_shots) / max(1e-6, sum(r["duration"] for r, _ in ms))
++        measured = {k: (round(v, 3) if v is not None else None) for k, v in ((k, w(k)) for k in ("flat", "smooth", "hard", "outline", "dither", "detail", "colours", "dup"))}
++        measured["grid"] = {"across": round(weighted_median(grid_shots), 1) if grid_shots and grid_share >= 0.4 else 0.0,
++                            "frames_with_grid": round(grid_share, 2)}
++        whole_recipe = recipe(whole)
++        lines = rendering_words(measured)[:1]
++        if whole_recipe:
++            lines.append(T("配色：{h}，{k}", "Colour: {h}, {k}", h=whole_recipe["harmony"], k=whole_recipe["key"])
++                         + T("，{n} 个配色段落", ", {n} colour scenes", n=len(scenes)))
++        fields = field_table(self, [r for r, _ in ms], b, {"render_style": T("像素画", "pixel art") if measured["grid"]["across"] else None})
++        return {"result": {"pixel_art": bool(measured["grid"]["across"]), "harmony": whole_recipe.get("harmony")},
++                "measured": measured, "palette": whole, "recipe": whole_recipe, "scenes": scenes, "lines": lines, "fields": fields}
++
++
++register(Style())
++
++
++# ------------------------------------------------------------------ VIDEO.md topic file ---------------------------
++
++
++def style_md(b: dict) -> list[str]:
++    s = (b.get("aspects") or {}).get("style") or {}
++    if not s:
++        return []
++    L = [T("# 视觉风格", "# Visual style"), "",
++         T("颜色按关系写（相对主色相的偏移、亮度和彩度的层级），换任何主色相都能套用；末尾的色值只是原片的参考，不要照抄。",
++           "Colour is written as relations (offsets from the base hue, lightness and chroma levels by role), so it works with any base hue; "
++           "the hex values at the end are the original's, for reference only: do not copy them."), ""]
++    L += [T("## 画法（测量）", "## Rendering (measured)"), ""] + [f"- {x}" for x in rendering_words(s.get("measured") or {})] + [""]
++    rows = s.get("fields") or []
++    if rows:
++        L += [T("## 画法（看图）", "## Rendering (seen)"), ""]
++        for r in rows:
++            src = [k for k in ("agent", "vlm") if r.get(k)]
++            L.append(f"- **{r['zh']}**: {r['final']}" + (f" _({', '.join(src)})_" if src else ""))
++        L.append("")
++    L += [T("## 整片配色规则", "## Colour recipe, whole video"), ""] + recipe_lines(s.get("recipe") or {}) + [""]
++    sc = s.get("scenes") or []
++    if len(sc) > 1:
++        L += [T("## 配色段落", "## Colour scenes"), "",
++              T("画面按配色分成几段（相邻帧的调色板接近就算同一段），每段一套规则：",
++                "The video falls into stretches whose palettes stay close; each has its own recipe:"), ""]
++        for i, x in enumerate(sc, 1):
++            L += [T("### 段落 {i}：{a:.1f}–{b:.1f}s（{s}）", "### Scene {i}: {a:.1f}–{b:.1f}s ({s})", i=i, a=x["start"], b=x["end"], s=", ".join(x["shots"])), ""]
++            L += [f"- {y}" if not y.startswith("  ") else y for y in recipe_lines(x["recipe"])]
++            L += ["- " + T("原片色值（仅参考）：", "Original colours (reference only): ") + " ".join(
++                f"{c['hex']} {c['share']:.0%} ({hue_name(c['h']) if c['C'] >= CHROMATIC else T('中性', 'neutral')}, L {c['L']:.2f})" for c in x["palette"]), ""]
++    L += [T("## 原片色值（仅参考）", "## Original colours (reference only)"), "",
++          " ".join(f"{c['hex']} {c['share']:.0%}" for c in s.get("palette") or []), ""]
++    return L
+diff --git a/rea_video/videomd.py b/rea_video/videomd.py
+index 046875e..c9114cb 100644
+--- a/rea_video/videomd.py
++++ b/rea_video/videomd.py
+@@ -188,6 +188,7 @@ def _shot_file(r: dict) -> str:
+ 
+ def _topics(b: dict) -> list[tuple[str, str, str, list[str]]]:
+     """(file stem, title, when to read it, report section lines)."""
++    from .aspects.style import style_md
+     from .report import _audio_md, _cast_md, _content_md, _remake_md, _visual_md, packaging_md
+ 
+     return [
+@@ -195,6 +196,7 @@ def _topics(b: dict) -> list[tuple[str, str, str, list[str]]]:
+         ("cast", T("角色、场景与道具", "Cast, scenes and props"), T("做角色参考图、写首帧提示词", "reference images for characters, first-frame prompts"), _cast_md(b)),
+         ("sound", T("声音", "Sound"), T("人声、BGM、音效、节拍和来源", "voice, music, sound effects, beats and sources"), _audio_md(b)),
+         ("rhythm", T("节奏与关键帧", "Rhythm and key frames"), T("切点和转场的时间、镜头长度、画面变化曲线、每镜关键帧", "when cuts and transitions happen, shot lengths, the change curve, key frames of each shot"), rhythm_md(b)),
++        ("style", T("视觉风格", "Visual style"), T("画法和配色规则：像素格、描边、明暗、配色关系、配色段落", "how it is drawn and the colour rules: pixel grid, outlines, shading, colour relations, colour scenes"), style_md(b)),
+         ("look", T("拍法、打光与剪辑", "Camera, lighting and editing"), T("有实拍镜头时：景别、机位、布光、器材", "for filmed shots: framing, camera, lighting, kit"), _visual_md(b)),
+         ("packaging", T("剪辑包装", "Packaging"), T("字幕、花字、贴纸、画中画的时间和样式", "subtitles, styled text, stickers, picture-in-picture: timing and style"), packaging_md(b)),
+         ("remake", T("复刻方案", "Remake plan"), T("生成单元、拍摄场次、代码合成、要准备的真实素材、表演与情绪", "generation units, shoots, code builds, real material to collect, acting and emotion"), _remake_md(b)),
+-- 
+2.47.0.windows.2
+

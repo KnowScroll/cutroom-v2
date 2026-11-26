@@ -1,0 +1,1193 @@
+{
+ "by": "claude",
+ "shots": [
+  {
+   "id": "shot_001",
+   "time": "0.00-0.50",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "Hook, 0.5 s: close low angle on a grey low-poly ground radar unit on legs and wheels, a red corner-bracket reticle over the horizon, a mint sweep beam crossing the frame, faceted lavender mountains and a fog band behind.",
+   "narrative": {
+    "role": "hook",
+    "point": "Opens on the sensor itself as the first link of the chain"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_002",
+   "time": "0.50-4.00",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "Fast whip up from the ground station to a high view over the dark grid floor; a circular mint scope inset top-left sweeps, a small dark label tag names the sensor, a white low-poly drone flies in from the left and a mint dot locks onto it with a thin vertical line to the scope. Caption: the first 'If you ..., you get a ...' pair.",
+   "narrative": {
+    "role": "hook",
+    "point": "One sensor echo off one object gives the first named term"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_003",
+   "time": "4.00-5.20",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "The drone (light grey, flat facets) banks while a big translucent mint sweep wedge passes over the camera; a small red flag pins it as the flagged target.",
+   "narrative": {
+    "role": "context",
+    "point": "The object of interest is marked"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_004",
+   "time": "5.20-6.37",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "Camera tilts down onto the drone from above; dots appear one per sweep behind it.",
+   "narrative": {
+    "role": "context",
+    "point": "Repeated readings start to accumulate"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_005",
+   "time": "6.37-7.53",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "Successive mint dots join into a coral red trace behind the drone; keyword 'track' highlighted.",
+   "narrative": {
+    "role": "info",
+    "point": "Readings joined over time give a track"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_006",
+   "time": "7.53-8.73",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "Top view: the red trace extends, a second unflagged craft appears small in the distance top-left.",
+   "narrative": {
+    "role": "info",
+    "point": "The track grows"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_007",
+   "time": "8.73-9.90",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "The trace projects forward along the drone's heading as a thin line; caption 'carry that track forward'.",
+   "narrative": {
+    "role": "info",
+    "point": "Extrapolate the track"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_008",
+   "time": "9.90-11.07",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "Projected point drawn ahead of the drone; sweep wash passes.",
+   "narrative": {
+    "role": "info",
+    "point": "Extrapolation continues"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_009",
+   "time": "11.07-12.23",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "The projected point settles: a hollow red ring ahead of the drone; keyword 'prediction'.",
+   "narrative": {
+    "role": "proof",
+    "point": "Projection gives a prediction"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_010",
+   "time": "12.23-13.40",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "Hold on the prediction ring; the second craft in the distance carries its own violet dots.",
+   "narrative": {
+    "role": "info",
+    "point": "Payoff held"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_011",
+   "time": "13.40-14.57",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "A tall red U-shaped gate curve opens around the prediction; caption 'mark where around that prediction'.",
+   "narrative": {
+    "role": "info",
+    "point": "Uncertainty region is drawn"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_012",
+   "time": "14.57-15.77",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "The gate widens and a new mint reading appears inside it.",
+   "narrative": {
+    "role": "info",
+    "point": "Where the next reading should land"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_013",
+   "time": "15.77-16.93",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "Hold on the gate with the reading inside; keyword 'gate'.",
+   "narrative": {
+    "role": "proof",
+    "point": "The gate is named"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_014",
+   "time": "16.93-18.10",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "The prediction ring slides toward the reading inside the gate.",
+   "narrative": {
+    "role": "info",
+    "point": "Correction starts"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_015",
+   "time": "18.10-19.27",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "Correction animation: the ring moves part way, weighted.",
+   "narrative": {
+    "role": "info",
+    "point": "Correction proportional to confidence"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_016",
+   "time": "19.27-20.43",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "The corrected point lands; keyword 'measurement'.",
+   "narrative": {
+    "role": "info",
+    "point": "Correction toward the reading"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_017",
+   "time": "20.43-21.60",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "Caption 'by how sure each one is'; the trace re-bends through the corrected point.",
+   "narrative": {
+    "role": "info",
+    "point": "Weighted by certainty"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_018",
+   "time": "21.60-22.80",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "Hold; the second craft's violet trace and its own gate appear on the right.",
+   "narrative": {
+    "role": "info",
+    "point": "A second track appears"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_019",
+   "time": "22.80-23.97",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "Keyword names the classic update; both traces shown side by side.",
+   "narrative": {
+    "role": "payoff",
+    "point": "Named method #1 lands"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_020",
+   "time": "23.97-25.13",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "The friendly craft's violet reading enters the flagged drone's red gate; the two gates overlap.",
+   "narrative": {
+    "role": "turn",
+    "point": "Complication: two readings in one gate"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_021",
+   "time": "25.13-52.63",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "Long 27 s build: a circular inset zooms on the overlapping gates; the acronym header appears at the top letter by letter (first the last two letters, then the first, then the second) on a small dark rounded plate; two translucent tilted diagram panels float over the mountains showing every red/violet pairing of tracks to readings as straight lines with hollow end circles; the pairings are scored and the lines thicken by probability; the final term is spoken with its keyword in yellow-green; then both craft fly close side by side, their traces merge and the last keyword (coalescence) turns red.",
+   "narrative": {
+    "role": "payoff",
+    "point": "Builds the full named method, then shows its known failure"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_022",
+   "time": "52.63-53.50",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "Rewind: a double-left-arrow icon appears next to the acronym; everything plays backwards fast.",
+   "narrative": {
+    "role": "cta",
+    "point": "Loop setup: rewind"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_023",
+   "time": "53.50-53.93",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "Rewind continues: traces retract, gates shrink.",
+   "narrative": {
+    "role": "cta",
+    "point": "Rewind"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_024",
+   "time": "53.93-55.03",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "Rewind lands back on the first drone and the sensor scope with its label tag.",
+   "narrative": {
+    "role": "cta",
+    "point": "Back to the start"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  },
+  {
+   "id": "shot_025",
+   "time": "55.03-56.70",
+   "label_probs": {
+    "code_render": 0.75,
+    "cg_3d": 0.25
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Flat-shaded low-poly models with perfectly stable geometry, a mathematically exact perspective floor grid and crisp vector overlay lines: a real-time 3D scene rendered in code (web 3D), no AI warping",
+    "Overlay dots, traces, gate ellipses and the acronym header are driven by the same data as the scene, in sync with the voice: generated, not hand-animated"
+   ],
+   "description": "Final: the opening composition, one drone, one echo; caption trails off with 'and...' so the loop restarts.",
+   "narrative": {
+    "role": "cta",
+    "point": "Loops into the first line"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "",
+    "emotion": "",
+    "intensity": "",
+    "face": "",
+    "body": "",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": ""
+   }
+  }
+ ],
+ "aspects": {
+  "camera": {
+   "setups": "",
+   "gear_guess": ""
+  },
+  "lighting": {
+   "lighting_overall": "Flat unlit shading per facet (2 to 3 tones per model), distance fog band at the horizon, no cast shadows except a soft dark blob under each craft"
+  },
+  "grade": {
+   "grade_overall": "Dark neutral-violet key, low contrast ground, saturated only in the thin overlay colours"
+  },
+  "editing": {
+   "editing": "Effectively one continuous take: a camera that keeps moving (whip up, tilt down, orbit, push in) instead of cuts; the frequent detected \"cuts\" are a translucent mint sweep wedge passing over the camera every 1.2 s. Ends with a fast rewind back to the first frame."
+  },
+  "format": {
+   "format": "Vertical 9:16 code-rendered 3D explainer, TTS voice-over over a music bed, burned-in word-timed captions"
+  },
+  "style": {
+   "render_style": "Low-poly real-time 3D rendered in code: flat-shaded faceted models, an infinite perspective grid floor, a faceted mountain ring at the horizon with a fog band, plus a 2D annotation layer of dots, traces, rings and translucent panels drawn over the scene",
+   "outline": "No outlines on models or mountains; facets separated by tone only. Overlay graphics are thin lines (2 to 3 px at 1080 wide) and hollow circles",
+   "shading": "Flat facets in 2 to 3 tones of one neutral (light, mid, dark grey) per model; mountains in pale lavender-grey facets fading into a soft fog band; ground near-black; no gradients except the fog band and translucent sweep wedge",
+   "shape_language": "Clean geometric: triangles and prisms for models, straight segment traces with small round nodes, ellipses for uncertainty regions, square corner-bracket reticles, a circle scope inset",
+   "texture": "None: clean vector surfaces, a thin grid on the floor (about 15% opacity), the only soft things are the fog band and the sweep wedge",
+   "type_ui": "Captions: left-aligned, no backing, semibold geometric sans about 50 px (at 1080 wide), cream-white, 2 lines max, low in the frame (y about 1400), one keyword per line highlighted in violet (the newly named term), the final payoff term in yellow-green, a failure term in coral red. Header: the acronym of the final method in a bold sans, cream, letters separated by small dots, on a small dark rounded plate at top centre, letters filling in as each part is named. Tiny dark rounded tag labels on objects. A rewind icon (double left arrow) at the end",
+   "motion_style": "Never still: the camera keeps gliding and orbiting; every clause adds one overlay element in sync with its keyword (a dot, a trace, a ring, a gate, a panel); a translucent sweep wedge passes every 1.2 s; the end rewinds everything fast",
+   "signature": "\"If you X, you get Y\" chain where each Y is a newly named concept that becomes the X of the next sentence; overlays accumulate into one dense diagram; the acronym header fills letter by letter; a known failure mode at the end; rewind loop back to the first frame",
+   "do_not_copy": "The @embodied.dev watermark; the topic (radar tracking, drones, Kalman filter, JPDA, track coalescence), its words and the radar ground station"
+  }
+ },
+ "story": {
+  "summary": "Builds a hard technical method from one raw observation in a chain of \"if you X, you get Y\" steps, each naming a new term, until the full acronym is assembled; then shows where it breaks and rewinds to the start.",
+  "hook": "The first frame is a concrete object and the first sentence an \"If you ...\" clause that leaves the listener waiting for the \"you get ...\" payoff; the whip-pan up makes it feel like a game camera.",
+  "highlights": [
+   "Chain grammar (0 to 48 s): every sentence turns the previous result into the next input, so the viewer always knows what the new term is built from",
+   "Acronym header fills letter by letter (27 to 45 s): a progress bar for understanding; the full acronym lands with the final term",
+   "Overlays accumulate on one continuous scene: complexity grows visibly without cuts",
+   "Rewind loop (52 to 56 s): ends mid-sentence on the first frame so the reel replays seamlessly"
+  ]
+ },
+ "cast": {
+  "style": "Low-poly flat-shaded 3D on a dark grid floor with a lavender faceted mountain ring and a fog band; mint, coral and violet overlay lines",
+  "characters": [],
+  "scenes": [
+   {
+    "id": "S1",
+    "where": "an endless dark grid floor ringed by faceted mountains",
+    "when": "night, timeless",
+    "look": "near-black ground, thin grey grid, pale lavender-grey mountains, fog band, translucent mint sweep wedge",
+    "shots": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25
+    ]
+   }
+  ],
+  "props": [
+   {
+    "name": "ground sensor unit",
+    "note": "grey low-poly box on legs and wheels; opening and closing frame",
+    "shots": [
+     1,
+     25
+    ]
+   },
+   {
+    "name": "flagged craft",
+    "note": "light grey delta-wing drone with a small red flag; hero",
+    "shots": [
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24
+    ]
+   },
+   {
+    "name": "second craft",
+    "note": "same model, darker, with violet overlays",
+    "shots": [
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23
+    ]
+   }
+  ]
+ },
+ "packaging": {
+  "stickers": [],
+  "text": [
+   {
+    "id": "text_001",
+    "kind": "watermark"
+   },
+   {
+    "id": "text_004",
+    "kind": "label"
+   },
+   {
+    "id": "text_028",
+    "kind": "title"
+   },
+   {
+    "id": "text_050",
+    "kind": "label"
+   }
+  ],
+  "missed": []
+ }
+}

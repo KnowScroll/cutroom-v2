@@ -1,0 +1,35 @@
+You build ONE subject for a low-poly 3D animated reel (PS1 look) out of low-poly parts. The engine renders it flat-shaded (every triangle one tone, lit from the upper left), with 64 px textures it paints, at 270 x 480 pixels with hard pixels. The shots slice it open down the middle (the two halves of the casing slide apart, their cut faces dark with bright edges) and label one part inside, so it needs a real casing AND real parts inside.
+
+Return only one JavaScript code block:
+
+```js
+function buildAsset(k, p) {
+  return k.group(
+    k.box(1.2, 0.8, 0.5, 'metal', { at: [0, 0.4, 0], tex: 'metal', name: 'casing' }),
+    k.cyl(0.18, 0.4, '#3a6ac8', { at: [-0.3, 0.3, 0], seg: 8, tex: 'speckle', name: '<inside part>', inner: true }),
+    // ...
+  );
+}
+```
+
+UNITS AND PLACE: metres. It stands on the ground at y 0, centred on x 0, z 0; its front faces +z (toward the camera). Its overall size matches "size_m" (width x, height y, depth z).
+
+PARTS (each returns one part; c is a palette name or hex; o.at = [x, y, z] is the part's CENTRE; o.rot = [x, y, z] degrees; o.scale = [x, y, z]):
+- k.box(width, height, depth, c, o)
+- k.cyl(radius, height, c, o): o.r2 = top radius (a cone frustum), o.seg = sides (4 to 10, default 8), o.open = true for a tube with no caps
+- k.cone(radius, height, c, o): o.seg sides
+- k.ball(radius, c, o): a faceted ball, o.detail 0 (20 faces) or 1 (80 faces)
+- k.lathe([[radius, y], ...], c, o): a turned shape (bottom to top profile, radius first), o.seg sides (6 to 10): bottles, cones of a volcano, tanks, domes
+- k.prism([[x, y], ...], depth, c, o): a flat outline extruded along z (centred on z): fins, brackets, wedges, a heart outline, a fan blade
+- k.pipe([[x, y, z], ...], radius, c, o): a tube through the points (o.seg 4 to 6 around, o.closed for a loop): refrigerant lines, veins, wires, hoses, conduits
+- k.screen(width, height, c, o): a flat glowing face (lights, displays, flames), 0.005 m in front of the face it sits on
+- k.group(...parts), and k.named(name, {inner, at, rot}, ...parts) to give several pieces one part name
+TEXTURES (o.tex, painted by the engine at 64 px in the part's colour; o.tex2 = the second colour): "speckle" (default: fine grain, for plastic, paint, fabric), "plain", "metal" (brushed, rivets), "grille" (horizontal slats: vents, intakes), "fins" (dense thin vertical fins with bands: heat-exchanger coils, radiators), "stripes", "planks", "bricks", "tiles", "rock", "leaves", "grass", "dots", "glow" (a bright band: hot or glowing things); or a function (g, w, h) that paints the 64 x 64 texture with g.fillRect only. o.repeat = [u, v] tiles it (long pipes, big panels).
+
+THE SLICE: every part is casing (the default) or inside (o.inner: true). Casing parts are cut in half by the slice and slide apart; inside parts stay whole in the middle and are what the viewer sees. So:
+- Build the casing as the real outer shell (box, lathe, prism ...) around the inside parts.
+- Every inside part the description names gets o.name with EXACTLY that name and o.inner: true (on every piece of it, or one k.named(name, {inner: true}, ...)). Inside parts are big and clearly separate in colour (each its own hue, never the casing's colour), at their real place inside, together filling most of the inside.
+- Inside parts sit INSIDE the casing's outline, at least 0.02 m from its walls, so the closed casing hides them.
+
+LOW POLY: 300 to 500 triangles in all, never more than 700 (the host is 300) (a box is 12, an 8-sided cylinder 32, a ball 20 or 80, a pipe of n points about 20 per segment). Few, chunky parts with straight edges and hard corners; real proportions and the real silhouette first, then 2 or 3 details that make it read (a grille, a vent, feet, a pipe, a dial). No text, no logos.
+Pure code: no Math.random (use p or fixed numbers), no Date, document, window, timers or network.

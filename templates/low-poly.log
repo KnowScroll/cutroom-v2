@@ -1,0 +1,54 @@
+# low-poly fix log
+
+## epoch 0 (2026-11-20): created from a reference clip and its source code
+Made by Claude from references/low-poly.mp4: a 4.8 s, 1080x1920, 30 fps, silent clip rendered from the /low-poly skill of github.com/artemnovitckii/claude-animation-skills (MIT licence, Copyright (c) 2026 Artem Novitckii), plus that skill's own source (skills/low-poly/SKILL.md and template.html, a three.js scene). Analysis: reference-lab/runs/low-poly/analysis-claude (survey and review answered by Claude), crops in reference-lab/runs/low-poly/crops, committed copy in reference-lab/refs/low-poly.
+The template is for a full narrated story reel (about 30 to 50 s, 6 to 8 shots) in this look, not a 4.8 s clip. The clip's topic (its animal, place, vehicle, sign names, season change and caption words) is kept out of the template, including its examples.
+
+Taken from the video (rea-video + Claude's eyes):
+- Structure: one continuous take in 3 parts: the character alone in its place with a setup caption (0 to 1.2 s), a big object passing right in front of the lens as a wipe (1.2 to 2.6 s), the same place after time has passed with the character in it and the turn caption (2.6 to 4.8 s). Narrative roles context, mood, payoff. This became the beats hook / place / bond / event / time (the wipe) / turn / ending.
+- Camera: a wide lens close to the subject, a slow eased settle then a push-in; small slow idle acting (ears, head turns, breathing, tail). Became the "slow game camera" (one eased push-in or truck per shot) and calm motion with an acting beat every 5 s.
+- Colour (style.md + tools/oklch_colours.py on the crops): monochromatic warm, base hue about 65 to 75 (tan, amber), surfaces L 0.49 to 0.71 at C 0.06 to 0.10, a 7-step ramp L 0.29 to 0.89 with the hue turning +39 degrees toward the highlights and chroma peaking at L 0.76; ground L 0.29 C 0.05 about 19 degrees redder than the base (23% of the frame); ink L 0.13 to 0.19 hue about 22; cream lights L 0.96 C 0.08 hue 108; a second family about +56 degrees (olive green lamp shades and paint, L 0.35 to 0.55); caption yellow L 0.95 C 0.20 hue 110; contrast 10.2:1.
+- Captions: lowercase, no full stops, bold sans about 50 px, yellow with a 3 px black outline and a short drop, no box, about two thirds down the frame (y about 1290). Used for the template's stamps (kit.title); see the caption limit below.
+
+Taken from the source code (more precise than the video):
+- "Internal render 360x640, shown 3x with nearest-neighbour upscaling": template check "pixel grid: 360".
+- "15-bit dither in every material": the shader adds a 4x4 Bayer threshold to every colour quantised to 31 levels. In 2D: kit.post draws the 2x2 core of that matrix on the 3 px grid as four dashed strokes (dashes restart at each moveTo), ink at 7% / 3% and cream at 3% / 7%.
+- Vertex snapping to the 360x640 grid: no 2D equivalent; the engine's pixelation plus its 3% camera drift already makes edges step and crawl, so the template calls that wanted and adds nothing.
+- Flat-shaded Lambert facets lit by a warm hemisphere light (cream above, brown below), a warm key from the upper right front, a faint cool fill from the left, a warm point lamp, warm brown fog from 10 to 30 units: became 2 to 3 tones per block (top light, front base, side dark), banded light pools and fog toward the vanishing point. The key light is on the right in the source; the template keeps the base's top-left light so that kit, assets and shots do not disagree.
+- Pixel textures drawn in code at 16 to 32 texels with nearest filtering and per-texel brightness jitter of 3 to 9% (noise()), wood as bands with dark gaps, tiles with seams, a sunset sky of 8 bands with a checker between bands: became the 9 px speckle recipe, plank and seam rules and the banded sky with checker seams.
+- Models of a few boxes, 4-sided tapered frustums, cones and 6 to 8-sided cylinders; a flat 8-sided contact shadow at 34%: became the block helper (front, top and side faces), wedge or cone ears, 8-sided wheels and contact shadows.
+- The skill's own taste notes ("true, slightly sad or strange stories suit it") set the kind.
+
+rea-video misreads (corrected from the source and the crops):
+- Style extractor: "about 36 art pixels across, grid in 53% of frames" (it caught the texel size, about 30 px) and "no checkerboard dithering" (the dither is plus or minus one of 31 levels, too faint for it). The real values are 360 across and a 4x4 Bayer dither.
+- The detector read the dither as sensor noise and called shots 1 and 3 live action; the review set all 3 to cg_3d.
+- In-world sign text (the station names) came through OCR as subtitles; the review set them to kind "scene".
+
+Engine limits met (not changed; flagged for the main session):
+- No 3D: models are faked in one fixed three-quarter view (block faces), so nothing can rotate in depth; a head turn is the face features shifting sideways (the "look" param).
+- Captions: the engine draws the narrator's line either as its own box at y about 1600 (dark plate, accent bar) or with "captions: words" as big white 1 to 2 word chunks at y 1560. Neither is the reference's small yellow outlined lowercase whole line at y about 1290, so the template cannot match it. It keeps the default box, sets palette.accent to the caption yellow (the bar), and uses the reference's caption look for short stamps only (place, year, time span) via kit.title at y 1310. An engine option such as "captions: line" (whole line, about 52 px, palette.accent fill, ink outline, lowercase, no box, y about 1300) would match the reference.
+- kit.post runs after the pixelation and after the crisp text, so the dither also lies faintly over the stamps (at most 7%); the engine's captions are drawn after kit.post and stay clean.
+- In pixel mode every fillText is held back and drawn crisp on top of the finished picture, so words inside the world (the reference's bitmap-font sign) would float in front of everything: the template bans readable words in the world.
+- The validator's "cover" rule rejects an opaque fillRect over 30% of the frame after kit.bg. The time shot's wipe really covers the frame for about a second, so the template asks for it as polygons (h.poly) with its details, not one big fillRect. If the rule is extended to paths, the wipe needs an exception.
+- The stage requires some asset at 380 px or more in every shot, and the hero-size check applies wherever the hero shows, so the "lone small character in a big place" can only go down to about a quarter of the frame height ("hero size: 0.25 - 0.75").
+- The reference is silent (no voice, music or effects); the engine always narrates. Narrator george (warm British, measured 3.1 words/s on eleven-v4); music Somber Calming at 70 to 90 bpm, chosen by kind since there is no tempo to measure; one whoosh on the wipe.
+- The reference is one continuous take; the engine cuts between shots with a short smear. The template makes each shot a new camera position with one slow move, and does the time skip inside the time shot.
+
+Checked before writing (scratchpad prototype in the engine's own stage, no reel): the dashed-stroke dither lands exactly on the 3 px art grid after pixelate(360) and costs about 0.1 ms per frame; a speckled one-point-perspective room with a banded window, a lamp pool and falling squares reads as PS1 and scored background detail 4.47 (check set at 2); a stroked frame used as a vignette looked like a picture frame, hence the rule that edges darken through the place itself.
+
+Not run yet: step 4 reels (the main session runs them one at a time).
+
+- Engine (main session, same day): new check key `captions: line` (the line lowercase, bold 46 px in palette.accent with a dark outline, no panel, at y 1500), set here to match the reference's yellow outlined caption.
+
+epoch 1: flannan-lp-e1 ("the Flannan Isles keepers", 38.3 s, 7 shots, MiniMax $0.286, reel total $0.347 with voice; grade: rendering 0.29, colour 0.14, rhythm 0.77; the grader reads 0 art pixels, but a full-size crop shows the 3x pixels and the Bayer dither working, so the grader's pixel measure misses 3 px pixels after h264)
+- Right: warm amber PS1 look with chunky pixels and dither, block-built keeper, interiors full of props, the yellow line captions (new `captions: line`), stamps, the brick-wall wipe opening the time shot, the coat on its hook. Voice george 4.55 st PASS, music fit PASS, voice over music 12 dB.
+- Flaw (engine): the lighthouse asset's box refitted three times across revisions (1180 -> 1707 -> 2483 -> 3415 px tall), so it swamped shots 2 and 5 -> engine fix: refit never beyond 2.5x the plan's own box, and never for a drawing whose centre lies outside its box.
+- Flaw: about 20 shot rejections for acting (5 s beats in 5 to 6 s shots demand two changes per shot, twitchy for this calm style) and for the hero at 10 to 21% of the frame in wide views -> acting beat 6, hero size 0.18 - 0.7. Kit rejected 3 times for an outdoor background at 1.26 to 1.91 detail -> background detail 1.6.
+- Flaw: "three keepers vanished" said in shot 1 and again in shot 4; the ending was an unrelated present-day fact ("no permanent residents nearby") -> fix: the event line is a concrete moment the hook did not tell; the ending is a fact that lingers (what was never found, the open question, the object still there).
+
+epoch 2: celeste-lp-e2 ("the Mary Celeste", held-out brief; 48.8 s against 40, 7 shots, MiniMax $0.299, reel total $0.300 with the Kokoro voice bm_george: ElevenLabs out of credits; grade: rendering 0.26, colour 0.2, rhythm 0.78)
+- Fixed by epoch 1: the story (no repeated fact; concrete moments: sailed 7 November for Genoa, found 4 December by the Dei Gratia, alcohol cargo intact, lifeboat gone, last log entry ten days earlier, the Gibraltar inquiry, and a lingering ending: wrecked off Haiti in 1885 for the insurance); no box refit runaway; the wipe opens the time shot; an inquiry-room diorama with the ship model.
+- Flaw: 32 rejections, most "barely acts" on the hero, which was the ship (a sail param is not acting) -> `acting beat` removed: in this calm diorama style it cost two reels about $0.15 of retries each and never improved a shot.
+- Flaw: shots 1, 3, 5 and 7 are nearly the same ship-on-sea picture from the same camera -> fix: never the same view twice; an object hero is seen from another side or distance, or replaced by its people or a detail.
+- Ship asset: rigging lines run from the mast tops to far below the hull (a tent of lines) -> left for now; check on e3.
+- Length 48.8 s against 40: lines of up to 20 words; Kokoro voice pitch spread 3.06 st (flat).

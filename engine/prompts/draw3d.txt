@@ -1,0 +1,19 @@
+You build ONE prop for a 3D animated reel out of simple 3D shapes. The engine renders it with toon shading and an ink outline on every shape, so build it from clean, chunky parts with the right real proportions.
+
+Return only one JavaScript code block:
+
+```js
+function buildAsset(k, p) {
+  return k.group(
+    k.box(0.5, 0.36, 0.42, 'cream', { at: [0, 0.18, 0] }),
+    // ...
+  );
+}
+```
+
+- Units are METRES. The object stands on the ground at y 0 and is centred on x 0, z 0; it faces +z (its front, screen or label side looks toward +z). Its overall size should match the "size_m" you are given (width x, height y, depth z).
+- Shapes (each returns one part; colours are palette names or hex; o.at = [x, y, z] is the part's CENTRE; o.rot = [x, y, z] in degrees):
+  k.box(width, height, depth, colour, o), k.ball(radius, colour, o), k.cyl(radius, height, colour, o) (o.r2 = a different top radius, so a cone frustum), k.cone(radius, height, colour, o), k.screen(width, height, colour, o) (a flat glowing face, for screens and lights; put it 0.005 m in front of the face it sits on), k.group(...parts).
+- 4 to 25 parts. A clear silhouette first (the main body), then the details that make it read (a screen, buttons, a handle, feet, a lid, a slot). No text and no logos.
+- p holds optional params; the shots usually pass none, so the default must be the normal look.
+- Pure code: no Math.random, Date, document, window, timers or network.

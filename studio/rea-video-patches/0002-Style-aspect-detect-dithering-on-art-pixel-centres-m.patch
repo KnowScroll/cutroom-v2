@@ -1,0 +1,312 @@
+From 4c92831c09677b56c08f8de41e811c48fcefeeee Mon Sep 17 00:00:00 2001
+From: XZNON <noreply@local>
+Date: Wed, 18 Nov 2026 16:36:01 +0530
+Subject: [PATCH 2/2] Style aspect: detect dithering on art-pixel centres,
+ measure every sampled frame, steadier colour scenes
+
+Dithering:
+- frame_texture now reads one sample per art pixel at the cell centres (art_pixels), phase-aligned
+  to the grid: _lock refines the period per axis near the shot's period and finds the cell-border
+  offset from the hard-edge profile (largest Fourier term). The old INTER_AREA resize at a
+  non-integer period (2.667 px at 480 wide) blended neighbouring cells and erased checkerboards.
+- dither_share counts 2x2 checkerboards on brightness (video coding blurs colour more), with the
+  two diagonals one tone each, and only next to another checkerboard window (lone matches are chance).
+- Per shot: dither (median) plus dither_peak and per-frame dither; per video: dither (weighted
+  median), dither_peak, and dither_frames (time share of sampled frames above DITHER_ON = 0.03,
+  picked from the reference: no-dither frames 0-0.02, dithered band seams 0.035-0.15, a dithered
+  shadow 0.1-0.4). style.md says "checkerboard dithering in N% of frames, up to X%".
+
+Colour scenes:
+- ShotCtx gains all_frames (every sampled frame, defaults to frames), filled in measure_shot; the
+  style aspect measures all of them instead of the ~6 picked frames (which also covered only the
+  first two thirds of each shot). Other aspects are unchanged.
+- After a cut a frame joins the current scene only when it matches the scene as a whole, so a fade
+  to white no longer carries the white shot after it along.
+- A scene of one frame or under SCENE_MIN (1 s) inside a shot joins the closer neighbour in the same
+  shot (or both, when they match across it); a short scene holding a whole shot stays.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ rea_video/aspects/__init__.py |   5 +-
+ rea_video/aspects/base.py     |   7 +-
+ rea_video/aspects/style.py    | 141 ++++++++++++++++++++++++++--------
+ 3 files changed, 120 insertions(+), 33 deletions(-)
+
+diff --git a/rea_video/aspects/__init__.py b/rea_video/aspects/__init__.py
+index 0c96912..7a09205 100644
+--- a/rea_video/aspects/__init__.py
++++ b/rea_video/aspects/__init__.py
+@@ -21,11 +21,12 @@ __all__ = ["REGISTRY", "measure_shot", "finalize", "prompt_block", "review_templ
+ # ---------------------------------------------------------------- per shot ---------------------------------------
+ 
+ def measure_shot(frames: list, faces: dict, features: dict, duration: float) -> dict:
+-    """faces: faces.shot_faces() output (picked frame indexes with their main face)."""
++    """faces: faces.shot_faces() output (picked frame indexes with their main face). Aspects measure the picked
++    frames (ctx.frames); ctx.all_frames holds every sampled frame for an aspect that needs the whole shot."""
+     picked = [p for p in faces.get("frames", []) if p["i"] < len(frames)] or [{"i": i, "face": None} for i in range(0, len(frames), max(1, len(frames) // 6))]
+     fr = [frames[p["i"]] for p in picked]
+     subs = [subject(frames[p["i"]], p.get("face")) for p in picked]
+-    ctx = ShotCtx(frames=fr, subjects=subs, features=features, duration=duration)
++    ctx = ShotCtx(frames=fr, subjects=subs, features=features, duration=duration, all_frames=list(frames))
+     out = {}
+     for a in REGISTRY:
+         m = a.measure(ctx)
+diff --git a/rea_video/aspects/base.py b/rea_video/aspects/base.py
+index 699a66d..0c45b15 100644
+--- a/rea_video/aspects/base.py
++++ b/rea_video/aspects/base.py
+@@ -40,10 +40,15 @@ class Field:
+ @dataclass
+ class ShotCtx:
+     """Everything an aspect may measure from, for one shot."""
+-    frames: list                  # sampled BGR frames (analysis width)
++    frames: list                  # picked sampled BGR frames (analysis width; about 6, the ones faces were read on)
+     subjects: list                # per sampled frame: subject dict or None (see aspects.subject)
+     features: dict                # forensic features of the shot (motion, texture, ...)
+     duration: float
++    all_frames: list | None = None  # every sampled frame of the shot, evenly spaced (`frames` is a subset); default: frames
++
++    def __post_init__(self):
++        if self.all_frames is None:
++            self.all_frames = self.frames
+ 
+ 
+ @dataclass
+diff --git a/rea_video/aspects/style.py b/rea_video/aspects/style.py
+index 16edd6f..1cfbaeb 100644
+--- a/rea_video/aspects/style.py
++++ b/rea_video/aspects/style.py
+@@ -1,18 +1,22 @@
+ """Visual style: how the picture is drawn and coloured, written so a remake can keep the look without copying colours.
+ 
+-Measured on every shot (drawn, animated and filmed alike), per sampled frame:
++Measured on every shot (drawn, animated and filmed alike), on every sampled frame of the shot:
+   palette      k-means in OKLab: up to 6 colours per frame with share, lightness L (0-1), chroma C, hue h (OKLCH degrees)
+   grid         pixel-art grid: the period of hard edges along x and y (FFT of the edge profile); `across` = art pixels
+                across the frame width; `conf` = peak over the spectrum's median (about 4+ is a real grid)
+   flat / smooth / hard   share of pixels in flat fills, gentle gradients, hard edges
+   outline      share of hard edges that are thin dark lines (dark rims drawn around shapes)
+-  dither       share of busy art pixels that sit in 2x2 checkerboards (only when a pixel grid is found)
++  dither       share of busy art pixels that sit in 2x2 checkerboards, read one sample per art pixel at the cell
++               centres (only when a pixel grid is found); per shot the median and the peak frame, per video also
++               the share of frames above DITHER_ON (dithering often shows only in a passing shadow or a transition)
+   detail       fastreel's background-detail score: mean neighbour brightness step on a 108x192 copy (0-255 scale;
+                a flat gradient scores about 0.2, six outlined boxes 1.45)
+   colours      colours covering 95% of pixels at 4 bits a channel (from the forensic features)
+   dup          share of repeated consecutive frames: drawings held for 2+ frames (animation "on twos")
+ 
+-Summarised per colour scene (a stretch of frames whose palettes stay close) and for the whole video, as relations
++Summarised per colour scene (a stretch of frames whose palettes stay close; a cut joins a scene only when it matches
++the scene as a whole; a stray frame inside a shot joins its closer neighbour, a short shot of its own stays) and for
++the whole video, as relations
+ that hold for any base hue: harmony (analogous, complementary, split-complementary, triadic ...), each hue family's
+ offset from the base hue, lightness and chroma levels by role (ground, mid, accent, highlight), hue-shifted ramps,
+ warm / cool split and contrast. The measured hex values are kept, but only as a reference: the recipe is the relations.
+@@ -32,7 +36,10 @@ from .base import Aspect, Field, ShotCtx, field_table, register, weighted_median
+ K_FRAME = 6            # colours per frame
+ CHROMATIC = 0.045      # OKLCH chroma above this counts as a hue (below: a neutral, maybe tinted)
+ SCENE_GAP = 0.085      # palette distance that starts a new colour scene
++SCENE_MIN = 1.0        # seconds: a shorter colour scene inside a shot joins a neighbour
+ HUE_FAMILY = 28.0      # hues closer than this (degrees) are one family
++DITHER_ON = 0.03       # a frame dithers above this; on a pixel-art explainer, frames without dithering measured 0-0.02,
++                       # dithered seams between sky bands or a glow's rim 0.035-0.15, a dithered shadow over the scene 0.1-0.4
+ 
+ # ------------------------------------------------------------------ colour maths ---------------------------------
+ 
+@@ -162,6 +169,48 @@ def detail_score(bgr: np.ndarray) -> float:
+     return round(float((np.abs(s[:191, :107] - s[:191, 1:108]).mean() + np.abs(s[:191, :107] - s[1:192, :107]).mean()) / 2), 3)
+ 
+ 
++def _lock(profile: np.ndarray, p0: float, span: float = 0.03, n: int = 121) -> tuple[float, float]:
++    """The grid period near p0 and the offset in [0, period) of its cell borders: the comb that best lines up with the
++    hard-edge profile (largest Fourier term). The period is refined per axis because the shot's median period is not
++    exact enough to sample cell centres: 0.3% off drifts a whole cell across 180 cells."""
++    pos = np.arange(len(profile)) + 1.0  # profile[i] is the step between pixels i and i + 1
++    ps = p0 * np.linspace(1 - span, 1 + span, n)
++    z = np.exp(-2j * np.pi * pos[None] / ps[:, None]) @ (profile - profile.mean())
++    k = int(np.argmax(np.abs(z)))
++    return float(ps[k]), float(-np.angle(z[k]) / (2 * np.pi) * ps[k]) % float(ps[k])
++
++
++def art_pixels(bgr: np.ndarray, period: float) -> np.ndarray:
++    """One sample per art pixel: the frame read at the cell centres (nearest pixel), phase-aligned to the grid. A
++    resize to art size blends neighbouring cells when the period is not a whole number, and one-pixel patterns vanish."""
++    g = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY).astype(np.float32)
++    idx = []
++    for axis, n in ((0, g.shape[0]), (1, g.shape[1])):
++        p, o = _lock((np.abs(np.diff(g, axis=axis)) > 18).mean(1 - axis), period)
++        c = np.floor(o + (np.arange(int(n / p) + 1) + 0.5) * p).astype(int)
++        idx.append(c[c < n])
++    return bgr[np.ix_(*idx)]
++
++
++def dither_share(art: np.ndarray, step: int = 8) -> float:
++    """Share of busy 2x2 windows of art pixels that are checkerboards: each diagonal one tone and one diagonal brighter
++    than the other by more than `step`. Read on brightness, which video coding keeps sharper than colour; a window
++    counts only next to another checkerboard window (dithering comes in runs, a lone match is chance)."""
++    if min(art.shape[:2]) < 3:
++        return 0.0
++    y = cv2.cvtColor(art, cv2.COLOR_BGR2GRAY).astype(np.int16)
++    tl, tr, bl, br = y[:-1, :-1], y[:-1, 1:], y[1:, :-1], y[1:, 1:]
++    gap = np.maximum(np.minimum(tl, br) - np.maximum(tr, bl), np.minimum(tr, bl) - np.maximum(tl, br))
++    checker = (gap > step) & (np.maximum(np.abs(tl - br), np.abs(tr - bl)) * 2 <= gap)
++    run = np.zeros_like(checker)
++    run[:, 1:] |= checker[:, :-1]
++    run[:, :-1] |= checker[:, 1:]
++    run[1:] |= checker[:-1]
++    run[:-1] |= checker[1:]
++    busy = (np.abs(tl - tr) > step) | (np.abs(tl - bl) > step)
++    return float((checker & run).sum() / max(1, busy.sum()))
++
++
+ def frame_texture(bgr: np.ndarray, period: float) -> dict:
+     gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY).astype(np.float32)
+     gx, gy = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3), cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3)
+@@ -172,16 +221,7 @@ def frame_texture(bgr: np.ndarray, period: float) -> dict:
+     bh = cv2.morphologyEx(gray, cv2.MORPH_BLACKHAT, cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)))
+     dark_line = (bh > 30) & (gray < 90)
+     outline = float(dark_line.sum() / max(1, hard.sum()))
+-    dither = 0.0
+-    if period >= 2.2:
+-        w, h = max(8, int(round(bgr.shape[1] / period))), max(8, int(round(bgr.shape[0] / period)))
+-        a = cv2.resize(bgr, (w, h), interpolation=cv2.INTER_AREA).astype(np.int16)
+-        tl, tr, bl, br = a[:-1, :-1], a[:-1, 1:], a[1:, :-1], a[1:, 1:]
+-        same = lambda p, q: np.abs(p - q).max(2) <= 10
+-        differ = np.abs(tl - tr).max(2) > 24
+-        checker = same(tl, br) & same(tr, bl) & differ
+-        busy = differ | (np.abs(tl - bl).max(2) > 24)
+-        dither = float(checker.sum() / max(1, busy.sum()))
++    dither = dither_share(art_pixels(bgr, period)) if period >= 2.2 else 0.0
+     return {"flat": round(float(flat.mean()), 3), "smooth": round(float(smooth.mean()), 3), "hard": round(float(hard.mean()), 3),
+             "outline": round(min(outline, 1.0), 3), "dither": round(dither, 3)}
+ 
+@@ -195,10 +235,11 @@ def measure_frames(frames: list, features: dict | None = None) -> dict:
+     good = [g for g in grids if g["conf"] >= 4.0]
+     period = float(np.median([g["period"] for g in good])) if len(good) >= max(1, len(grids) // 3) else 0.0
+     tex = [frame_texture(f, period) for f in frames]
+-    out = {"frames": [{"pal": frame_palette(f)} for f in frames],
++    out = {"frames": [{"pal": frame_palette(f), "dither": t["dither"]} for f, t in zip(frames, tex)],
+            "grid": {"period": round(period, 3), "across": round(W / period, 1) if period else 0.0,
+                     "conf": round(float(np.median([g["conf"] for g in grids])), 2), "frames_with_grid": round(len(good) / len(grids), 2)},
+            **{k: round(float(np.median([t[k] for t in tex])), 3) for k in ("flat", "smooth", "hard", "outline", "dither")},
++           "dither_peak": round(max(t["dither"] for t in tex), 3),
+            "detail": round(float(np.median([detail_score(f) for f in frames])), 3)}
+     f = features or {}
+     if "palette95" in f:
+@@ -254,32 +295,55 @@ def merge_palette(items: list[tuple[dict, float]], tol: float = 0.06, keep: int
+ 
+ 
+ def timeline(shots: list[dict], key: str) -> list[dict]:
+-    """Every sampled frame's palette with an (evenly spread) time."""
++    """Every sampled frame's palette (and dither) with an (evenly spread) time and the seconds it stands for."""
+     out = []
+     for r in shots:
+         m = ((r.get("aspects") or {}).get(key) or {}).get("measured") or {}
+         fr = m.get("frames") or []
+         for i, f in enumerate(fr):
+             t = r["start"] + (i + 0.5) * r["duration"] / len(fr)
+-            out.append({"t": round(t, 2), "w": r["duration"] / len(fr), "pal": f.get("pal") or [], "shot": r.get("id")})
++            out.append({"t": round(t, 2), "w": r["duration"] / len(fr), "pal": f.get("pal") or [], "dither": f.get("dither"),
++                        "shot": r.get("id")})
+     return out
+ 
+ 
+ def colour_scenes(tl: list[dict]) -> list[dict]:
+-    scenes: list[dict] = []
++    items = lambda s: [(c, c["share"] * f["w"]) for f in s for c in f["pal"]]
++    shots = lambda s: {f["shot"] for f in s}
++    scenes: list[list[dict]] = []
+     for f in tl:
+-        if scenes and pal_distance(scenes[-1]["last"], f["pal"]) < SCENE_GAP:
+-            s = scenes[-1]
+-            s["end"], s["last"] = f["t"], f["pal"]
+-            s["items"] += [(c, c["share"] * f["w"]) for c in f["pal"]]
+-            s["shots"].add(f["shot"])
++        # inside a shot the palette is followed frame to frame (fades, moves); after a cut a frame joins only a scene it
++        # matches as a whole, or a fade to white would carry the white shot after it along
++        ref = None if not scenes else scenes[-1][-1]["pal"] if scenes[-1][-1]["shot"] == f["shot"] else merge_palette(items(scenes[-1]))
++        if ref is not None and pal_distance(ref, f["pal"]) < SCENE_GAP:
++            scenes[-1].append(f)
+         else:
+-            scenes.append({"start": f["t"], "end": f["t"], "last": f["pal"], "items": [(c, c["share"] * f["w"]) for c in f["pal"]],
+-                           "shots": {f["shot"]}})
++            scenes.append([f])
++    per_shot = {sh: sum(f["shot"] == sh for f in tl) for sh in shots(tl)}
++    # a scene of one frame or under SCENE_MIN inside a shot (an object passing, a flash on part of the picture) joins
++    # the neighbour in the same shot whose palette is closer, or both when they match across it (it only broke the
++    # chain); a short scene holding a whole shot (a white flash cut) stays
++    while True:
++        cand = []
++        for i, s in enumerate(scenes):
++            short = len(s) == 1 or sum(f["w"] for f in s) < SCENE_MIN
++            whole = any(sum(f["shot"] == sh for f in s) == per_shot[sh] for sh in shots(s))
++            nb = [j for j in (i - 1, i + 1) if 0 <= j < len(scenes) and shots(scenes[j]) & shots(s)]
++            if short and not whole and nb:
++                cand.append((sum(f["w"] for f in s), i, nb))
++        if not cand:
++            break
++        _, i, nb = min(cand)
++        if len(nb) == 2 and pal_distance(scenes[i - 1][-1]["pal"], scenes[i + 1][0]["pal"]) < SCENE_GAP:
++            a, b = i - 1, i + 1
++        else:
++            pal = merge_palette(items(scenes[i]))
++            a, b = sorted((i, min(nb, key=lambda j: pal_distance(pal, merge_palette(items(scenes[j]))))))
++        scenes[a:b + 1] = [sum(scenes[a:b + 1], [])]
+     out = []
+     for s in scenes:
+-        pal = merge_palette(s["items"])
+-        out.append({"start": s["start"], "end": s["end"], "shots": sorted(x for x in s["shots"] if x), "palette": pal,
++        pal = merge_palette(items(s))
++        out.append({"start": s[0]["t"], "end": s[-1]["t"], "shots": sorted(x for x in shots(s) if x), "palette": pal,
+                     "recipe": recipe(pal)})
+     return out
+ 
+@@ -427,9 +491,20 @@ def rendering_words(m: dict) -> list[str]:
+                      a=g["across"], p=1080 / g["across"], f=g.get("frames_with_grid", 0)))
+     else:
+         out.append(T("没有像素网格（不是像素画，或格子太细）", "No pixel grid (not pixel art, or a grid too fine to measure)"))
+-    out.append(T("平涂 {f:.0%}、柔和渐变 {s:.0%}、硬边 {h:.0%}；深色描边约占硬边的 {o:.0%}；抖动（棋盘点）{d:.0%}",
+-                 "Flat fills {f:.0%}, gentle gradients {s:.0%}, hard edges {h:.0%}; dark outlines on about {o:.0%} of hard edges; dithering (checkerboard) {d:.0%}",
+-                 f=m.get("flat", 0), s=m.get("smooth", 0), h=m.get("hard", 0), o=m.get("outline", 0), d=m.get("dither", 0)))
++    on, peak = m.get("dither_frames"), m.get("dither_peak")
++    if on is None:  # one shot, or a breakdown from before the per-frame dither
++        dith = T("抖动（棋盘点）{d:.0%}", "dithering (checkerboard) {d:.0%}", d=m.get("dither") or 0)
++    elif not on:
++        dith = T("没有棋盘格抖动", "no checkerboard dithering")
++    elif on >= 0.9:
++        dith = T("全片都有棋盘格抖动，约占有色阶变化的像素格的 {d:.0%}（单帧最多 {p:.0%}）",
++                 "checkerboard dithering throughout, on about {d:.0%} of busy art pixels (up to {p:.0%} in a frame)", d=m.get("dither") or 0, p=peak)
++    else:
++        dith = T("棋盘格抖动出现在 {n} 的帧里，单帧最多占有色阶变化的像素格的 {p:.0%}",
++                 "checkerboard dithering in {n} of frames, up to {p:.0%} of a frame's busy art pixels", n=_pct(on), p=peak)
++    out.append(T("平涂 {f:.0%}、柔和渐变 {s:.0%}、硬边 {h:.0%}；深色描边约占硬边的 {o:.0%}；{d}",
++                 "Flat fills {f:.0%}, gentle gradients {s:.0%}, hard edges {h:.0%}; dark outlines on about {o:.0%} of hard edges; {d}",
++                 f=m.get("flat", 0), s=m.get("smooth", 0), h=m.get("hard", 0), o=m.get("outline", 0), d=dith))
+     extra = []
+     if m.get("colours") is not None:
+         extra.append(T("覆盖 95% 画面的颜色数 {n}", "{n} colours cover 95% of the picture", n=int(round(m["colours"]))))
+@@ -461,7 +536,8 @@ class Style(Aspect):
+         ])
+ 
+     def measure(self, ctx: ShotCtx) -> dict:
+-        return measure_frames(ctx.frames, ctx.features)
++        # every sampled frame: a few picked ones leave long shots coarse and miss short events (a shadow, a flash)
++        return measure_frames(ctx.all_frames, ctx.features)
+ 
+     def summarize(self, shots: list[dict], b: dict) -> dict:
+         ms = [(r, ((r.get("aspects") or {}).get(self.key) or {}).get("measured") or {}) for r in shots]
+@@ -475,6 +551,11 @@ class Style(Aspect):
+         grid_shots = [(m["grid"]["across"], r["duration"]) for r, m in ms if (m.get("grid") or {}).get("across")]
+         grid_share = sum(d for _, d in grid_shots) / max(1e-6, sum(r["duration"] for r, _ in ms))
+         measured = {k: (round(v, 3) if v is not None else None) for k, v in ((k, w(k)) for k in ("flat", "smooth", "hard", "outline", "dither", "detail", "colours", "dup"))}
++        # dithering often shows in part of the video only (a passing shadow, a transition), where a median cannot see it
++        peaks = [m.get("dither_peak", m.get("dither")) for _, m in ms if m.get("dither") is not None]
++        measured["dither_peak"] = round(max(peaks), 3) if peaks else None
++        dt = [(f["w"], f["dither"] > DITHER_ON) for f in tl if f.get("dither") is not None]
++        measured["dither_frames"] = round(sum(x for x, on in dt if on) / max(1e-6, sum(x for x, _ in dt)), 3) if dt else None
+         measured["grid"] = {"across": round(weighted_median(grid_shots), 1) if grid_shots and grid_share >= 0.4 else 0.0,
+                             "frames_with_grid": round(grid_share, 2)}
+         whole_recipe = recipe(whole)
+-- 
+2.47.0.windows.2
+

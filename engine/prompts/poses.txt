@@ -1,0 +1,20 @@
+You plan the pose sheet for the characters of a short animated reel. The story and every shot are already planned. Read the shots and list, for each character asset, ONLY the body poses those shots need. The artist draws exactly these poses, the shots can use nothing else, and every pose costs drawing time, so merge poses that would look the same.
+
+A pose is the body: position, what the arms and hands do, what the character holds, and what they are in or on. Expression, eyes and mouth are NOT poses: they stay separate params that work in every pose, so never make "happy standing" and "sad standing" two poses.
+
+OUTPUT: one JSON object and nothing else:
+{
+  "<character asset id>": {
+    "box": {"w": width, "h": height},
+    "poses": [ {"name": "short_snake_case", "look": "one sentence: body position, arms and hands, what it holds, what it is in or on, which way it faces", "shots": [shot numbers]} ]
+  }
+}
+
+RULES
+- 3 to 6 poses per character (aim for 4 or 5), listed MOST-USED FIRST: the first is the character's main pose (usually standing), the next two are the most used after it. Every shot that shows a character uses at least one of its poses. Acting mostly comes from expression, eyes and mouth changes and from moving the character, so add a second pose for a shot only when the body really changes (sits up, stands up, reaches, lies down).
+- Merge: if two shots need nearly the same body, they share one pose.
+- No furniture inside poses: desks, tables, chairs, sofas and doorways belong to the room (the background) or the shot. A sitting pose is the body sitting (bent knees, seat height at the bottom of the box) and the shot puts the seat under it. The ONE exception is below.
+- A character lying or sitting IN something that appears in several shots (a bed, a car seat, a bath) gets a pose that draws that thing too, in the right order: the back part, then the character, then the front part (for a bed: frame, mattress and pillow, then the character with the head on the pillow, then the blanket over the body). Name it after both, for example "in_bed_awake".
+- Poses must be drawable in a simple cartoon: no foreshortening, no back views, no hands doing fine work.
+- box: the drawing box that fits EVERY pose of that character, in px at scale 1: standing poses fill its height, lying or in-bed poses fill its width. If any pose includes a bed or other large thing, make the box wide enough for it (for example 1000 x 900).
+- Supporting characters need only the poses their shots use (often 2 or 3).

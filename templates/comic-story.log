@@ -1,0 +1,49 @@
+comic-story fix log. One block per epoch: train/test brief, settings, score (1-5: look, motion, staging, readability, story, length), flaws seen, fixes made.
+
+== c1  2026-11-17  train: "life of a person with insomnia..." 45 s  |  1 director round  |  STOPPED at 18 min (broken, not slow)
+flaws:
+- main character never drawn: the template asked for a "lie" pose inside a tall standing box (420x820); a lying figure cannot fit, so all 6 attempts failed "draws outside its box", every shot using her crashed and retried, 5 shots rendered black, and the director round redrew everything into the same wall
+- "window" false positives: the banned-global check matched comments and strings ("// bedroom window"), about 12 rejections
+- caption pop-in (scale from 0) flagged as "0 px" text
+- M3 slips that cost attempts: duplicate const declarations ('shoe', 'line'), unbalanced save/restore
+good: kit passed first try with real rooms (background detail check 1.6 passed); supporting character and bed drew fine
+fixes (system):
+- template: the character box fits every pose (about square, e.g. 760x900); lie = rotated 90 degrees and scaled to the box width
+- stage: every previewed state is checked against the box, and the message names the state and the measured extents in box units; small-text check skips text that is still scaling in
+- engine: banned globals are looked for in code only (comments and strings stripped; a variable the code declares itself is fine); the run stops right after the assets step if any asset has no valid code, instead of rendering black shots and spending a review round
+next: c2 with the same brief
+
+== c2  2026-11-17  train: same brief  |  1 director round  |  ~16 min incl. a crash at the end + resume; first part 39 calls / 164k output tokens (input not logged), resume 7 calls / 96k tokens / $0.046
+score: look 4, motion 3, staging 3, readability 3, story 3, length 5 (47.2 s)
+good: real comic rooms (night bedroom with moon, lamp, 3:07 AM clock; kitchen; office; evening cafe), consistent main character and coworker, speech and thought bubbles, lip-sync, facts from the reference (chronic = 3 nights a week for 3 months after the director fix; CBT first-line; causes list)
+flaws:
+- lying character placed on the floor in front of the bed, not in it (no back/front layering for things a character sits or lies in)
+- empty yellow caption box; a long caption runs off both frame edges; the help banner squeezes a sentence into a strip (illegible)
+- the "others" shot paints a plain grey wall over the kit room
+- no hopeful outcome shot; hook names the time but no surprising fact
+- engine crash after the review: a removed line still had a sound effect (fixed: sfx for missing lines are skipped)
+fixes after c2 review (system):
+- stage: acting check (template "acting beat: 3.5"): the hero's discrete params (pose, expression, facing, holding) must change, or it must move 30 px, about once per 3.5 s of shot; replayed on c2 it flags exactly the 5 static shots
+- stage: a solid opaque fillRect over 30% of the frame drawn after kit.bg is rejected (caught the grey wall in shot 5; no false hits on 8 thyroidectomy shots)
+- stage: text must stay inside x 44 to 1036 once fully scaled in (was 8: the clipped "3 nights a week" caption at x 26 to 1054 passed); text squeezed by fillText maxWidth over 12% is rejected
+- stage: the hero's drawn box is the union over all previewed states (the lying first state made a standing hero look small)
+- template: outcome beat required; one line of 12 to 16 words per shot; set pieces a character lies in get a back/front "layer" param and shots draw back, character, front; arms and hands always visible; supporting person keeps the same proportions; props never over faces; caption box at most 5 words, sized to its text, never empty; sound words away from the speech bubble; never paint walls over kit.bg
+
+== c3  2026-11-17  train: same brief  |  1 director round  |  19.6 min, 47 calls, 617k tokens, $0.30 (cost-report exact)
+score: look 4, motion 3, staging 3, readability 4, story 4, length 4 (50.9 s of 45)
+better than c2: in-bed layering works (Mara sits up IN the bed, blanket in front); clear expression changes and actions (gets out of bed, talks, hand gestures); thought bubble with cause icons; outcome beat present; director removed the invented "one in five adults"; no squeezed or clipped text found; no wall painted over a room
+flaws: hook shot is an empty bed for 6 s (Mara hidden under the blanket); outcome shot shows an empty bed with her bubble floating over it; Theo reads as a child (big head, short body); "MORNING" banner text looks compressed and YAWN overlaps it; 6 s over length (director lengthened lines)
+next: n1 = same plan/kit/reference with --no-assets (A/B)
+
+== n1  2026-11-17  A/B: c3's plan, kit, reference and voices with --no-assets (every shot draws every character itself)  |  1 director round
+result: 46.7 s, 53 calls, 824k tokens, $0.445 (c3's matching phases, assets + shots + review: 527k tokens, $0.246); output tokens 301k vs 146k; shot code 10-22k chars vs 3-10k; slow shots 150-200 s per request vs 15-60 s. Wall time not comparable (my bug: the old "largest asset under 380 px" rule rejected every no-asset shot on the first pass; fixed: skipped when a reel has no assets)
+look: Mara is a different person in almost every shot (glasses and purple marks like a moustache in the hook, purple hair in shot 2, long hair in shot 3, half-hidden blocky face in shot 7); cafe shot characters left as grey outlines; a paper held over a face again; hook punch-in fills the frame with one face
+better: freer acting where it worked (rubbing an eye, reaching for the alarm, yawning, smiling in bed at the end)
+verdict: shared drawings win on consistency, reliability and cost (about half the tokens); their weakness is acting limited to the planned poses. Next idea (user's): plan the distinct pose variations up front, draw them from one character model, check them as a pose sheet, shots pick from the menu; group drawings for recurring compositions (character in bed)
+
+== pose sheet build  2026-11-18  (system change, tested with --until assets on c3's plan)
+- p0: notes came back per pose as objects and were passed as "[object Object]" (fixed: formatted); pose list rejected for 10-17 poses and fell back
+- p1: 10 poses in one drawing, many with furniture: Mara lost her face (hair over it) and became an egg on stick legs; Theo (4 poses) fine
+- p2: character first (3 most-used poses), then the rest added from the same inner functions; 3-6 poses, no furniture except the in-it set piece; face always visible: Mara on model with a face in all 6 poses, in-bed pose under the blanket with her phone; $0.074 and about 3.5 min to reviewed drawings
+- p3: 2 sheet-review rounds: round 2 consolidated the bed and kept Mara, but the reviewer never approves and Theo's big head survived two concrete notes (one pose got worse); redraw-from-notes does not reliably apply proportion fixes; 2 rounds cost $0.062
+open: proportion fixes need something stronger than notes (a measured head-to-height check, or the supporting character drawn from the main character's construction)

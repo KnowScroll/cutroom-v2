@@ -1,0 +1,341 @@
+{
+ "by": "claude",
+ "shots": [
+  {
+   "id": "shot_001",
+   "time": "0.00-1.20",
+   "label_probs": {
+    "cg_3d": 0.85,
+    "code_render": 0.1,
+    "ai_video": 0.03,
+    "live_action": 0.02
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Every edge steps in exact 3x3 px blocks: the scene is rendered at 360x640 and scaled 3x with nearest-neighbour",
+    "Fine checkerboard pattern on dark brown surfaces and in the sky bands: an ordered (Bayer) dither, which the tool read as sensor noise",
+    "Geometry is boxes, tapered 4-sided frustums and cones with flat-shaded facets; textures are small pixel textures with nearest filtering",
+    "Perfectly stable geometry and lighting frame to frame, petals as flat quads: a real-time engine (three.js-like), not AI video or live action"
+   ],
+   "description": "A warm covered station-style platform at evening, seen by a low game camera close to the edge: a cream low-poly animal built from blocks sits facing the camera on the platform behind a yellow textured strip; back wall of tan plaster over dark wood wainscot with framed posters and windows showing a banded sunset; wooden posts, a wooden bench, a hanging lamp with a green cone shade, a hanging sign board; the platform edge face and a gravel track bed with dark sleepers fill the lower third. Pink petal quads drift down. The camera settles slowly toward the subject; the subject turns its head slightly, ears perk, tail wags. A small yellow lowercase caption with a black outline sits at about y 1300. Near the end of the shot a bright light from the right brightens the subject as something approaches.",
+   "narrative": {
+    "role": "context",
+    "point": "The character alone in its place, while one short caption states what it did every day"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "PS1-era low-poly 3D render, 360x640 upscaled 3x nearest-neighbour, dithered 15-bit colour; low wide-angle camera slightly above platform level; a small blocky cream animal sitting centred on a warm evening platform, back wall with wood wainscot, posters and sunset windows, hanging lamp, bench; gravel track bed in the foreground; warm hemisphere light.",
+    "video_prompt": "Medium shot, low wide-angle camera, subject centred in the middle third. The camera settles slowly toward the subject; the subject turns its head a little to the side and back, ears perk, tail wags; petals drift down; a bright light grows from the right.",
+    "video_prompt_en": "Medium shot, low wide-angle camera, subject centred in the middle third. The camera settles slowly toward the subject; the subject turns its head a little to the side and back, ears perk, tail wags; petals drift down; a bright light grows from the right."
+   },
+   "aspects": {
+    "framing": {
+     "shot_size": "medium shot",
+     "camera_angle": "slightly high, close to the ground (game camera)",
+     "composition": "subject centred, lower-middle; sign above it; foreground edge and track bed fill the bottom third; vertical 9:16"
+    },
+    "camera": {
+     "camera_support": "virtual camera (3D render, not a shooting plan)",
+     "lens": "wide lens (about 52 degrees vertical) close to the subject",
+     "speed": "slow push-in / settle, eased"
+    },
+    "lighting": {
+     "location": "indoor-style covered platform, evening (3D render, not a shooting plan)",
+     "key_light": "warm orange directional key from the upper right front",
+     "light_quality": "soft, flat per-facet Lambert shading, no cast shadows except a flat 8-sided contact shadow",
+     "fill_light": "weak cool blue fill from the left; warm hemisphere light (cream from above, brown from below)",
+     "rim_light": "none",
+     "catchlight": "not applicable (pixel eyes)",
+     "practicals": "hanging lamps with green conical shades and glowing bulbs; a warm sunset through back windows",
+     "color_temp": "warm",
+     "lighting_setup": "warm hemisphere + warm key upper right + faint cool fill left + one warm point lamp above the subject; warm brown distance fog"
+    },
+    "grade": {
+     "color_grade": "warm, slightly desaturated retro game look; 15-bit colour with ordered 4x4 dither visible as a fine checker on dark and gradient surfaces"
+    }
+   },
+   "performance": {
+    "who": "A",
+    "emotion": "expectant",
+    "intensity": "low",
+    "face": "pixel eyes looking toward the camera and to the side, small dark nose, flat mouth line",
+    "body": "sits upright, head turns slightly left then back, ears perk up, tail wags, slow breathing",
+    "arc": [
+     {
+      "t": 0.3,
+      "state": "ears perk, head turns slightly to the side"
+     },
+     {
+      "t": 1.0,
+      "state": "head turns back to the front, looking up a little"
+     }
+    ],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "sits upright, ears perk, head turns slightly to the side and back, tail wags"
+   }
+  },
+  {
+   "id": "shot_002",
+   "time": "1.20-2.57",
+   "label_probs": {
+    "cg_3d": 0.85,
+    "code_render": 0.1,
+    "ai_video": 0.03,
+    "live_action": 0.02
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "A large vehicle side passes right in front of the lens and fills the whole frame: hard 3 px stair-stepped edges on window frames and reflections",
+    "Flat two-tone paint with noise-jittered pixel texture, diagonal two-tone reflection streaks on the glass, an interior with seats seen through the windows",
+    "Dither checker visible on the flat green paint; slight vertex wobble on long straight edges"
+   ],
+   "description": "A foreground wipe: a long vehicle body passes from right to left close to the lens and fills the frame for about 1.4 s, hiding the subject. Two-tone green paint with a cream stripe, window frames, glass with pale diagonal reflection streaks, seats inside, door seams as dark vertical bars. It brakes almost to a stop, then pulls away to the left. The caption stays on screen. Used as a time-skip: when it clears, the season has changed.",
+   "narrative": {
+    "role": "mood",
+    "point": "Something big passes in front of the camera and wipes the frame; when it clears, time has passed"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "PS1-era low-poly 3D render, chunky 3x pixels, dithered; the side of a vehicle very close to the lens fills the frame: two-tone paint, window frames, glass with pale diagonal reflections, seats inside.",
+    "video_prompt": "Full-frame close foreground: the vehicle side slides from right to left past the lens, slows almost to a stop, then accelerates away to the left, revealing the scene behind.",
+    "video_prompt_en": "Full-frame close foreground: the vehicle side slides from right to left past the lens, slows almost to a stop, then accelerates away to the left, revealing the scene behind."
+   },
+   "aspects": {
+    "framing": {
+     "shot_size": "extreme close foreground (wipe)",
+     "camera_angle": "level",
+     "composition": "the passing object fills the frame edge to edge"
+    },
+    "camera": {
+     "camera_support": "virtual camera (3D render, not a shooting plan)",
+     "lens": "wide lens (about 52 degrees vertical) close to the subject",
+     "speed": "camera still while the object passes; brakes then accelerates"
+    },
+    "lighting": {
+     "location": "indoor-style covered platform, evening (3D render, not a shooting plan)",
+     "key_light": "warm orange directional key from the upper right front",
+     "light_quality": "soft, flat per-facet Lambert shading, no cast shadows except a flat 8-sided contact shadow",
+     "fill_light": "weak cool blue fill from the left; warm hemisphere light (cream from above, brown from below)",
+     "rim_light": "none",
+     "catchlight": "not applicable (pixel eyes)",
+     "practicals": "hanging lamps with green conical shades and glowing bulbs; a warm sunset through back windows",
+     "color_temp": "warm",
+     "lighting_setup": "warm hemisphere + warm key upper right + faint cool fill left + one warm point lamp above the subject; warm brown distance fog"
+    },
+    "grade": {
+     "color_grade": "warm, slightly desaturated retro game look; 15-bit colour with ordered 4x4 dither visible as a fine checker on dark and gradient surfaces"
+    }
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_003",
+   "time": "2.57-4.80",
+   "label_probs": {
+    "cg_3d": 0.85,
+    "code_render": 0.1,
+    "ai_video": 0.03,
+    "live_action": 0.02
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Same scene and engine as shot 1: 3x nearest-neighbour pixels, Bayer dither, flat facets, pixel textures",
+    "Square white flakes (flat quads facing the camera) fall in front of the scene, bigger near the lens; the track bed texture switched to a pale covered version; a pale layer sits on the subject's head and back",
+    "The tail of the passing vehicle exits left in the first frames"
+   ],
+   "description": "The same platform after the wipe: the vehicle's tail leaves to the left, and the season has changed: square pale flakes fall in front of the lens, the ground in front is covered, a thin pale layer sits on the subject's head, back and paws. The subject is still sitting in the same spot. The camera pushes in slowly and lower toward it; at about 3.5 s it turns its head to look down the platform (to frame left), ears lowering, and holds. The second caption, the turn, appears as the vehicle clears and stays to the end.",
+   "narrative": {
+    "role": "payoff",
+    "point": "The character is still there after time has passed; the caption names how long, which lands the sad turn"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "PS1-era low-poly 3D render, 3x chunky pixels, dithered; the same blocky animal sitting on the warm platform, a thin pale layer on its head and back, square pale flakes falling in front of the lens, warm interior light.",
+    "video_prompt": "Medium close shot, low wide camera pushing in slowly toward the sitting subject; the subject turns its head to look along the platform to the left, ears lower, and holds; square flakes fall in front of the lens.",
+    "video_prompt_en": "Medium close shot, low wide camera pushing in slowly toward the sitting subject; the subject turns its head to look along the platform to the left, ears lower, and holds; square flakes fall in front of the lens."
+   },
+   "aspects": {
+    "framing": {
+     "shot_size": "medium close shot",
+     "camera_angle": "slightly high, moving lower and closer",
+     "composition": "subject centred, grows to about 40% of the frame height; sign above"
+    },
+    "camera": {
+     "camera_support": "virtual camera (3D render, not a shooting plan)",
+     "lens": "wide lens (about 52 degrees vertical) close to the subject",
+     "speed": "slow eased push-in"
+    },
+    "lighting": {
+     "location": "indoor-style covered platform, evening (3D render, not a shooting plan)",
+     "key_light": "warm orange directional key from the upper right front",
+     "light_quality": "soft, flat per-facet Lambert shading, no cast shadows except a flat 8-sided contact shadow",
+     "fill_light": "weak cool blue fill from the left; warm hemisphere light (cream from above, brown from below)",
+     "rim_light": "none",
+     "catchlight": "not applicable (pixel eyes)",
+     "practicals": "hanging lamps with green conical shades and glowing bulbs; a warm sunset through back windows",
+     "color_temp": "warm",
+     "lighting_setup": "warm hemisphere + warm key upper right + faint cool fill left + one warm point lamp above the subject; warm brown distance fog"
+    },
+    "grade": {
+     "color_grade": "warm, slightly desaturated retro game look; 15-bit colour with ordered 4x4 dither visible as a fine checker on dark and gradient surfaces"
+    }
+   },
+   "performance": {
+    "who": "A",
+    "emotion": "patient sadness",
+    "intensity": "low",
+    "face": "pixel eyes look to the side along the platform, eyebrows level",
+    "body": "sits still, head turns to frame left and tilts down slightly, ears lower",
+    "arc": [
+     {
+      "t": 0.9,
+      "state": "head starts to turn to the left"
+     },
+     {
+      "t": 1.4,
+      "state": "looking along the platform, ears lowered, holds"
+     }
+    ],
+    "voice": "",
+    "key": true,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "sits still, head turns to the left and tilts down slightly, ears lower, holds"
+   }
+  }
+ ],
+ "aspects": {
+  "camera": {
+   "setups": "one virtual camera in one continuous take: a slow eased settle, then a slow push-in after the wipe",
+   "gear_guess": "real-time WebGL (three.js) scene rendered at 360x640, upscaled 3x nearest-neighbour in a headless browser"
+  },
+  "lighting": {
+   "lighting_overall": "warm hemisphere light (cream above, brown below), warm orange key from the upper right front, faint cool fill from the left, warm point lamps under the canopy, warm brown distance fog"
+  },
+  "grade": {
+   "grade_overall": "warm retro game look, 15-bit colour (32 levels per channel) with a 4x4 ordered dither in every material"
+  },
+  "editing": {
+   "editing": "no cuts: one continuous take; the only 'transition' is a big object passing right in front of the lens as a wipe that skips time"
+  },
+  "format": {
+   "format": "4.8 s silent vertical PS1-style story vignette with two burned-in caption lines (setup, then the turn)"
+  },
+  "style": {
+   "render_style": "PS1-era real-time low-poly 3D: rendered at 360x640 and shown 3x with nearest-neighbour upscaling (chunky 3 px pixels), vertices snapped to the low-res grid (slightly wobbly edges), 15-bit colour with a 4x4 Bayer ordered dither in every material, flat-shaded facets, small nearest-filtered pixel textures",
+   "outline": "none; shapes are separated by facet tones and by dark seams painted into the textures (plank gaps, tile joints, frames)",
+   "shading": "flat per-facet Lambert shading, 2 to 3 tones per surface: tops lightest, the side toward the key mid, the far side darkest; warm hemisphere light, warm key, faint cool fill, distance fog toward warm brown; no specular, no smooth gradients except dithered bands",
+   "shape_language": "boxes, 4-sided tapered frustums, cones and 6 to 8-sided cylinders; characters are stacks of blocks with triangular ears and box snouts; architecture of straight beams, posts, planks and tiles in strong one-point perspective",
+   "texture": "tiny pixel textures (16 to 32 texels, each about 9 to 15 screen px): per-texel brightness jitter of 5 to 9%, plank bands with dark gaps, tile seams, speckles, a fur texture of light jitter; checker dither visible on dark surfaces and in sky bands",
+   "type_ui": "small lowercase bold sans captions (about 50 px), bright yellow with a 3 px black outline and a short drop below, centred about two thirds down the frame (y about 1290), no box, no full stops; in-world signs use a 5x7 bitmap pixel font",
+   "motion_style": "slow game camera: wide lens close to the subject, eased settle and push-in; small slow idle acting (breathing, ear perks, head turns, tail wag); drifting particles; one big foreground object passes the lens as a wipe; time passing shown by a change of season",
+   "signature": "chunky 3x pixels + ordered dither + flat warm facets in a cosy evening interior; a lone small character in a big place; the foreground wipe that jumps time; tiny yellow outlined captions telling a sad true story in two lines",
+   "do_not_copy": "the topic and every object of the story (the waiting animal, the station, the passing vehicle, the station sign and its names, the season change to flakes, the caption words and the duration); no watermark or handle is visible"
+  }
+ },
+ "story": {
+  "summary": "A 4.8 s silent PS1-style vignette that tells a true sad story in two caption lines: a small character waits alone in a warm place, something passes in front of the camera, and it is still there after years.",
+  "hook": "0 to 1.2 s: a lone small low-poly character sits centred in a cosy, detailed retro 3D place, and the first caption states its daily routine, which makes the viewer ask why",
+  "highlights": [
+   "1.2 to 2.6 s: a big object wipes across the lens and hides the character; it doubles as a time skip, so the reveal needs no cut or title card",
+   "2.6 s: the reveal changes the season (falling square flakes, a pale layer on the character) while the character has not moved, so time passing is shown, not told",
+   "2.6 to 4.8 s: the second caption gives the duration (the sad turn) while the camera pushes in and the character looks away down the empty place",
+   "Whole clip: the cosy retro game look (chunky pixels, dither, warm lamps) contrasts with the sad story, which makes it feel nostalgic"
+  ]
+ },
+ "cast": {
+  "style": "PS1-era low-poly 3D, 3x chunky pixels, ordered dither, flat warm facets, pixel textures, warm evening light",
+  "characters": [
+   {
+    "id": "A",
+    "name": "the waiting animal",
+    "kind": "animal",
+    "look": "small cream and tan quadruped built from blocks: tapered frustum torso leaning forward, box head with a white box snout, black box nose, two dark pixel eyes with tan eyebrow bars, two cone ears, curled torus tail, white bib and paws; fur as light pixel jitter",
+    "role": "the lone main character",
+    "voice": "none",
+    "shots": [
+     1,
+     3
+    ]
+   }
+  ],
+  "scenes": [
+   {
+    "id": "S1",
+    "where": "a covered platform",
+    "when": "evening (spring, then winter after the wipe)",
+    "look": "tan plaster wall over dark wood wainscot, windows with a banded sunset, posters, wood posts and beams, hanging lamps with green shades, a bench, a hanging sign board, tiled floor, yellow textured strip, dark edge face, gravel bed with sleepers",
+    "shots": [
+     1,
+     2,
+     3
+    ]
+   }
+  ],
+  "props": [
+   {
+    "name": "passing vehicle",
+    "note": "fills the frame as a foreground wipe",
+    "shots": [
+     2,
+     3
+    ]
+   },
+   {
+    "name": "hanging sign board",
+    "note": "bitmap pixel font lettering in the world",
+    "shots": [
+     1,
+     3
+    ]
+   },
+   {
+    "name": "hanging lamps, bench, posters",
+    "note": "set dressing",
+    "shots": [
+     1,
+     3
+    ]
+   }
+  ]
+ },
+ "packaging": {
+  "stickers": [],
+  "text": [
+   {
+    "id": "text_003",
+    "kind": "scene"
+   },
+   {
+    "id": "text_006",
+    "kind": "scene"
+   },
+   {
+    "id": "text_009",
+    "kind": "scene"
+   },
+   {
+    "id": "text_010",
+    "kind": "scene"
+   },
+   {
+    "id": "text_011",
+    "kind": "scene"
+   }
+  ],
+  "missed": []
+ }
+}

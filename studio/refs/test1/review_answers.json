@@ -1,0 +1,372 @@
+{
+ "by": "claude",
+ "shots": [
+  {
+   "id": "shot_001",
+   "time": "0.00-17.97",
+   "label_probs": {
+    "code_render": 0.85,
+    "anim_2d": 0.15
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Every edge sits on one pixel grid (about 180 art pixels across the width): pixel art scaled up by an exact factor",
+    "Hundreds of identical sprites (green nuclei, pink and blue fragments, small neutron dots) placed on a regular lattice and moving by rule: a particle simulation, not hand animation",
+    "Counter panel ticks through exact powers of two in a bitmap font: generated, not typed by hand"
+   ],
+   "description": "Pixel-art particle simulation on a near-black blue-tinted ground. Title \"NUCLEAR FISSION\" in a white bitmap font over one big glowing green nucleus (a cluster of small green balls with a soft dark-green halo), label U-235 under it, a tiny white neutron streaks in from the left. The nucleus splits into a pink (BA) and a blue (KR) nucleus that fly apart, firing 2-3 neutron dots. The view pulls back to a regular lattice of small green nuclei (each a 3-tone pixel ball, highlight top-left). A caption panel at the top and a counter panel under it (dark navy fill, 1 art-pixel green-tinted border, small corner ticks) show GENERATION n and a big splits count that doubles every half second (8, 64, 1,024, 131,072, then scientific notation 4.4x10^12 ... 6.0x10^23). Each split spawns pink and blue fragments; the lattice fills with fragment dots, a ring of orange-rimmed reacting nuclei spreads outward, and finally a dark-red then orange pixel fireball grows out of the middle.",
+   "narrative": {
+    "role": "hook",
+    "point": "Opens on one atom and a title, then shows a chain reaction doubling on a live counter until it explodes"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_002",
+   "time": "17.97-19.57",
+   "label_probs": {
+    "code_render": 0.85,
+    "anim_2d": 0.15
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Same pixel grid and counter panel as shot 1",
+    "Fireball made of flat pixel blobs in a 4-step orange-to-cream ramp brightening over 1.5 s"
+   ],
+   "description": "The pixel fireball fills the frame and brightens through red, orange, amber and cream to almost white, with lighter pixel blobs boiling inside; the panels show 80 GENERATIONS IN ABOUT 1 MICROSECOND and 6.0x10^23 SPLITS, then fade as the frame whites out.",
+   "narrative": {
+    "role": "turn",
+    "point": "The microscopic count turns into a real explosion: the frame burns to white"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_003",
+   "time": "19.57-20.07",
+   "label_probs": {
+    "code_render": 0.9,
+    "static_hold": 0.1
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "A flat white frame for half a second"
+   ],
+   "description": "Pure white flash hold (about 0.5 s) between the micro and macro worlds.",
+   "narrative": {
+    "role": "mood",
+    "point": "A white flash bridges the atom scale and the real-world scale"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_004",
+   "time": "20.07-42.50",
+   "label_probs": {
+    "code_render": 0.6,
+    "anim_2d": 0.4
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Same 180-across pixel grid",
+    "Sky built from 5 flat horizontal bands with stepped (dithered) edges, ground with scattered single dark pixels: hand-built pixel-art scene layers",
+    "Cloud is a stack of pixel puff circles in 3-4 brown tones growing and billowing smoothly: likely procedural puffs, possibly hand-drawn pixel animation"
+   ],
+   "description": "Wide pixel-art desert at dusk: dark brown ground with black speckle pixels, a low purple mountain silhouette, a sky of 5 horizontal violet-to-indigo bands with stepped edges and a few star pixels. A small white-hot dome flashes on the horizon, a flat light ring races out along the ground, the dome swells into an orange fireball with a purple rim, then rises on a stem into a brown mushroom cloud made of round pixel puffs (3-4 brown tones, lighter on top, glowing red underside). A dark checkerboard-dithered shadow passes over the scene once. Caption panels at the top (dark navy fill, 1 art-pixel dusty-rose border): TRINITY TEST, 1945 / FIRST ATOMIC BOMB; PLUTONIUM FISSION 20,000+ TONS OF TNT; THE CLOUD ROSE 12 KM HIGH; ABOUT 1 GRAM OF MASS BECAME ENERGY (the big number in a larger font). Near the end the sunset glows orange-pink on the right horizon and a small sparkle twinkles on the cloud edge, then the camera starts to push in on it.",
+   "narrative": {
+    "role": "payoff",
+    "point": "The real-world result, as three big stat cards over one growing image"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_005",
+   "time": "42.50-43.03",
+   "label_probs": {
+    "code_render": 0.8,
+    "anim_2d": 0.2
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Pixels get bigger as the view zooms: the whole pixel-art frame is scaled up, so the push-in is a scale of the rendered scene"
+   ],
+   "description": "Fast push-in toward the sparkle on the cloud edge: the cloud fills the frame with chunky enlarged pixels and the sparkle grows into a bright cream-orange glow disc that fills the frame.",
+   "narrative": {
+    "role": "mood",
+    "point": "A push-in into a point of light carries the viewer back to the atom"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_006",
+   "time": "43.03-44.00",
+   "label_probs": {
+    "code_render": 0.85,
+    "anim_2d": 0.15
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "Match cut on a round bright shape; the green nucleus enlarged with big pixels then shown at normal size: the same sprite as shot 1"
+   ],
+   "description": "Match cut from the glow disc to an extreme close-up of the green nucleus (huge pixel balls), which pulls back to the opening frame: title NUCLEAR FISSION and the U-235 nucleus on the dark ground, so the video loops seamlessly.",
+   "narrative": {
+    "role": "mood",
+    "point": "Ends on its own first frame so the reel loops"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  }
+ ],
+ "aspects": {
+  "camera": {
+   "setups": "",
+   "gear_guess": ""
+  },
+  "lighting": {
+   "lighting_overall": ""
+  },
+  "grade": {
+   "grade_overall": ""
+  },
+  "editing": {
+   "editing": "Almost one continuous take per world: 18 s micro simulation, white flash, 22 s macro scene, push-in and match cut to loop; captions change about every 3-5 s"
+  },
+  "format": {
+   "format": "Silent-text explainer: no voice-over, music plus sound effects, all information in on-screen caption panels and counters"
+  },
+  "style": {
+   "render_style": "Pixel art at a low fixed resolution (about 180 x 320 art pixels, scaled up by an exact factor), drawn and animated in code; retro game look",
+   "outline": "No dark outlines; shapes are separated by colour steps. UI panels have a 1-art-pixel border in a muted tint of the scene colour",
+   "shading": "Flat fills in 3-4 step colour ramps (shadow, base, light, highlight); light from the top-left on spheres and cloud puffs; hot things glow through a red-orange-amber-cream ramp; skies are flat horizontal bands with stepped edges; dark overlays use checkerboard dithering",
+   "shape_language": "Round and chunky: balls and puff clusters built from pixel circles, low flat horizon lines, silhouettes readable at tiny size; subjects small inside a big field of repeated elements, or one big subject on a wide simple scene",
+   "texture": "Hard pixel edges everywhere, scattered single-pixel specks on the ground, star pixels in the sky, checkerboard dither for passing shadows; no noise, no blur, no smooth gradients",
+   "type_ui": "Uppercase monospace bitmap (pixel) font in near-white; caption panel at the top centre (dark navy fill, 1-pixel border tinted to the scene); a second counter panel under it with GENERATION n, a large number, a unit line and small corner ticks; numbers switch to scientific notation (6.0x10^23 with superscript) when large; short labels (U-235) right under objects",
+   "motion_style": "Rule-driven simulation (particles split, fly, multiply on a lattice) with a counter ticking every 0.5 s; growth effects (fireball swells, cloud rises and billows); a full-frame white flash between scale levels; one push-in at the end and a match cut back to the first frame for a seamless loop; motion is smooth but positions snap to the pixel grid",
+   "signature": "Low-res pixel grid on everything; near-black space ground with one bright sprite colour; HUD panels with bitmap font and live counters; micro-to-macro story with a white flash bridge; ends on its own first frame (loop)",
+   "do_not_copy": "The @BITWONDER watermark under the counter, the exact topic (nuclear fission, uranium, Trinity test, mushroom cloud) and its numbers"
+  }
+ },
+ "story": {
+  "summary": "A 44 s pixel-art explainer that shows nuclear fission as a game-like chain reaction with a live counter, then jumps to the real explosion it causes, with no narration: music, sound effects and short HUD captions carry it.",
+  "hook": "0-3 s: a big bold title and one glowing nucleus on black, a neutron already flying at it; the viewer knows something is about to happen.",
+  "highlights": [
+   "8-17 s: a counter doubles every half second (8, 64, 1,024 ... 6.0x10^23) while the screen fills with sprites: exponential growth you can watch, numbers that escalate faster than you can read",
+   "17-20 s: the count literally becomes fire and burns to white: the climax lands as one image, then a hard switch from atom scale to real-world scale",
+   "20-42 s: one growing image (the cloud) under 3 short stat cards (20,000+ tons, 12 km, 1 gram): each stat lands while the picture is still changing",
+   "42-44 s: push into a glint and match-cut to the first frame: the reel loops, so viewers watch it twice"
+  ]
+ },
+ "cast": {
+  "style": "Low-res pixel art (about 180 px wide), near-black space ground with bright sprite colours, then a dusk desert in violet bands and warm browns; bitmap-font HUD panels",
+  "characters": [],
+  "scenes": [
+   {
+    "id": "S1",
+    "where": "abstract micro world",
+    "when": "",
+    "look": "near-black ground tinted blue, a lattice of small green pixel nuclei, pink and blue fragments, neutron dots",
+    "shots": [
+     1,
+     2,
+     6
+    ]
+   },
+   {
+    "id": "S2",
+    "where": "desert at dusk",
+    "when": "dusk",
+    "look": "dark brown speckled ground, purple mountain silhouette, 5 banded violet-indigo sky stripes, stars, sunset glow on the right",
+    "shots": [
+     4,
+     5
+    ]
+   }
+  ],
+  "props": [
+   {
+    "name": "nucleus sprite",
+    "note": "cluster of small balls in one colour ramp with a soft halo; labelled",
+    "shots": [
+     1,
+     6
+    ]
+   },
+   {
+    "name": "mushroom cloud",
+    "note": "stack of round pixel puffs in brown ramps with a red-hot underside",
+    "shots": [
+     4,
+     5
+    ]
+   },
+   {
+    "name": "HUD panels",
+    "note": "caption panel and counter panel, dark fill with 1-pixel tinted border",
+    "shots": [
+     1,
+     2,
+     4
+    ]
+   }
+  ]
+ },
+ "packaging": {
+  "stickers": [
+   {
+    "id": "sticker_01",
+    "is_overlay": false,
+    "what": "empty counter panel of the code-drawn HUD (part of the render)"
+   },
+   {
+    "id": "sticker_02",
+    "is_overlay": false,
+    "what": "dithered mushroom cloud during the shadow pass (part of the picture)"
+   }
+  ],
+  "text": [
+   {
+    "id": "text_002",
+    "kind": ""
+   },
+   {
+    "id": "text_005",
+    "kind": ""
+   },
+   {
+    "id": "text_008",
+    "kind": ""
+   },
+   {
+    "id": "text_009",
+    "kind": ""
+   },
+   {
+    "id": "text_013",
+    "kind": ""
+   },
+   {
+    "id": "text_014",
+    "kind": ""
+   },
+   {
+    "id": "text_015",
+    "kind": "counter"
+   },
+   {
+    "id": "text_016",
+    "kind": ""
+   },
+   {
+    "id": "text_017",
+    "kind": "counter"
+   },
+   {
+    "id": "text_018",
+    "kind": "counter"
+   },
+   {
+    "id": "text_019",
+    "kind": "counter"
+   },
+   {
+    "id": "text_020",
+    "kind": "counter"
+   },
+   {
+    "id": "text_022",
+    "kind": "counter"
+   },
+   {
+    "id": "text_023",
+    "kind": "counter"
+   },
+   {
+    "id": "text_024",
+    "kind": "counter"
+   },
+   {
+    "id": "text_025",
+    "kind": "counter"
+   },
+   {
+    "id": "text_026",
+    "kind": "counter"
+   },
+   {
+    "id": "text_027",
+    "kind": "counter"
+   },
+   {
+    "id": "text_029",
+    "kind": "counter"
+   },
+   {
+    "id": "text_041",
+    "kind": "counter"
+   },
+   {
+    "id": "text_043",
+    "kind": ""
+   },
+   {
+    "id": "text_044",
+    "kind": "title"
+   },
+   {
+    "id": "text_045",
+    "kind": "title"
+   },
+   {
+    "id": "text_046",
+    "kind": ""
+   }
+  ],
+  "missed": []
+ }
+}

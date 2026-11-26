@@ -1,0 +1,2393 @@
+{
+ "by": "claude",
+ "shots": [
+  {
+   "id": "shot_001",
+   "time": "0.00-9.37",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "flat 2D cut-out animation on a paper-textured real map (steel-blue sea, saturated orange focus country, beige other land, flag-coloured highlighted territories). A narrow coastal region is filled green and holds a wooden plank sign on a post with the holder's name hand-lettered on it; the holder flag-ball (left, on the coast edge, about 150 px of 576) grips the post with one noodle arm; the neighbour flag-ball floats on the mainland to the right. The big country's name sits as a small letter-spaced serif map label; at 4.5 s a hand-lettered white title with the place name and a year pops in at the top. Static camera, balls bob and blink.",
+   "narrative": {
+    "role": "hook",
+    "point": "States the dispute in one image: a small power plants its own name on a strip of a much bigger neighbour's coast"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "A (holder flag-ball)",
+    "emotion": "smug",
+    "intensity": "mid",
+    "face": "half-closed eyes, brows flat, small closed mouth",
+    "body": "one arm holding the sign post, body bobbing",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "half-closed eyes, brows flat, small closed mouth; one arm holding the sign post, body bobbing"
+   }
+  },
+  {
+   "id": "shot_002",
+   "time": "9.37-15.00",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "flat 2D cut-out animation on a paper-textured real map (steel-blue sea, saturated orange focus country, beige other land, flag-coloured highlighted territories). Same composition pushed in about 15%: the two balls talk in turn (white phrase captions with a coloured dash for each speaker); the neighbour ball waves a hand, the holder ball frowns with angled brows and pulls the sign closer; a small ship crosses the sea at the left edge.",
+   "narrative": {
+    "role": "context",
+    "point": "The other side asks politely; the holder refuses outright, setting up the argument"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "A (holder flag-ball)",
+    "emotion": "angry",
+    "intensity": "mid",
+    "face": "brows angled down to the centre, eyes narrowed, mouth a flat line",
+    "body": "leans toward the other ball, arm tight on the sign post",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "brows angled down to the centre, eyes narrowed, mouth a flat line; leans toward the other ball, arm tight on the sign post"
+   }
+  },
+  {
+   "id": "shot_003",
+   "time": "15.00-15.33",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.3,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.7,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "flat 2D cut-out animation on a paper-textured real map (steel-blue sea, saturated orange focus country, beige other land, flag-coloured highlighted territories). A 0.3 s transition: the whole frame washes out toward a pale desaturated tint (flashback look).",
+   "narrative": {
+    "role": "mood",
+    "point": "A flash into a flashback tint"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_004",
+   "time": "15.33-17.50",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "flat 2D cut-out animation on a paper-textured real map (steel-blue sea, saturated orange focus country, beige other land, flag-coloured highlighted territories), but washed out (lighter, desaturated, about 40% toward pale grey-cream) to mark the past; the holder ball speaks, the neighbour ball shows a question mark above its head.",
+   "narrative": {
+    "role": "context",
+    "point": "The holder's historical claim, shown in a faded flashback tint"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "B (big neighbour flag-ball)",
+    "emotion": "confused",
+    "intensity": "mid",
+    "face": "eyes wide, one brow raised, small \"?\" popping above",
+    "body": "tilts slightly",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "eyes wide, one brow raised, small \"?\" popping above; tilts slightly"
+   }
+  },
+  {
+   "id": "shot_005",
+   "time": "17.50-23.23",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "flat 2D cut-out animation on a paper-textured real map (steel-blue sea, saturated orange focus country, beige other land, flag-coloured highlighted territories). Back to full colour; the plank on the sign flips from one word to a new one (hand-lettered), the holder ball hammers it with a mallet; the neighbour ball asks \"since when?\" with raised brows; a key word in the caption is amber.",
+   "narrative": {
+    "role": "info",
+    "point": "A renaming trick: the word on the sign is swapped to dodge the rule"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "A (holder flag-ball)",
+    "emotion": "determined",
+    "intensity": "mid",
+    "face": "brows down, mouth tight",
+    "body": "raises a mallet arm and strikes the sign",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "brows down, mouth tight; raises a mallet arm and strikes the sign"
+   }
+  },
+  {
+   "id": "shot_006",
+   "time": "23.23-26.50",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "flat 2D cut-out animation on a paper-textured real map (steel-blue sea, saturated orange focus country, beige other land, flag-coloured highlighted territories), zoomed out a little; a tiny cartoon man in a dark suit stands at a small dinner table drawn on the green region and protests; a red \"!\" pops above the holder ball.",
+   "narrative": {
+    "role": "info",
+    "point": "A small human story shows the cost of the claim"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_007",
+   "time": "26.50-28.10",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "flat 2D cut-out animation on a paper-textured real map (steel-blue sea, saturated orange focus country, beige other land, flag-coloured highlighted territories); the holder ball's arm reaches across and lifts the tiny man off the map.",
+   "narrative": {
+    "role": "info",
+    "point": "Dissent is removed: the protester is carried away"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_008",
+   "time": "28.10-29.97",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "Home-country map: the holder's country filled green on beige neighbours, steel-blue sea, hand-lettered country title at the top; the tiny man drops onto it. Static.",
+   "narrative": {
+    "role": "info",
+    "point": "Cut to the holder's home country to show where the protester was sent"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_009",
+   "time": "29.97-31.17",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "flat 2D cut-out animation on a paper-textured real map (steel-blue sea, saturated orange focus country, beige other land, flag-coloured highlighted territories); many small sign icons pop onto the region one after another while the line counts the years.",
+   "narrative": {
+    "role": "info",
+    "point": "Time passes: years of pressure in one frame"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_010",
+   "time": "31.17-33.37",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "flat 2D cut-out animation on a paper-textured real map (steel-blue sea, saturated orange focus country, beige other land, flag-coloured highlighted territories), closer inland view: the neighbour ball rises at the top looking annoyed, small \"closed\" signs on posts and a tiny truck stopped at them.",
+   "narrative": {
+    "role": "info",
+    "point": "Pressure fails: blockade signs and stuck trucks"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "B (big neighbour flag-ball)",
+    "emotion": "annoyed",
+    "intensity": "mid",
+    "face": "eyelids half down, mouth flat",
+    "body": "arms hanging, slight sigh bob",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "eyelids half down, mouth flat; arms hanging, slight sigh bob"
+   }
+  },
+  {
+   "id": "shot_011",
+   "time": "33.37-34.87",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "flat 2D cut-out animation on a paper-textured real map (steel-blue sea, saturated orange focus country, beige other land, flag-coloured highlighted territories), wider; thin dashed arrows slide in toward the region from the mainland and the sea; the holder ball looks around nervously.",
+   "narrative": {
+    "role": "turn",
+    "point": "Escalation: the army moves"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_012",
+   "time": "34.87-37.17",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "Continent map (whole region, all land beige, sea steel blue); the holder ball travels from the coast toward its home across the map.",
+   "narrative": {
+    "role": "info",
+    "point": "The holder runs to a far ally: a jump to the continent-scale map"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_013",
+   "time": "37.17-43.20",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.2,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.8,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "Island-country map: the ally's country filled red, neighbours beige; the ally flag-ball sits on its country, the holder ball below it holds up a paper treaty with a red seal; dialogue in turns; the neighbour ball waves from a top corner.",
+   "narrative": {
+    "role": "turn",
+    "point": "The ally refuses: diplomacy as a comic argument"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "C (ally flag-ball)",
+    "emotion": "awkward",
+    "intensity": "mid",
+    "face": "eyes looking away, brows raised in the middle",
+    "body": "arm raised as if declining",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "eyes looking away, brows raised in the middle; arm raised as if declining"
+   }
+  },
+  {
+   "id": "shot_014",
+   "time": "43.20-44.40",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "Same island map; the holder ball lifts another document (a paper with a red seal and a hand-lettered short name).",
+   "narrative": {
+    "role": "info",
+    "point": "The holder tries a second alliance document"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_015",
+   "time": "44.40-46.40",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "Same island map; the ally ball points a long noodle arm upward/away while explaining; the holder ball looks up worried.",
+   "narrative": {
+    "role": "turn",
+    "point": "Rejected again: the document does not cover the colony"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "A (holder flag-ball)",
+    "emotion": "worried",
+    "intensity": "mid",
+    "face": "eyes looking up, brows tilted up in the middle, mouth small",
+    "body": "holding the paper close",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "eyes looking up, brows tilted up in the middle, mouth small; holding the paper close"
+   }
+  },
+  {
+   "id": "shot_016",
+   "time": "46.40-50.47",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "Same island map; the holder ball's sign plank now reads a two-word official term; it bounces as the word appears.",
+   "narrative": {
+    "role": "info",
+    "point": "The renaming trick again: a longer official word on the sign"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_017",
+   "time": "50.47-54.07",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.15,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.85,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "flat 2D cut-out animation on a paper-textured real map (steel-blue sea, saturated orange focus country, beige other land, flag-coloured highlighted territories); the neighbour ball scales up to about 3x (fills about 40% of the frame width) while the holder ball shrinks; a red \"!\" pops; a hand-lettered title with the ratio appears at the top; the ratio words are amber in the caption.",
+   "narrative": {
+    "role": "proof",
+    "point": "The odds as sizes: the big neighbour grows, the holder shrinks, the ratio as a title"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "B (big neighbour flag-ball)",
+    "emotion": "calm",
+    "intensity": "mid",
+    "face": "big round eyes, small smile",
+    "body": "looms over the small ball",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "big round eyes, small smile; looms over the small ball"
+   }
+  },
+  {
+   "id": "shot_018",
+   "time": "54.07-57.37",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "photo",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "Home-country map zoomed out to the continent: a circular portrait medallion (a real black-and-white photo in a green and cream ring, name hand-lettered under it) sits on the home country; a small rolled telegram scroll travels along a dotted line to the colony.",
+   "narrative": {
+    "role": "info",
+    "point": "The leader far away sends an order: a portrait medallion and a message travelling along a dotted route"
+   },
+   "embedded_assets": [
+    {
+     "kind": "photo",
+     "what": "archival black-and-white portrait of a historical leader in a round medallion",
+     "is_real_material": true
+    }
+   ],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_019",
+   "time": "57.37-58.67",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "photo",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "flat 2D cut-out animation on a paper-textured real map (steel-blue sea, saturated orange focus country, beige other land, flag-coloured highlighted territories), wide; the local commander's portrait medallion sits on the sea beside the coast; a hand-lettered two-line title with the order pops in at the top.",
+   "narrative": {
+    "role": "info",
+    "point": "The order, quoted as a big title"
+   },
+   "embedded_assets": [
+    {
+     "kind": "photo",
+     "what": "archival portrait of a commander in a round medallion",
+     "is_real_material": true
+    }
+   ],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_020",
+   "time": "58.67-60.00",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "photo",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "Same wide coast with the medallion and the title held.",
+   "narrative": {
+    "role": "info",
+    "point": "The order held on screen"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_021",
+   "time": "60.00-60.27",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "photo",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "Home-country map with the leader's medallion, 0.3 s.",
+   "narrative": {
+    "role": "info",
+    "point": "Quick cut back to the leader"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_022",
+   "time": "60.27-62.37",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "photo",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "Home-country map, leader medallion centred; a two-line hand-lettered quote title pops in at the top; the quote words are amber in the caption.",
+   "narrative": {
+    "role": "info",
+    "point": "The leader's exact words as a title"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_023",
+   "time": "62.37-64.63",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "flat 2D cut-out animation on a paper-textured real map (steel-blue sea, saturated orange focus country, beige other land, flag-coloured highlighted territories); giant neighbour ball beside the tiny holder ball and the sign; the quote title at the top; a red hand-drawn stroke crosses out its first word.",
+   "narrative": {
+    "role": "turn",
+    "point": "Irony: the quote is struck through while the odds are on screen"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_024",
+   "time": "64.63-65.57",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "photo",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "Home-country map with the leader medallion.",
+   "narrative": {
+    "role": "info",
+    "point": "What the leader really expected"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_025",
+   "time": "65.57-67.57",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "photo",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "flat 2D cut-out animation on a paper-textured real map (steel-blue sea, saturated orange focus country, beige other land, flag-coloured highlighted territories), wide; commander medallion on the sea; title with a number of days at the top.",
+   "narrative": {
+    "role": "info",
+    "point": "The expected duration as a title"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_026",
+   "time": "67.57-77.30",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.2,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.8,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "flat 2D cut-out animation on a paper-textured real map (steel-blue sea, saturated orange focus country, beige other land, flag-coloured highlighted territories); the holder ball and its sign; then a crowd of small neighbour balls with green helmets marches across the region; later two hand-lettered labels on either side: one word near the neighbour ball and the opposite word near the holder ball, a dashed arrow between them.",
+   "narrative": {
+    "role": "proof",
+    "point": "The event and its two names: one army, two labels"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_027",
+   "time": "77.30-79.57",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "Close-up of the green region (fills most of the frame on the orange mainland): a cartoon face and two small hands appear on it, first neutral, then frowning.",
+   "narrative": {
+    "role": "info",
+    "point": "The local people's mixed feelings: the region itself gets a face"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "H (region with a face)",
+    "emotion": "resentful",
+    "intensity": "mid",
+    "face": "brows angled down, mouth turned down",
+    "body": "small fists",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "brows angled down, mouth turned down; small fists"
+   }
+  },
+  {
+   "id": "shot_028",
+   "time": "79.57-83.67",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "photo",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "flat 2D cut-out animation on a paper-textured real map (steel-blue sea, saturated orange focus country, beige other land, flag-coloured highlighted territories), wide; a duration title at the top; the green region shrinks to a dot; the commander medallion slides to a small port town marked by a tiny flag on a pole and a serif label.",
+   "narrative": {
+    "role": "info",
+    "point": "Collapse in a short time: duration title and the commander cornered in one town"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_029",
+   "time": "83.67-85.10",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "flat 2D cut-out animation on a paper-textured real map (steel-blue sea, saturated orange focus country, beige other land, flag-coloured highlighted territories); a cluster of small cartoon houses appears beside the town flag.",
+   "narrative": {
+    "role": "info",
+    "point": "The reason for surrender: the people"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_030",
+   "time": "85.10-88.17",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.2,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.8,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "flat 2D cut-out animation on a paper-textured real map (steel-blue sea, saturated orange focus country, beige other land, flag-coloured highlighted territories); the commander medallion next to the town, a telegram icon is ignored; the town flag changes to a white flag.",
+   "narrative": {
+    "role": "payoff",
+    "point": "The surrender: the flag turns white"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_031",
+   "time": "88.17-89.20",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.85,
+    "code_render": 0.0,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.15,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "stylised 3D figures with clean stable geometry and consistent soft lighting",
+    "night scene lit by car headlights, volumetric dust, no texture boiling or deformation"
+   ],
+   "description": "3D night scene from above: a car with headlights in a dark field, figures standing in the light cone",
+   "narrative": {
+    "role": "mood",
+    "point": "Tonal shift: a dark, quiet, cinematic moment for the climax"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "stylised 3D night scene, 3D night scene from above: a car with headlights in a dark field, figures standing in the light cone",
+    "video_prompt": "3D night scene from above: a car with headlights in a dark field, figures standing in the light cone",
+    "video_prompt_en": "3D night scene from above: a car with headlights in a dark field, figures standing in the light cone"
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_032",
+   "time": "89.20-90.93",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.85,
+    "code_render": 0.0,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.15,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "stylised 3D figures with clean stable geometry and consistent soft lighting",
+    "night scene lit by car headlights, volumetric dust, no texture boiling or deformation"
+   ],
+   "description": "3D close view of a car's two round headlights glowing in the dark, dust in the beams",
+   "narrative": {
+    "role": "mood",
+    "point": "Tonal shift: a dark, quiet, cinematic moment for the climax"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "stylised 3D night scene, 3D close view of a car's two round headlights glowing in the dark, dust in the beams",
+    "video_prompt": "3D close view of a car's two round headlights glowing in the dark, dust in the beams",
+    "video_prompt_en": "3D close view of a car's two round headlights glowing in the dark, dust in the beams"
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_033",
+   "time": "90.93-91.83",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.85,
+    "code_render": 0.0,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.15,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "stylised 3D figures with clean stable geometry and consistent soft lighting",
+    "night scene lit by car headlights, volumetric dust, no texture boiling or deformation"
+   ],
+   "description": "3D night: soldiers seen from behind in the headlight glow",
+   "narrative": {
+    "role": "mood",
+    "point": "Tonal shift: a dark, quiet, cinematic moment for the climax"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "stylised 3D night scene, 3D night: soldiers seen from behind in the headlight glow",
+    "video_prompt": "3D night: soldiers seen from behind in the headlight glow",
+    "video_prompt_en": "3D night: soldiers seen from behind in the headlight glow"
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_034",
+   "time": "91.83-93.23",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.85,
+    "code_render": 0.0,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.15,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "stylised 3D figures with clean stable geometry and consistent soft lighting",
+    "night scene lit by car headlights, volumetric dust, no texture boiling or deformation"
+   ],
+   "description": "3D: one officer salutes another in front of the car",
+   "narrative": {
+    "role": "payoff",
+    "point": "The human climax told without words"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "stylised 3D night scene, 3D: one officer salutes another in front of the car",
+    "video_prompt": "3D: one officer salutes another in front of the car",
+    "video_prompt_en": "3D: one officer salutes another in front of the car"
+   },
+   "performance": {
+    "who": "I (officers)",
+    "emotion": "stern",
+    "intensity": "low",
+    "face": "neutral faces, eyes level",
+    "body": "formal stance, salute or still",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "neutral faces, eyes level; formal stance, salute or still"
+   }
+  },
+  {
+   "id": "shot_035",
+   "time": "93.23-94.00",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.85,
+    "code_render": 0.0,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.15,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "stylised 3D figures with clean stable geometry and consistent soft lighting",
+    "night scene lit by car headlights, volumetric dust, no texture boiling or deformation"
+   ],
+   "description": "3D close-up of a stern officer in a peaked cap and khaki uniform",
+   "narrative": {
+    "role": "mood",
+    "point": "Tonal shift: a dark, quiet, cinematic moment for the climax"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "stylised 3D night scene, 3D close-up of a stern officer in a peaked cap and khaki uniform",
+    "video_prompt": "3D close-up of a stern officer in a peaked cap and khaki uniform",
+    "video_prompt_en": "3D close-up of a stern officer in a peaked cap and khaki uniform"
+   },
+   "performance": {
+    "who": "I (officers)",
+    "emotion": "stern",
+    "intensity": "low",
+    "face": "neutral faces, eyes level",
+    "body": "formal stance, salute or still",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "neutral faces, eyes level; formal stance, salute or still"
+   }
+  },
+  {
+   "id": "shot_036",
+   "time": "94.00-95.83",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.85,
+    "code_render": 0.0,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.15,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "stylised 3D figures with clean stable geometry and consistent soft lighting",
+    "night scene lit by car headlights, volumetric dust, no texture boiling or deformation"
+   ],
+   "description": "3D: the officer hands a paper to the other officer",
+   "narrative": {
+    "role": "payoff",
+    "point": "The human climax told without words"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "stylised 3D night scene, 3D: the officer hands a paper to the other officer",
+    "video_prompt": "3D: the officer hands a paper to the other officer",
+    "video_prompt_en": "3D: the officer hands a paper to the other officer"
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_037",
+   "time": "95.83-96.63",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.85,
+    "code_render": 0.0,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.15,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "stylised 3D figures with clean stable geometry and consistent soft lighting",
+    "night scene lit by car headlights, volumetric dust, no texture boiling or deformation"
+   ],
+   "description": "3D close-up: the receiving officer holds the paper and does not salute",
+   "narrative": {
+    "role": "turn",
+    "point": "The human climax told without words"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "stylised 3D night scene, 3D close-up: the receiving officer holds the paper and does not salute",
+    "video_prompt": "3D close-up: the receiving officer holds the paper and does not salute",
+    "video_prompt_en": "3D close-up: the receiving officer holds the paper and does not salute"
+   },
+   "performance": {
+    "who": "I (officers)",
+    "emotion": "stern",
+    "intensity": "low",
+    "face": "neutral faces, eyes level",
+    "body": "formal stance, salute or still",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "neutral faces, eyes level; formal stance, salute or still"
+   }
+  },
+  {
+   "id": "shot_038",
+   "time": "96.63-98.30",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.85,
+    "code_render": 0.0,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.15,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "stylised 3D figures with clean stable geometry and consistent soft lighting",
+    "night scene lit by car headlights, volumetric dust, no texture boiling or deformation"
+   ],
+   "description": "3D close-up of the receiving officer standing still, expressionless",
+   "narrative": {
+    "role": "turn",
+    "point": "The human climax told without words"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "stylised 3D night scene, 3D close-up of the receiving officer standing still, expressionless",
+    "video_prompt": "3D close-up of the receiving officer standing still, expressionless",
+    "video_prompt_en": "3D close-up of the receiving officer standing still, expressionless"
+   },
+   "performance": {
+    "who": "I (officers)",
+    "emotion": "stern",
+    "intensity": "low",
+    "face": "neutral faces, eyes level",
+    "body": "formal stance, salute or still",
+    "arc": [],
+    "voice": "",
+    "key": false,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "neutral faces, eyes level; formal stance, salute or still"
+   }
+  },
+  {
+   "id": "shot_039",
+   "time": "98.30-99.03",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.85,
+    "code_render": 0.0,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.15,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "stylised 3D figures with clean stable geometry and consistent soft lighting",
+    "night scene lit by car headlights, volumetric dust, no texture boiling or deformation"
+   ],
+   "description": "3D medium shot of both officers facing each other in silence",
+   "narrative": {
+    "role": "mood",
+    "point": "Tonal shift: a dark, quiet, cinematic moment for the climax"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "stylised 3D night scene, 3D medium shot of both officers facing each other in silence",
+    "video_prompt": "3D medium shot of both officers facing each other in silence",
+    "video_prompt_en": "3D medium shot of both officers facing each other in silence"
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_040",
+   "time": "99.03-101.40",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.85,
+    "code_render": 0.0,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.15,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "stylised 3D figures with clean stable geometry and consistent soft lighting",
+    "night scene lit by car headlights, volumetric dust, no texture boiling or deformation"
+   ],
+   "description": "3D top view of the scene with radiating headlight beams, then an iris wipe begins",
+   "narrative": {
+    "role": "mood",
+    "point": "Tonal shift: a dark, quiet, cinematic moment for the climax"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "stylised 3D night scene, 3D top view of the scene with radiating headlight beams, then an iris wipe begins",
+    "video_prompt": "3D top view of the scene with radiating headlight beams, then an iris wipe begins",
+    "video_prompt_en": "3D top view of the scene with radiating headlight beams, then an iris wipe begins"
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_041",
+   "time": "101.40-103.87",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "photo",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "Iris wipe from the dark scene into the home-country map; the holder ball with a green helmet holds a dismissal paper; the commander medallion beside it.",
+   "narrative": {
+    "role": "info",
+    "point": "Aftermath: the commander is punished at home (iris back to the bright map)"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_042",
+   "time": "103.87-104.73",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "flat 2D cut-out animation on a paper-textured real map (steel-blue sea, saturated orange focus country, beige other land, flag-coloured highlighted territories); a ruler-like timeline bar at the top fills left to right while the sign stands on the region.",
+   "narrative": {
+    "role": "info",
+    "point": "Years pass: a timeline ruler fills"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_043",
+   "time": "104.73-106.77",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "Home-country map; many small flags pop up over the green home country; the holder ball wears a helmet.",
+   "narrative": {
+    "role": "info",
+    "point": "A revolution at home: small flags pop over the home country"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_044",
+   "time": "106.77-108.03",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.18,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.82,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "photo",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "Home-country map; the holder ball hands a rank paper back to the commander medallion.",
+   "narrative": {
+    "role": "info",
+    "point": "The commander's honour restored"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": null
+  },
+  {
+   "id": "shot_045",
+   "time": "108.03-115.10",
+   "label_probs": {
+    "live_action": 0.0,
+    "ai_video": 0.0,
+    "avatar": 0.0,
+    "cg_3d": 0.0,
+    "code_render": 0.15,
+    "screen_capture": 0.0,
+    "still_motion": 0.0,
+    "static_hold": 0.0,
+    "anim_2d": 0.85,
+    "stop_motion": 0.0,
+    "film_footage": 0.0
+   },
+   "image_source": "graphic",
+   "evidence": [
+    "real coastline shapes with a dark thin coast line and a pale halo on the sea side",
+    "flat fills with a low-contrast crumpled-paper texture that does not move",
+    "flag-ball characters with rigged noodle arms move as cut-out puppets, limbs held on twos",
+    "hand-lettered titles and sign text, identical between frames"
+   ],
+   "description": "flat 2D cut-out animation on a paper-textured real map (steel-blue sea, saturated orange focus country, beige other land, flag-coloured highlighted territories), the opening composition again; the holder ball hands a signed paper to the neighbour ball; a hand-lettered title states the result at the top; the plank on the sign changes to the neighbour's name; the holder ball looks deflated, the neighbour ball content.",
+   "narrative": {
+    "role": "payoff",
+    "point": "The word on the sign changes one last time: the dispute ends where it began"
+   },
+   "embedded_assets": [],
+   "ai_edits": [],
+   "same_clip_as": null,
+   "replication": {
+    "image_prompt": "",
+    "video_prompt": "",
+    "video_prompt_en": ""
+   },
+   "performance": {
+    "who": "A (holder flag-ball)",
+    "emotion": "resigned",
+    "intensity": "mid",
+    "face": "eyelids half down, mouth turned down",
+    "body": "slumped, arm handing over the paper",
+    "arc": [],
+    "voice": "",
+    "key": true,
+    "move": "",
+    "movers": 0,
+    "full_body": null,
+    "backdrop": "",
+    "en": "eyelids half down, mouth turned down; slumped, arm handing over the paper"
+   }
+  }
+ ],
+ "aspects": {
+  "camera": {
+   "setups": "no camera: 2D map compositions with static framing, per-shot slow push-ins, hard cuts between map locations",
+   "gear_guess": "After Effects style cut-out animation (2D) plus a short 3D render (Blender-like) for the night scene"
+  },
+  "lighting": {
+   "lighting_overall": "flat, no lighting on the map; the 3D cutaway is lit only by car headlights at night"
+  },
+  "grade": {
+   "grade_overall": "warm saturated map colours (orange land, steel-blue sea); flashbacks desaturated and washed out; the cutaway dark and warm"
+  },
+  "editing": {
+   "editing": "about 23 cuts a minute; hard cuts between map locations; one iris wipe; captions in short phrases; titles pop on key words"
+  },
+  "format": {
+   "format": "9:16 vertical countryball history story, 115 s, narrator plus character voices"
+  },
+  "style": {
+   "render_style": "flat 2D cartoon on a real geographic map (countryball map story): real coastlines, countries as flat fills (the focus country saturated orange, other land pale beige, highlighted countries in their flag colour), characters are flag-balls with faces and noodle arms, animated as cut-out puppets",
+   "outline": "characters and props: dark brown-black outline about 3 px at 576 wide (5 px at 1080); coastline a thin dark line (2 px at 1080) with a pale soft halo on the sea side; land borders shown only by the change of fill colour; highlighted regions have a soft darker rim",
+   "shading": "flat fills; flag-balls get a faint darker bottom-right and a soft contact shadow; no gradients on the map except the coast halo",
+   "shape_language": "perfect circles for characters, wobbly noodle limbs with mitten hands, wooden plank signs on a post, real country shapes, small round icons (helmets, flags, houses)",
+   "texture": "a crumpled-paper / hillshade mottling over land and sea, low contrast (about +-4% lightness), fixed to the map",
+   "type_ui": "titles: hand-lettered rounded capitals in off-white with a dark outline and drop shadow, slightly rotated, in the top third; map labels: small letter-spaced serif capitals in dark brown; sign words: hand-lettered dark ink on wood; captions: short bold white phrases with a dark shadow near the bottom, numbers and key words amber, a character's line prefixed with a dash in its flag colour",
+   "motion_style": "limited cut-out animation: balls bob, squash and blink, arms swing like puppets (held on twos), props and titles pop in with overshoot; mostly static framing per shot with slow push-ins; hard cuts between map locations; flashbacks washed out; travel shown by dotted routes and dashed arrows; one dark cinematic cutaway for the climax",
+   "signature": "a plank sign planted in the disputed land whose single word changes through the story; flag-balls arguing on a real map; power shown by ball size",
+   "do_not_copy": "the topic and every name in it (the colony, the empire, the neighbour, the ally, the alliance, the leader and the commander), all dates and numbers, the words on the signs and titles, the real archival photos in the portrait medallions, the 3D night scene; no watermark or handle is visible"
+  }
+ },
+ "story": {
+  "summary": "A countryball history short: a small empire refuses to give up a colony on a much bigger neighbour's coast, told as an argument between flag-balls on a real map, with a sign whose one word keeps changing until the last swap is the ending.",
+  "hook": "0-6 s: the whole conflict in one still image (a small flag-ball gripping a sign planted on a strip of the big ball's coast), the line \"X insisted this strip of Y's coast was actually X\", then a title with the place name and a year.",
+  "highlights": [
+   "0 s, 17-22 s, 46 s, 110 s: the sign motif: the word on the plank changes (name, colony, province, overseas province, finally the neighbour's name), so a political story becomes a fight over one word and the last swap is the payoff",
+   "9-15 s and 37-46 s: diplomacy as dialogue between flag-balls (character voices, dash captions), so each refusal lands as a joke",
+   "50-54 s: power shown as size: the neighbour ball swells to about 3x while the holder shrinks, under a title with the real ratio",
+   "88-101 s: tonal shift: the surrender is a dark, slow, almost silent cinematic scene, then an iris wipe back to the bright map for the aftermath"
+  ]
+ },
+ "cast": {
+  "style": "flat 2D countryball cartoon on a paper-textured real map; warm orange land, steel-blue sea, beige neighbours, flag-coloured highlights; one dark 3D cutaway",
+  "characters": [
+   {
+    "id": "A",
+    "name": "holder flag-ball",
+    "kind": "cartoon",
+    "look": "a circle painted with its country's flag (split vertically), dark outline, two big white oval eyes with black pupils and expressive eyelids/brows, a small mouth, two thin noodle arms with mitten hands in the flag's green, small contact shadow",
+    "role": "protagonist who refuses to let go",
+    "voice": "character voice, male, stubborn",
+    "shots": [
+     1,
+     2,
+     4,
+     5,
+     7,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     23,
+     26,
+     41,
+     43,
+     44,
+     45
+    ]
+   },
+   {
+    "id": "B",
+    "name": "big neighbour flag-ball",
+    "kind": "cartoon",
+    "look": "a circle with its horizontal tricolour flag and the emblem in the middle band, same eyes and outline, skin-coloured noodle arms",
+    "role": "antagonist / rightful claimant",
+    "voice": "character voice, calm",
+    "shots": [
+     1,
+     2,
+     4,
+     5,
+     10,
+     13,
+     17,
+     23,
+     26,
+     45
+    ]
+   },
+   {
+    "id": "C",
+    "name": "ally flag-ball",
+    "kind": "cartoon",
+    "look": "a circle with a crossed flag, same eyes, pink noodle arms",
+    "role": "ally who refuses to help",
+    "voice": "character voice",
+    "shots": [
+     13,
+     14,
+     15,
+     16
+    ]
+   },
+   {
+    "id": "D",
+    "name": "leader medallion",
+    "kind": "person",
+    "look": "archival black-and-white portrait photo inside a round green-and-cream ring, name hand-lettered under it",
+    "role": "distant leader giving the order",
+    "voice": "",
+    "shots": [
+     18,
+     21,
+     22,
+     24
+    ]
+   },
+   {
+    "id": "E",
+    "name": "commander medallion",
+    "kind": "person",
+    "look": "archival portrait photo in a round ring, name under it",
+    "role": "local commander who surrenders",
+    "voice": "",
+    "shots": [
+     19,
+     20,
+     25,
+     28,
+     30,
+     41,
+     44
+    ]
+   },
+   {
+    "id": "H",
+    "name": "region with a face",
+    "kind": "cartoon",
+    "look": "the green region shape itself with eyes, brows, mouth and two small hands",
+    "role": "the local people",
+    "voice": "",
+    "shots": [
+     27
+    ]
+   },
+   {
+    "id": "I",
+    "name": "3D officers",
+    "kind": "cartoon",
+    "look": "stylised 3D soldiers in peaked caps and khaki or green uniforms",
+    "role": "the surrender moment",
+    "voice": "",
+    "shots": [
+     31,
+     32,
+     33,
+     34,
+     35,
+     36,
+     37,
+     38,
+     39,
+     40
+    ]
+   }
+  ],
+  "scenes": [
+   {
+    "id": "S1",
+    "where": "the disputed coast (map)",
+    "when": "throughout",
+    "look": "orange mainland, steel-blue sea, the small region filled green",
+    "shots": [
+     1,
+     2,
+     4,
+     5,
+     6,
+     7,
+     9,
+     10,
+     11,
+     17,
+     19,
+     23,
+     25,
+     26,
+     28,
+     29,
+     30,
+     42,
+     45
+    ]
+   },
+   {
+    "id": "S2",
+    "where": "the holder's home country (map)",
+    "when": "cutaways",
+    "look": "home country green on beige neighbours",
+    "shots": [
+     8,
+     18,
+     21,
+     22,
+     24,
+     41,
+     43,
+     44
+    ]
+   },
+   {
+    "id": "S3",
+    "where": "continent and the ally's island (map)",
+    "when": "middle",
+    "look": "beige land, the ally filled red",
+    "shots": [
+     12,
+     13,
+     14,
+     15,
+     16
+    ]
+   },
+   {
+    "id": "S4",
+    "where": "night field with a car",
+    "when": "the surrender",
+    "look": "dark, headlight cones, dust",
+    "shots": [
+     31,
+     32,
+     33,
+     34,
+     35,
+     36,
+     37,
+     38,
+     39,
+     40
+    ]
+   }
+  ],
+  "props": [
+   {
+    "name": "plank sign on a post",
+    "note": "the motif: its one word changes through the story",
+    "shots": [
+     1,
+     2,
+     5,
+     16,
+     17,
+     23,
+     26,
+     45
+    ]
+   },
+   {
+    "name": "treaty paper with a red seal",
+    "note": "alliances and the final treaty",
+    "shots": [
+     13,
+     14,
+     15,
+     45
+    ]
+   },
+   {
+    "name": "telegram scroll on a dotted route",
+    "note": "orders across the map",
+    "shots": [
+     18,
+     30
+    ]
+   },
+   {
+    "name": "small helmets, flags, houses, closed-road signs, timeline ruler",
+    "note": "small icons drawn on the map",
+    "shots": [
+     9,
+     10,
+     26,
+     28,
+     29,
+     42,
+     43
+    ]
+   }
+  ]
+ },
+ "packaging": {
+  "stickers": [
+   {
+    "id": "sticker_01",
+    "is_overlay": false,
+    "what": "part of the neighbour flag-ball in the picture, not a sticker"
+   }
+  ],
+  "text": [
+   {
+    "id": "text_004",
+    "kind": "label"
+   },
+   {
+    "id": "text_006",
+    "kind": "title"
+   },
+   {
+    "id": "text_008",
+    "kind": "label"
+   },
+   {
+    "id": "text_013",
+    "kind": "label"
+   },
+   {
+    "id": "text_014",
+    "kind": "label"
+   },
+   {
+    "id": "text_019",
+    "kind": "label"
+   },
+   {
+    "id": "text_020",
+    "kind": "title"
+   },
+   {
+    "id": "text_022",
+    "kind": "scene"
+   },
+   {
+    "id": "text_029",
+    "kind": "label"
+   },
+   {
+    "id": "text_033",
+    "kind": "scene"
+   },
+   {
+    "id": "text_041",
+    "kind": "label"
+   },
+   {
+    "id": "text_046",
+    "kind": "label"
+   },
+   {
+    "id": "text_053",
+    "kind": "scene"
+   },
+   {
+    "id": "text_061",
+    "kind": "scene"
+   },
+   {
+    "id": "text_062",
+    "kind": "label"
+   },
+   {
+    "id": "text_067",
+    "kind": "scene"
+   },
+   {
+    "id": "text_070",
+    "kind": "scene"
+   },
+   {
+    "id": "text_073",
+    "kind": "title"
+   },
+   {
+    "id": "text_078",
+    "kind": "label"
+   },
+   {
+    "id": "text_080",
+    "kind": "title"
+   },
+   {
+    "id": "text_083",
+    "kind": "label"
+   },
+   {
+    "id": "text_084",
+    "kind": "scene"
+   },
+   {
+    "id": "text_086",
+    "kind": "title"
+   },
+   {
+    "id": "text_090",
+    "kind": "title"
+   },
+   {
+    "id": "text_095",
+    "kind": "title"
+   },
+   {
+    "id": "text_098",
+    "kind": "label"
+   },
+   {
+    "id": "text_100",
+    "kind": "title"
+   },
+   {
+    "id": "text_106",
+    "kind": "label"
+   },
+   {
+    "id": "text_110",
+    "kind": "title"
+   },
+   {
+    "id": "text_112",
+    "kind": "label"
+   },
+   {
+    "id": "text_115",
+    "kind": "label"
+   },
+   {
+    "id": "text_116",
+    "kind": "label"
+   },
+   {
+    "id": "text_120",
+    "kind": "label"
+   },
+   {
+    "id": "text_124",
+    "kind": "scene"
+   },
+   {
+    "id": "text_125",
+    "kind": "scene"
+   },
+   {
+    "id": "text_136",
+    "kind": "scene"
+   },
+   {
+    "id": "text_139",
+    "kind": "label"
+   },
+   {
+    "id": "text_140",
+    "kind": "label"
+   },
+   {
+    "id": "text_145",
+    "kind": "label"
+   },
+   {
+    "id": "text_146",
+    "kind": "label"
+   },
+   {
+    "id": "text_147",
+    "kind": "label"
+   },
+   {
+    "id": "text_154",
+    "kind": "label"
+   },
+   {
+    "id": "text_156",
+    "kind": "title"
+   },
+   {
+    "id": "text_158",
+    "kind": "label"
+   },
+   {
+    "id": "text_159",
+    "kind": "label"
+   }
+  ],
+  "missed": [
+   {
+    "t0": 0.0,
+    "t1": 115.0,
+    "what": "short white phrase captions with dark shadow, amber key words, a coloured dash before character lines",
+    "where": "centred at about 74% of the height"
+   }
+  ]
+ }
+}
