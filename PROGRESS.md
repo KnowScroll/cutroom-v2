@@ -4,7 +4,7 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 
 ## State
 
-2026-11-27: preparation done (docs, labels, milestones, issues #1-#18). Implementation started. #1 merged (PR #19, 3107663). #4 merged (PR #20, 8dbef11). #3 merged (PR #21, 482a73b). #2 merged (PR #22, e0cbf2c). #12 merged (PR #23, fbdb64a). #6 merged (PR #24, 392bb28). #9 merged (PR #26, 3713298). #10 merged (PR #27, ec301b7). Session interrupted once (2026-11-27); #5, #6, #9, #10 resumed from their worktrees.
+2026-11-27: preparation done (docs, labels, milestones, issues #1-#18). Implementation started. #1 merged (PR #19, 3107663). #4 merged (PR #20, 8dbef11). #3 merged (PR #21, 482a73b). #2 merged (PR #22, e0cbf2c). #12 merged (PR #23, fbdb64a). #6 merged (PR #24, 392bb28). #9 merged (PR #26, 3713298). #10 merged (PR #27, ec301b7). #5 merged (PR #25, 8fd890c). #16 merged (PR #28, 4e5b00b). Session interrupted once (2026-11-27); #5, #6, #9, #10 resumed from their worktrees.
 
 ## Waiting on the user
 
@@ -18,13 +18,11 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 
 | issue | agent / model | branch or worktree | started | note |
 |---|---|---|---|---|
-| #5 | implementer / sonnet | claude/5-engine-runner (worktree) | 2026-11-27 | PR #25: fixing 2 re-review findings (SIGTERM rerun, crash-gap lock) |
 | #7 | implementer / opus | claude/7-review (worktree, based on #5 branch; rebase after #25 merges) | 2026-11-27 | one real review call on import-check |
-| #16 | implementer / sonnet | claude/16-open-fonts (worktree) | 2026-11-27 | PR #28 in review; 1 free resume (0 calls) |
 
 ## Real cuts (budget: 40 cuts with model calls, docs/plan.md)
 
-Free re-renders (no model calls) not counted: #9 `--cut 3` on e2-check, `--cut 4` (empty notes) on e2-fix; two #9 failed notes reads.
+Free re-renders (no model calls) not counted: #16 radio-lp-e4 resume (fonts-radio-lp-e4); #9 `--cut 3` on e2-check, `--cut 4` (empty notes) on e2-fix; two #9 failed notes reads.
 
 | # | date | issue | purpose | voice | cost USD | run folder |
 |---|---|---|---|---|---|---|
@@ -36,4 +34,4 @@ Free re-renders (no model calls) not counted: #9 `--cut 3` on e2-check, `--cut 4
 
 ## Next action
 
-Review + merge #5, #16 as they finish; #7 after #5; #8 after #7; #11 after #8, #10. Then #7 (after #5), #16, #8 (after #5-#7).
+#7 in flight (rebase onto main, then PR). Then #8 (CP1); then #11 (CP2); then #13, #14 in parallel; #15; #17; #18. Then #7 (after #5), #16, #8 (after #5-#7).
