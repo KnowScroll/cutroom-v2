@@ -4,7 +4,7 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 
 ## State
 
-2026-11-27: preparation done (docs, labels, milestones, issues #1-#18). Implementation started. #1 merged (PR #19, 3107663). #4 merged (PR #20, 8dbef11). #3 merged (PR #21, 482a73b). #2 merged (PR #22, e0cbf2c). #12 merged (PR #23, fbdb64a). #6 merged (PR #24, 392bb28). #9 merged (PR #26, 3713298). Session interrupted once (2026-11-27); #5, #6, #9, #10 resumed from their worktrees.
+2026-11-27: preparation done (docs, labels, milestones, issues #1-#18). Implementation started. #1 merged (PR #19, 3107663). #4 merged (PR #20, 8dbef11). #3 merged (PR #21, 482a73b). #2 merged (PR #22, e0cbf2c). #12 merged (PR #23, fbdb64a). #6 merged (PR #24, 392bb28). #9 merged (PR #26, 3713298). #10 merged (PR #27, ec301b7). Session interrupted once (2026-11-27); #5, #6, #9, #10 resumed from their worktrees.
 
 ## Waiting on the user
 
@@ -18,8 +18,7 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 
 | issue | agent / model | branch or worktree | started | note |
 |---|---|---|---|---|
-| #5 | implementer / sonnet | claude/5-engine-runner (worktree) | 2026-11-27 | PR #25: fixing 3 review findings |
-| #10 | implementer / opus | claude/10-template-store (worktree) | 2026-11-27 | PR #27 in review |
+| #5 | implementer / sonnet | claude/5-engine-runner (worktree) | 2026-11-27 | PR #25: fixes in, re-review running |
 | #16 | implementer / sonnet | claude/16-open-fonts (worktree) | 2026-11-27 | cleared for free re-renders (0 model calls) under var/runs/fonts-* |
 
 ## Real cuts (budget: 40 cuts with model calls, docs/plan.md)
@@ -36,4 +35,4 @@ Free re-renders (no model calls) not counted: #9 `--cut 3` on e2-check, `--cut 4
 
 ## Next action
 
-Review + merge #5, #10, #16 as they finish; #7 after #5; #8 after #7; #11 after #8, #10. Then #7 (after #5), #16, #8 (after #5-#7).
+Review + merge #5, #16 as they finish; #7 after #5; #8 after #7; #11 after #8, #10. Then #7 (after #5), #16, #8 (after #5-#7).
