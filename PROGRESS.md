@@ -18,7 +18,8 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 
 | issue | agent / model | branch or worktree | started | note |
 |---|---|---|---|---|
-| #7 | implementer / opus | claude/7-review (worktree, based on #5 branch; rebase after #25 merges) | 2026-11-27 | one real review call on import-check |
+| #7 | implementer / opus | claude/7-review (worktree) | 2026-11-27 | PR #29 in review; real review \$0.0074 |
+| #8 | implementer / sonnet | claude/8-make (worktree, based on #7 branch; rebase after #29 merges) | 2026-11-27 | cleared for 1 real `make` (CP1), dev voice list; also fixes the Windows engine.lock EPERM flake |
 
 ## Real cuts (budget: 40 cuts with model calls, docs/plan.md)
 
@@ -34,4 +35,4 @@ Free re-renders (no model calls) not counted: #16 radio-lp-e4 resume (fonts-radi
 
 ## Next action
 
-#7 in flight (rebase onto main, then PR). Then #8 (CP1); then #11 (CP2); then #13, #14 in parallel; #15; #17; #18. Then #7 (after #5), #16, #8 (after #5-#7).
+#7 in review, #8 in flight (CP1); then #11 (CP2); then #13, #14 in parallel; #15; #17; #18. Then #7 (after #5), #16, #8 (after #5-#7).
