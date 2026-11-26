@@ -103,13 +103,16 @@ const Timeline = z.object({
 });
 
 const AudioJson = z.object({
-  voice: z.object({
-    words_per_s: z.number().nullish(),
-    // null when the engine measured too little voiced audio; the voice_pitch gate fails it later.
-    pitch_st_sd: z.number().nullish(),
-    pitch_range_st: z.number().nullish(),
-    loud_range_db: z.number().nullish(),
-  }),
+  voice: z
+    .object({
+      words_per_s: z.number().nullish(),
+      // null when the engine measured too little voiced audio; the voice_pitch gate fails it later.
+      pitch_st_sd: z.number().nullish(),
+      pitch_range_st: z.number().nullish(),
+      loud_range_db: z.number().nullish(),
+    })
+    // null when the reel has no voiced lines; the gates fail it later.
+    .nullish(),
   music: z.object({
     source: z.string(),
     fit: z.object({ pass: z.boolean() }).nullish(),
@@ -183,8 +186,9 @@ async function waitGone(pid: number): Promise<void> {
 }
 
 /** Windows refuses a rename over a file another process has open at that instant (EPERM/EBUSY); it clears within milliseconds. */
-function renameWithRetry(from: string, to: string): void {
+function renameWithRetry(from: string, to: string, owned: (() => boolean) | undefined): void {
   for (let i = 0; ; i++) {
+    if (owned !== undefined && !owned()) throw new EngineBusyError('engine lock lost');
     try {
       renameSync(from, to);
       return;
@@ -197,12 +201,17 @@ function renameWithRetry(from: string, to: string): void {
 }
 
 /** Write a temp file, then publish it whole: `link` creates the target only if absent, `rename` replaces it. */
-function publish(file: string, content: string, mode: 'link' | 'rename'): void {
+function publish(
+  file: string,
+  content: string,
+  mode: 'link' | 'rename',
+  owned?: () => boolean,
+): void {
   const tmp = `${file}.${String(process.pid)}.${randomUUID()}.tmp`;
   writeFileSync(tmp, content);
   try {
     if (mode === 'link') linkSync(tmp, file);
-    else renameWithRetry(tmp, file);
+    else renameWithRetry(tmp, file, owned);
   } finally {
     rmSync(tmp, { force: true });
   }
@@ -255,17 +264,16 @@ function release(held: Held): void {
 }
 
 function recordEnginePid(held: Held, pid: number | null): void {
+  const owned = (): boolean => readLock(held.file)?.token === held.token;
   const lock = readLock(held.file);
-  if (lock?.token !== held.token) return;
-  publish(held.file, JSON.stringify({ ...lock, engine_pid: pid }), 'rename');
+  if (lock?.token !== held.token) throw new EngineBusyError('engine lock lost');
+  publish(held.file, JSON.stringify({ ...lock, engine_pid: pid }), 'rename', owned);
 }
 
-/** stale: nothing runs. orphan: a live engine whose harness is dead. busy: a live harness holds it. */
+/** busy: a live harness holds it, whatever the engine pid says. Else orphan (a live engine) or stale (nothing runs). */
 function judge(lock: LockFile): 'busy' | 'stale' | 'orphan' {
-  const engineAlive = lock.engine_pid !== null && pidAlive(lock.engine_pid);
-  if (lock.engine_pid !== null && !engineAlive) return 'stale';
   if (lock.harness_pid === process.pid || pidAlive(lock.harness_pid)) return 'busy';
-  return engineAlive ? 'orphan' : 'stale';
+  return lock.engine_pid !== null && pidAlive(lock.engine_pid) ? 'orphan' : 'stale';
 }
 
 /**
@@ -345,11 +353,21 @@ interface Attempt {
   code: number | null;
 }
 
+function toError(e: unknown): Error {
+  return e instanceof Error ? e : new Error(String(e));
+}
+
+interface RunState {
+  stopping: boolean;
+  childPid: number | undefined;
+}
+
 function runEngineOnce(
   args: readonly string[],
   env: NodeJS.ProcessEnv,
   logPath: string,
   held: Held,
+  state: RunState,
 ): Promise<Attempt> {
   const fd = openSync(logPath, 'a');
   return new Promise<Attempt>((resolve, reject) => {
@@ -359,31 +377,43 @@ function runEngineOnce(
       detached: process.platform !== 'win32',
       windowsHide: true,
     });
-    const stop = (signal: NodeJS.Signals): void => {
-      const code = signal === 'SIGINT' ? 130 : 143;
-      const stopped = child.pid === undefined ? Promise.resolve() : killTree(child.pid);
-      void stopped.finally(() => {
-        release(held);
-        process.exit(code);
-      });
-    };
-    process.once('SIGINT', stop);
-    process.once('SIGTERM', stop);
-    const done = (): void => {
-      process.off('SIGINT', stop);
-      process.off('SIGTERM', stop);
+    state.childPid = child.pid;
+    let settled = false;
+    const finish = (settle: () => void): void => {
+      if (settled) return;
+      settled = true;
+      state.childPid = undefined;
       closeSync(fd);
+      settle();
     };
     child.once('error', (e) => {
-      done();
-      reject(e);
+      finish(() => {
+        reject(toError(e));
+      });
     });
     child.once('close', (code) => {
-      recordEnginePid(held, null);
-      done();
-      resolve({ code });
+      try {
+        if (!state.stopping) recordEnginePid(held, null);
+      } catch (e) {
+        finish(() => {
+          reject(toError(e));
+        });
+        return;
+      }
+      finish(() => {
+        resolve({ code });
+      });
     });
-    if (child.pid !== undefined) recordEnginePid(held, child.pid);
+    if (child.pid === undefined) return;
+    try {
+      recordEnginePid(held, child.pid);
+    } catch (e) {
+      void killTree(child.pid).finally(() => {
+        finish(() => {
+          reject(toError(e));
+        });
+      });
+    }
   });
 }
 
@@ -478,10 +508,10 @@ export async function parseOutputs(
     cost,
     shots: timeline.shots.map((s) => ({ start: s.start, dur: s.dur, background: s.background })),
     audio: {
-      wordsPerS: audio.voice.words_per_s ?? null,
-      pitchStSd: audio.voice.pitch_st_sd ?? null,
-      pitchRangeSt: audio.voice.pitch_range_st ?? null,
-      loudRangeDb: audio.voice.loud_range_db ?? null,
+      wordsPerS: audio.voice?.words_per_s ?? null,
+      pitchStSd: audio.voice?.pitch_st_sd ?? null,
+      pitchRangeSt: audio.voice?.pitch_range_st ?? null,
+      loudRangeDb: audio.voice?.loud_range_db ?? null,
       musicSource: audio.music.source,
       musicFitPass: audio.music.fit?.pass ?? null,
       voiceOverMusicDb: audio.mix?.voice_over_music_db ?? null,
@@ -530,8 +560,25 @@ export async function runCut(opts: RunCutOptions): Promise<CutResult | VoiceRefu
 
   await mkdir(runDir, { recursive: true });
   const held = await acquireLock(lockFile);
+  const state: RunState = { stopping: false, childPid: undefined };
+  // On SIGINT/SIGTERM: no rerun and no new spawn; stop the current engine's tree, release the lock, then exit.
+  const stop = (signal: NodeJS.Signals): void => {
+    if (state.stopping) return;
+    state.stopping = true;
+    const stopped = state.childPid === undefined ? Promise.resolve() : killTree(state.childPid);
+    void stopped.finally(() => {
+      release(held);
+      process.exit(signal === 'SIGINT' ? 130 : 143);
+    });
+  };
+  process.on('SIGINT', stop);
+  process.on('SIGTERM', stop);
+  const stopping = (): boolean => state.stopping;
+  const untilExit = new Promise<never>(() => undefined);
   try {
     for (let attempt = 1; ; attempt++) {
+      if (stopping()) return await untilExit;
+      if (readLock(lockFile)?.token !== held.token) throw new EngineBusyError('engine lock lost');
       const before = (() => {
         try {
           return statSync(logPath).size;
@@ -539,7 +586,8 @@ export async function runCut(opts: RunCutOptions): Promise<CutResult | VoiceRefu
           return 0;
         }
       })();
-      const { code } = await runEngineOnce(args, env, logPath, held);
+      const { code } = await runEngineOnce(args, env, logPath, held, state);
+      if (stopping()) return await untilExit;
       const thisRun = readFileSync(logPath, 'utf8').slice(before);
       if (code === 0) return await parseOutputs(runDir, cut, logPath);
       const refusal = REFUSAL.exec(thisRun);
@@ -558,6 +606,8 @@ export async function runCut(opts: RunCutOptions): Promise<CutResult | VoiceRefu
       }
     }
   } finally {
+    process.off('SIGINT', stop);
+    process.off('SIGTERM', stop);
     release(held);
   }
 }

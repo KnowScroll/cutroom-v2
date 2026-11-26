@@ -5,6 +5,7 @@ import { copyFile, mkdir, mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
+import { z } from 'zod';
 import {
   EngineBusyError,
   EngineCrashError,
@@ -202,7 +203,21 @@ await test('two concurrent runs: the second is refused', async () => {
   cutOf(await first);
 });
 
-await test('a stale lock (engine pid gone) is taken over', async () => {
+await test('a stale lock (harness and engine both gone) is taken over', async () => {
+  const s = await setup();
+  writeFileSync(
+    s.lockFile,
+    JSON.stringify({
+      harness_pid: await deadPid(),
+      engine_pid: await deadPid(),
+      started_at: new Date().toISOString(),
+    }),
+  );
+  cutOf(await runCut(s.opts));
+  assert.ok(!existsSync(s.lockFile));
+});
+
+await test('a live harness holds the lock even when its engine pid is dead', async () => {
   const s = await setup();
   writeFileSync(
     s.lockFile,
@@ -212,9 +227,55 @@ await test('a stale lock (engine pid gone) is taken over', async () => {
       started_at: new Date().toISOString(),
     }),
   );
-  cutOf(await runCut(s.opts));
-  assert.ok(!existsSync(s.lockFile));
+  await assert.rejects(runCut(s.opts), EngineBusyError);
 });
+
+await test('a second run during the crash-to-rerun gap is refused', async () => {
+  const s = await setup({ FAKE_ENGINE_CRASH: 'once', FAKE_ENGINE_SLEEP_MS: '1200' });
+  const first = runCut(s.opts);
+  while (s.invocations() < 2) await new Promise((r) => setTimeout(r, 10));
+  for (let i = 0; i < 20; i++) {
+    await assert.rejects(runCut(s.opts), EngineBusyError);
+    await new Promise((r) => setTimeout(r, 20));
+  }
+  cutOf(await first);
+  assert.equal(s.invocations(), 2);
+});
+
+await test(
+  'SIGTERM to the harness stops the engine once: no rerun, no live engine, no lock',
+  { skip: process.platform === 'win32' },
+  async () => {
+    const s = await setup();
+    const chromeFile = path.join(s.varDir, 'chrome.pid');
+    const opts = { ...s.opts, env: { FAKE_ENGINE_CHROME: chromeFile } };
+    const harness = spawn(
+      process.execPath,
+      [path.join(import.meta.dirname, 'fixtures', 'run-cut.ts'), JSON.stringify(opts)],
+      { stdio: 'ignore' },
+    );
+    const exited = new Promise<number | null>((r) => harness.once('close', r));
+    for (let i = 0; i < 200 && !existsSync(chromeFile); i++)
+      await new Promise((r) => setTimeout(r, 50));
+    assert.ok(existsSync(chromeFile), 'engine started');
+    const chromePid = Number(readFileSync(chromeFile, 'utf8'));
+    const logFile = path.join(opts.runDir, 'reel-work', 'invocations.log');
+    const first: unknown = JSON.parse(readFileSync(logFile, 'utf8').split('\n')[0] ?? '');
+    const enginePid = z.object({ pid: z.number() }).parse(first).pid;
+    try {
+      assert.ok(harness.kill('SIGTERM'));
+      assert.equal(await exited, 143);
+      await new Promise((r) => setTimeout(r, 300));
+      assert.equal(s.invocations(), 1, 'the engine was not rerun');
+      assert.ok(!alive(enginePid), 'engine stopped');
+      assert.ok(!alive(chromePid), 'chrome stopped');
+      assert.ok(!existsSync(s.lockFile), 'lock released');
+    } finally {
+      await killTree(enginePid);
+      if (alive(chromePid)) process.kill(chromePid, 'SIGKILL');
+    }
+  },
+);
 
 await test('a live engine of a dead harness is stopped, then the run starts', async () => {
   const s = await setup();
