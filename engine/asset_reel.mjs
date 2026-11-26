@@ -23,8 +23,10 @@ const argv = process.argv.slice(2), flag = k => (argv.includes(k) ? argv[argv.in
 // --no-assets (A/B test): the plan's assets stay as design notes, nothing is pre-drawn, and every shot draws every character and object itself
 const NOASSETS = argv.includes('--no-assets');
 // the brief is the first plain argument, or a whole file (--brief-file, for scripts and long briefs)
-const brief = flag('--brief-file') ? fs.readFileSync(flag('--brief-file'), 'utf8').trim() : argv.find((a, i) => !a.startsWith('--') && !['--seconds', '--rounds', '--out', '--template', '--effort', '--brief-file', '--until', '--look-images', '--voice-model', '--music-source'].includes(argv[i - 1]));
+const brief = flag('--brief-file') ? fs.readFileSync(flag('--brief-file'), 'utf8').trim() : argv.find((a, i) => !a.startsWith('--') && !['--seconds', '--rounds', '--out', '--template', '--effort', '--brief-file', '--until', '--look-images', '--voice-model', '--music-source', '--cut', '--apply-notes'].includes(argv[i - 1]));
 const seconds = +(flag('--seconds') || 45), rounds = +(flag('--rounds') || 1), EFFORT = flag('--effort') || 'off';
+// --cut <n> names the output <out>-v<n>; --apply-notes <file> restores the checkpoints, applies a director-notes file (applyNotes) and renders that cut
+const CUT = +(flag('--cut') || 1), NOTES_FILE = flag('--apply-notes');
 // 'off' = thinking disabled: about 4x faster. MiniMax barely honours effort levels (low still thinks thousands of tokens).
 // speech budget: Kokoro narrators measured at 2.5 to 2.9 words/s (5 cuts; 2.1 made every reel 10 s short); each shot adds 0.95 s of lead-in and tail, each extra line 0.22 s
 // voice engine (engine/audio.mjs): eleven-v4 by default (cutroom's bake-off), kokoro for the cheapest; music: library (CC BY, fitted), lyria or synth
@@ -736,6 +738,30 @@ async function review(plan, tl, dir, round) {
   return { approve: false, summary: 'director returned no usable notes', shots: {}, assets: {}, lines: {} };
 }
 
+// the director round's body, shared by --rounds and --apply-notes: change the lines and voice them, redraw the noted assets and shots, save all to the checkpoints, render the next cut into dir
+async function applyNotes(plan, stage, notes, dir) {
+  log(`apply notes: ${Object.keys(notes.lines || {}).length} line, ${Object.keys(notes.assets || {}).length} asset, ${Object.keys(notes.shots || {}).length} shot notes -> ${path.basename(dir)}`);
+  if (checks().script === 'yes' && Object.keys(notes.lines || {}).length) { log('director line changes ignored: the script is verbatim'); notes.lines = {}; }
+  // the director sometimes names a speaker by its VOICE ("am_onyx") instead of its cast id ("narrator"): map it back; a list that
+  // ends up empty never replaces a shot's lines (it once silenced 8 of 14 shots and cut a 89 s reel to 38 s)
+  const byVoice = Object.fromEntries(Object.entries(plan.cast || {}).map(([id, c]) => [String(c?.voice || '').toLowerCase(), id]));
+  const relined = new Set();
+  for (const [k, ls] of Object.entries(notes.lines || {})) {
+    const s = plan.shots[+k - 1]; if (!s || !Array.isArray(ls) || !ls.length) continue;
+    const nl = ls.map(l => ({ ...l, who: plan.cast[l?.who] ? l.who : byVoice[String(l?.who || '').toLowerCase()] })).filter(l => l?.text && plan.cast[l.who]).map(l => ({ who: l.who, text: l.text, ...(l.tone ? { tone: l.tone } : {}) }));
+    if (nl.length) { s.lines = nl; relined.add(+k); } else log(`director lines for shot ${k} ignored: no speaker is in the cast (${ls.map(l => l?.who).join(', ')})`);
+  }
+  await voiceAll(plan);
+  ckSave('plan.json', planJson(plan)); // the changed lines persist
+  notes.shots = notes.shots || {};
+  for (const k of relined) { const s = plan.shots[k - 1]; if (/\bh\.cue\(/.test(s.code || '') && !notes.shots[k]) notes.shots[k] = `The lines of this shot changed to: ${s.lines.map(l => `"${l.text}"`).join(' ')}. Keep the staging; time every h.cue(...) to a word the new lines say.`; }
+  if (!NOASSETS) await pool(Object.entries(notes.assets || {}).map(([id, n]) => () => { const a = plan.assets.find(x => x.id === id); if (a && D3MODE() && a.kind === 'character') { log(`director note on 3D character ${id} not applied (the engine builds it from look3d): ${String(n).slice(0, 120)}`); return null; } return a ? (D3MODE() ? makeProp3d(plan, stage, a, n, true) : makeAsset(plan, stage, a, n, true)) : null; }), 8);
+  const tl = timeline(plan);
+  await pool(Object.entries(notes.shots || {}).map(([k, n]) => () => (plan.shots[+k - 1] ? makeShot(plan, stage, tl, +k - 1, n).then(() => { if (plan.shots[+k - 1].code) ckSave(`shot_${k}.js`, plan.shots[+k - 1].code); }) : null)), 10);
+  fs.mkdirSync(dir, { recursive: true }); if (!NOASSETS) await (D3MODE() ? renderSheets3d(plan, stage, dir) : renderSheets(plan, stage, dir));
+  return produce(plan, dir);
+}
+
 async function main() {
   log(`asset_reel (MiniMax-M3, effort ${EFFORT}): "${brief.replace(/\s+/g, " ").slice(0, 140)}${brief.length > 140 ? "..." : ""}", ${seconds}s, word budget about ${budget}, ${rounds} director rounds`);
   const stage = await launchStage(STAGE + '?cpu'); // validation browser: CPU canvas (see stage_asset.html)
@@ -789,35 +815,20 @@ async function main() {
     if (D3MODE()) { fs.mkdirSync(WORK, { recursive: true }); await renderSheets3d(plan, stage, WORK, 'sheet'); }
     if (flag('--until') === 'assets') { log(`stopped after the assets (--until assets); sprite sheets in ${WORK}: sheet.jpg (first draw), sheet-r2.jpg (after round 1 fixes), sheet-final.jpg (after the last fixes)`); return; }
     await vp; await photosP;
-    let dir = `${base}-v1`; fs.mkdirSync(dir, { recursive: true }); if (!NOASSETS) await (D3MODE() ? renderSheets3d(plan, stage, dir) : renderSheets(plan, stage, dir));
+    let dir = `${base}-v${CUT}`; if (!NOTES_FILE) fs.mkdirSync(dir, { recursive: true }); if (!NOTES_FILE && !NOASSETS) await (D3MODE() ? renderSheets3d(plan, stage, dir) : renderSheets(plan, stage, dir));
     let tl = timeline(plan);
     plan.shots.forEach((s, i) => { s.code = ckLoad(`shot_${i + 1}.js`) || s.code; });
     for (let pass = 1; pass <= 2 && plan.shots.some(s => !s.code); pass++)
       await pool(plan.shots.map((s, i) => [s, i]).filter(([s]) => !s.code).map(([, i]) => async () => { try { await makeShot(plan, stage, tl, i); if (plan.shots[i].code) ckSave(`shot_${i + 1}.js`, plan.shots[i].code); } catch (e) { log(`shot ${i + 1} failed (${e.message.slice(0, 80)}); will retry`); } }), 10); // all at once
-    tl = await produce(plan, dir);
-    for (let r = 1; r <= rounds; r++) {
+    if (NOTES_FILE) { tl = await applyNotes(plan, stage, JSON.parse(fs.readFileSync(path.resolve(NOTES_FILE), 'utf8')), dir); }
+    else tl = await produce(plan, dir);
+    for (let r = 1; r <= (NOTES_FILE ? 0 : rounds); r++) {
       const notes = await review(plan, tl, dir, r);
       fs.writeFileSync(path.join(dir, 'director-notes.json'), JSON.stringify(notes, null, 2));
       log(`director r${r}: ${notes.approve ? 'APPROVED' : 'changes'} - ${notes.summary}`);
       if (notes.approve) break;
-      if (checks().script === 'yes' && Object.keys(notes.lines || {}).length) { log('director line changes ignored: the script is verbatim'); notes.lines = {}; }
-      // the director sometimes names a speaker by its VOICE ("am_onyx") instead of its cast id ("narrator"): map it back; a list that
-      // ends up empty never replaces a shot's lines (it once silenced 8 of 14 shots and cut a 89 s reel to 38 s)
-      const byVoice = Object.fromEntries(Object.entries(plan.cast || {}).map(([id, c]) => [String(c?.voice || '').toLowerCase(), id]));
-      const relined = new Set();
-      for (const [k, ls] of Object.entries(notes.lines || {})) {
-        const s = plan.shots[+k - 1]; if (!s || !Array.isArray(ls) || !ls.length) continue;
-        const nl = ls.map(l => ({ ...l, who: plan.cast[l?.who] ? l.who : byVoice[String(l?.who || '').toLowerCase()] })).filter(l => l?.text && plan.cast[l.who]).map(l => ({ who: l.who, text: l.text, ...(l.tone ? { tone: l.tone } : {}) }));
-        if (nl.length) { s.lines = nl; relined.add(+k); } else log(`director lines for shot ${k} ignored: no speaker is in the cast (${ls.map(l => l?.who).join(', ')})`);
-      }
-      await voiceAll(plan);
-      notes.shots = notes.shots || {};
-      for (const k of relined) { const s = plan.shots[k - 1]; if (/\bh\.cue\(/.test(s.code || '') && !notes.shots[k]) notes.shots[k] = `The lines of this shot changed to: ${s.lines.map(l => `"${l.text}"`).join(' ')}. Keep the staging; time every h.cue(...) to a word the new lines say.`; }
-      if (!NOASSETS) await pool(Object.entries(notes.assets || {}).map(([id, n]) => () => { const a = plan.assets.find(x => x.id === id); if (a && D3MODE() && a.kind === 'character') { log(`director note on 3D character ${id} not applied (the engine builds it from look3d): ${String(n).slice(0, 120)}`); return null; } return a ? (D3MODE() ? makeProp3d(plan, stage, a, n) : makeAsset(plan, stage, a, n)) : null; }), 8);
-      tl = timeline(plan);
-      await pool(Object.entries(notes.shots || {}).map(([k, n]) => () => (plan.shots[+k - 1] ? makeShot(plan, stage, tl, +k - 1, n) : null)), 10);
-      dir = `${base}-v${r + 1}`; fs.mkdirSync(dir, { recursive: true }); if (!NOASSETS) await (D3MODE() ? renderSheets3d(plan, stage, dir) : renderSheets(plan, stage, dir));
-      tl = await produce(plan, dir);
+      dir = `${base}-v${CUT + r}`;
+      tl = await applyNotes(plan, stage, notes, dir);
     }
     const summary = { brief, template: TPL.name, seconds, final: dir, film_s: tl.total, minimax_calls: calls.length, input_tokens: calls.reduce((a, c) => a + c.input_tokens, 0), cached_tokens: calls.reduce((a, c) => a + c.cached, 0), output_tokens: calls.reduce((a, c) => a + c.output_tokens, 0), thinking_tokens: calls.reduce((a, c) => a + c.thinking, 0), llm_usd: +cost().toFixed(4), speech_usd: +speechUsd.toFixed(5), voice_model: voiceModel(VM).id, music_usd: +musicUsd.toFixed(4), audio: audioReport, wall_s: +((performance.now() - T0) / 1000).toFixed(0), calls };
     fs.writeFileSync(`${base}-summary.json`, JSON.stringify(summary, null, 2));
