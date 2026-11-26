@@ -4,7 +4,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test, type TestContext } from 'node:test';
-import { frameGates, measureFrames, type CaptionBand, type Gate } from '../src/gates/frames.ts';
+import { frameGates, measureFrames, type CaptionBand } from '../src/gates/frames.ts';
+import type { Gate } from '../src/record.ts';
 
 const CUTROOM_BAND: CaptionBand = { top: 1090, bottom: 1340 };
 

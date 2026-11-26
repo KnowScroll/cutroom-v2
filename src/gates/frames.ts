@@ -3,14 +3,7 @@
 // Pixel and cell indexes below are bounded by the frame size by construction; their `?? 0` only
 // satisfies noUncheckedIndexedAccess.
 import { spawn } from 'node:child_process';
-
-export type Gate = {
-  name: string;
-  value: number | Readonly<Record<string, number>>;
-  threshold: string;
-  pass: boolean;
-  mode: 'block' | 'info';
-};
+import type { Gate } from '../record.ts';
 
 // The caption band the picture is judged without, y from its top edge to its bottom edge.
 export type CaptionBand = { top: number; bottom: number };
@@ -343,7 +336,8 @@ export async function measureFrames(video: string, band: CaptionBand): Promise<F
   };
 }
 
-// The seven frame gates at cutroom's thresholds, all info until calibrated (design 6.3).
+// The seven frame gates at cutroom's thresholds, all info until calibrated (design 6.3). Balance and
+// flat are judged exact and shown at 2 decimals, as frame_audit.py does.
 export function frameGates(m: FrameMeasures): Gate[] {
   const band = Math.max(m.staticBand.top.seconds, m.staticBand.bottom.seconds);
   const { longestGapS, stillShare } = m.alive;
@@ -358,11 +352,11 @@ export function frameGates(m: FrameMeasures): Gate[] {
     { name: 'blank', value: m.blankAt.length, threshold: 'none', pass: m.blankAt.length === 0 },
     {
       name: 'balance',
-      value: { lower_half: m.lowerHalfShare, centre: m.centreOfMass },
+      value: { lower_half: round(m.lowerHalfShare, 2), centre: round(m.centreOfMass, 2) },
       threshold: 'lower half >= 0.33, centre 0.42-0.62',
       pass: m.lowerHalfShare >= 0.33 && m.centreOfMass >= 0.42 && m.centreOfMass <= 0.62,
     },
-    { name: 'flat', value: m.flatShare, threshold: '<= 0.60', pass: m.flatShare <= 0.6 },
+    { name: 'flat', value: round(m.flatShare, 2), threshold: '<= 0.60', pass: m.flatShare <= 0.6 },
     { name: 'static_band', value: band, threshold: '<= 14 s', pass: band <= 14 },
     {
       name: 'alive',

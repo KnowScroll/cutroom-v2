@@ -48,7 +48,7 @@ export type Intake = z.infer<typeof Intake>;
 
 export const Gate = z.object({
   name: z.string(),
-  value: z.union([z.number(), z.string(), z.boolean(), z.null()]),
+  value: z.union([z.number(), z.string(), z.boolean(), z.null(), z.record(z.string(), z.number())]),
   threshold: z.union([z.number(), z.string(), z.boolean(), z.null()]),
   pass: z.boolean(),
   mode: z.enum(['block', 'info']),
@@ -351,6 +351,15 @@ function secs(s: number): string {
   return `${s.toFixed(0)} s`;
 }
 
+function gateValue(v: Gate['value']): string {
+  if (v !== null && typeof v === 'object') {
+    return Object.entries(v)
+      .map(([k, n]) => `${k} ${String(n)}`)
+      .join(', ');
+  }
+  return String(v);
+}
+
 /** Renders the human summary of run.json. */
 export function renderReport(run: RunRecord): string {
   const out: string[] = [];
@@ -419,7 +428,7 @@ export function renderReport(run: RunRecord): string {
     out.push('## Gates (selected cut)', '');
     for (const g of selected.gates) {
       out.push(
-        `- ${g.pass ? 'PASS' : 'FAIL'} ${g.name} [${g.mode}]: ${String(g.value)} (threshold ${String(g.threshold)})`,
+        `- ${g.pass ? 'PASS' : 'FAIL'} ${g.name} [${g.mode}]: ${gateValue(g.value)} (threshold ${String(g.threshold)})`,
       );
     }
     out.push('');
