@@ -1,0 +1,10 @@
+engine/
+templates/
+studio/
+fonts/
+var/
+node_modules/
+package-lock.json
+docs/
+*.md
+.claude/
