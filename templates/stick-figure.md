@@ -94,7 +94,7 @@ required beats: hook, picture, problem, mechanism, turn, payoff
 hook: number or question
 captions: words
 acting beat: 4
-reference analysis: reference-lab/refs/stick-figure
+reference analysis: studio/refs/stick-figure
 
 ## director
 - Flag: a character not drawn with h.stick, or looking different from shot to shot (shirt, stripes, hat); characters too small to read their faces in a medium shot (under 600 px tall); a still frame (no drift, no acting, no background life); a missing impact (burst, shake and flash) where the line has a hit; a mechanism shot without its big object, its icon or its real number with a unit, or with other clutter; a proof card that is empty, overflowing, or whose stamp covers its title or rows; text inside y 1480 to 1640 or outside x 60 to 1020; the narration written on screen; a solid fill over the background; darkness drawn as a flat black rectangle over a room; a payoff line that does not flip the hook.

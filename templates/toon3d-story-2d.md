@@ -116,7 +116,7 @@ hero size: 0.35 - 1.4
 acting beat: 4.5
 background detail: 1.6
 captions: words
-reference analysis: reference-lab/refs/3d
+reference analysis: studio/refs/3d
 
 ## director
 - Flag first, in every frame: a character standing on a counter, desk or table, or its legs and feet drawn over furniture it stands behind; furniture or props floating in the air or standing in front of the room's floor line inside kit.bg; two characters overlapping; a prop crossing a face or hanging off nothing; a number or date on screen the reference does not give, or with the wrong unit; an invented event to fill a beat.

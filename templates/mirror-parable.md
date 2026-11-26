@@ -108,7 +108,7 @@ subject size: off
 labels: from narration
 captions: phrases
 numbers: reference
-reference analysis: reference-lab/refs/controller
+reference analysis: studio/refs/controller
 
 ## director
 - Flag: a hard-edged shape in the background (an oval, a disc, a band); colour anywhere except the two number hues and the reveal; objects with gradients, textures or soft blobs instead of dark fills with pale outlines; a figure bigger than about 160 px, with a face, legs or two arms; the small case drawn differently in the hook, the split and the return; a split whose halves are not laid out the same; a chip whose words its shot's lines do not say; text floating outside a chip or the numbers; digits outside the two number shots; a number not in the reference; a column that is not on the shared scale; a filled big number; a reveal without colour or with a painted rectangle; a shot where nothing changes for more than 2 s; a last shot that does not return to the hook's layout.

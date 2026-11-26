@@ -94,7 +94,7 @@ hook: number or question
 hero size: 0.18 - 0.7
 background detail: 1.6
 captions: line
-reference analysis: reference-lab/refs/low-poly
+reference analysis: studio/refs/low-poly
 
 ## director
 - Flag: dark outlines on anything; smooth gradients, soft glows, blur or lines thinner than 6 px (it must read as chunky 3x pixels); flat single-colour shapes without the 3 block tones and pixel speckles; circles or curves where blocks belong; readable words inside the world (signs, posters, screens); any on-screen text other than a stamp (labels, panels, titles, numbers); a stamp over 5 words, not lowercase, or below y 1440; the character looking different from shot to shot; a place whose layout changes between its two times; a time shot without the wipe or without a visible change of time after it; the character smaller than a quarter of the frame height or cropped outside a close shot; fast, bouncy or shaky motion; a neon, cold or garish palette where the warm relations are asked; a frame or rectangle stroked around the picture; an ending that preaches, gives a lesson or asks to follow.

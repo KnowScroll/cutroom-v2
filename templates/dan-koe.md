@@ -95,7 +95,7 @@ hero width: 0.55 - 0.9
 hero centre y: 820 - 1080
 labels: from narration
 captions: plain
-reference analysis: reference-lab/refs/dan-koe
+reference analysis: studio/refs/dan-koe
 
 ## director
 - Flag: any colour or hue; a background that is not pure black (a glow, gradient, vignette, texture or shapes); filled shapes other than dots; lines thicker than 4 px; boxes, panels, cards, labels, arrows, icons, charts or graphs; more than one line of on-screen text, or text that is not lowercase, is bold, boxed, stroked or larger than 50 px; two drawings in one frame; a drawing smaller than 55% of the frame width or off-centre; a drawing that stops growing before the middle of its shot, or a frame where nothing moves; a payoff whose top line does not swap when its drawing completes; a motif whose shape does not match its line's idea; hype words, exclamation marks, lists or jargon in the lines; a quote, name or catchphrase of a real person; anything important below y 1420.

@@ -121,7 +121,7 @@ required beats: hook, unit, base, part, finish
 hook: number or question
 hero size: 0.4 - 0.95
 background detail: 5
-reference analysis: reference-lab/refs/minecraft
+reference analysis: studio/refs/minecraft
 
 ## director
 - Flag: blocks drawn without textures or with smooth gradients; dark outlines; round or curved shapes on objects; faces in the wrong order (a back block drawn over a front one) or missing top or right faces; a build that does not have the subject's real silhouette and proportions or whose parts are in the wrong order; two neighbouring parts in the same material; blocks that appear all at once instead of dropping in one by one; a part shot whose earlier parts are missing; a build floating above or sunk into the plateau; a title that is not the real part name, longer than one line, or over a cloud so it cannot be read; an empty panel or a panel without a real number and unit; panels whose quantities differ from part to part when the same kind would fit; no slam, no shake or no lamps lighting at the finish; a payoff word longer than one word; the sky, clouds, fog or grass terraces missing; anything important below y 1440.

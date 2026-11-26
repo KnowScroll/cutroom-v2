@@ -72,7 +72,7 @@ shots: 6-9
 slice beats: step, payoff
 closed beats: hook, myth, loop
 labels: from narration
-reference analysis: reference-lab/refs/ps1-cutaway
+reference analysis: studio/refs/ps1-cutaway
 
 ## director
 - Flag: a host pose that does not change from one sentence to the next; the host inside or overlapping the subject; a subject that does not look like the real thing from outside (wrong silhouette or proportions); inside parts in the wrong place, missing, or in the casing's colour; a step whose label names a different part than its line, or more than one label on screen; a label while the subject is closed; a step shot without its "k/N" header; the slice never opening in a step; text outside x 60 to 1020 or below y 1460; a raccoon host or a yellow suit with a red striped tie.

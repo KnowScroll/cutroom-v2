@@ -15,6 +15,7 @@ busy() {
 }
 while [ "$(busy)" != "0" ]; do echo "waiting: another reel is running ($(date +%T))"; sleep 30; done
 echo "launch $SLUG $(date +%T)"
+mkdir -p "$V/runs"
 node engine/asset_reel.mjs "$BRIEF" --template "$TPL" --seconds "$SEC" --out "$V/runs/$SLUG" ${VOICE_MODEL:+--voice-model "$VOICE_MODEL"} > "$V/runs/$SLUG.log" 2>&1
 code=$?
 echo "exit $code $(date +%T)"

@@ -89,7 +89,7 @@ beats: hook, truth, question, place, step, number, turn, callback
 required beats: hook, step, number, callback
 shots: 10-12
 subject size: off
-reference analysis: reference-lab/refs/oil-type
+reference analysis: studio/refs/oil-type
 
 ## director
 - Flag: anything drawn in the caption band (y 0 to 500) or the print band below y 1460 except the small print; a photo missing its frame or shown in colour; a photo that does not show what the line names; a photo or quote covering the labelled part; two photos in one shot; a label that names the wrong part; flow that does not move; cartoon outlines, saturated colours or faces; a shot whose camera jumps to an unrelated place instead of moving through the same cut-away; steps out of the real order; a number without its unit.
