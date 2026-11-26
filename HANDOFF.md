@@ -63,7 +63,7 @@ Source of truth: design §1 > the rest of `docs/design.md` > the issue > `docs/p
 ## Escalate to the user (stop that line of work; keep other eligible issues going)
 
 - A finalized decision (design §1) would have to change, or a replacement technology changes the architecture.
-- A `needs-user` item: calibration approval (#13), VM access, `.env` keys missing. (WSL installs for #17 and D20 are already approved.)
+- A `needs-user` item: calibration approval (#13), `.env` keys missing. (WSL installs for #17 and D20 are already approved; deploying to the VM is out of scope, design D22.)
 - Real-run budget reached.
 
 Not escalations (handle them and keep going): a voice provider refusing (the harness, or before #8 you, moves down the voice list, design §6.7); every voice refused for now (label that issue `blocked` with the refusals, note it in PROGRESS.md, continue other issues, retry it after the next merge); MiniMax quota waits (the engine waits by itself; work on issues that need no MiniMax meanwhile).
@@ -72,4 +72,4 @@ Ask with the evidence, the options and your recommendation, in a few lines.
 
 ## Done
 
-All 18 issues closed with their `Done when` verified; CI green on `main`; CP1-CP5 recorded in their issues; README covers CLI, API and deploy; PROGRESS.md says complete; the user has the #18 report (results per job, spend, known issues, what to do next).
+All 18 issues closed with their `Done when` verified; CI green on `main`; CP1-CP5 recorded in their issues; README covers the CLI, the API and running on Linux; PROGRESS.md says complete; the user has the #18 report (results per job, spend, known issues, what to do next).

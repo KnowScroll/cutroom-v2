@@ -13,7 +13,6 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 - [x] D20 confirmed by the user (2026-11-27): first cut plus up to 3 fix rounds.
 - [ ] #13: approve the frame-gate calibration table (the issue gets `needs-user` when it is ready).
 - [x] #17: the user approved installing Node 22, FFmpeg and Chrome in WSL Ubuntu (2026-11-27).
-- [ ] After #17: VM access, or the user deploys with the README guide.
 
 ## In flight
 

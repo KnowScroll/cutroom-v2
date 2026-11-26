@@ -15,7 +15,7 @@ A walking skeleton first: by checkpoint CP1 one real request becomes one reel th
 | M2 Fix loop | #9 engine `--cut` / `--apply-notes`, #10 template store, #11 fix loop + best cut | **CP2**: a real job runs a notes round and a template round, picks the best cut |
 | M3 Frame gates | #12 frame audit port, #13 calibration (needs the user) + wiring | **CP3a**: thresholds approved by the user, frame gates blocking where approved |
 | M4 Service | #14 queue + worker + recovery, #15 HTTP API + CLI | **CP3b**: a real job through the API; a killed service resumes its job |
-| M5 Linux | #16 open fonts, #17 Linux run + deploy guide | **CP4**: tests and one real job pass in WSL Ubuntu |
+| M5 Linux | #16 open fonts, #17 Linux run in WSL | **CP4**: tests and one real job pass in WSL Ubuntu |
 | M6 Acceptance | #18 end-to-end acceptance | **CP5**: five real API jobs on Linux, run records complete, user informed |
 
 ## Dependencies
@@ -50,4 +50,4 @@ At most 40 cuts during implementation. A cut = one engine invocation that makes 
 
 ## Done
 
-Every issue closed with its acceptance criteria met, CI green on `main`, CP1-CP5 recorded, README covers CLI, API and deploy, PROGRESS.md says "complete", and the user has the #18 report.
+Every issue closed with its acceptance criteria met, CI green on `main`, CP1-CP5 recorded, README covers the CLI, the API and running on Linux, PROGRESS.md says "complete", and the user has the #18 report.

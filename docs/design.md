@@ -6,7 +6,7 @@ Motto: **Lightweight. Fast. Simple.**
 
 ## 1. Decisions
 
-2026-11-27. D1-D13, D20, D21: the user's answers (D20 confirmed 2026-11-27). D14-D19: defaults proposed to the user, then accepted with "yes to all" on 2026-11-27.
+2026-11-27. D1-D13, D20-D22: the user's answers (D20 confirmed 2026-11-27). D14-D19: defaults proposed to the user, then accepted with "yes to all" on 2026-11-27.
 
 | id | decision |
 |---|---|
@@ -31,12 +31,13 @@ Motto: **Lightweight. Fast. Simple.**
 | D19 | The working folder is not in Git; the template edit history (§5.3) is the trail. |
 | D20 | "max 3" = the first cut plus at most 3 fix rounds (at most 4 cuts per job), from "review, re send with fixes (max-3)". A constant (`MAX_FIX_ROUNDS`), so a different answer is a one-line change. |
 | D21 | Voice is not locked to one model or provider (user, 2026-11-27): an ordered list of every engine voice model, with fallback (§6.7). Keys for OpenRouter and ElevenLabs are both optional; a job needs at least one voice that works. |
+| D22 | Deploying to the VM is out of scope for now (user, 2026-11-27). Linux is verified in WSL Ubuntu only; D6 and D10 still shape the code. |
 
 ## 2. Scope
 
-In: request in, reel out. Intake, one engine, measured gates, an M3 review, up to 3 fix rounds, best cut, report, run record. CLI and HTTP service. Template working copies with sync and patching. Linux deploy guide.
+In: request in, reel out. Intake, one engine, measured gates, an M3 review, up to 3 fix rounds, best cut, report, run record. CLI and HTTP service. Template working copies with sync and patching. A Linux run verified in WSL Ubuntu.
 
-Out: new templates or new styles (developer work in `studio/`); improving the engine's prompts, drawing, voice or music; a web UI; multiple workers; object storage; user accounts.
+Out: new templates or new styles (developer work in `studio/`); improving the engine's prompts, drawing, voice or music; a web UI; multiple workers; object storage; user accounts; deploying to the VM (D22).
 
 ## 3. Layout
 
@@ -188,9 +189,9 @@ Every engine voice goes through OpenRouter (`/audio/speech`), except ElevenLabs,
 - `var/engine.lock` keeps every CLI and service process to one engine run at a time on a machine. It records the harness pid and the engine child's pid; it is stale only when the engine pid is gone. On shutdown the harness stops its engine's process tree; on start, a live engine pid in the lock was started by a harness, so its tree is stopped (`taskkill /PID <pid> /T /F` on Windows, the process group on Linux, where the engine is spawned detached) before the job resumes. Two writers never share one `--out`.
 - Voice: `CUTROOM_VOICE_MODELS` (§6.7).
 
-## 9. Deploy
+## 9. Linux
 
-Linux VM: Node 22 LTS (>= 22.18, runs `.ts` by type stripping, no build step), FFmpeg, Google Chrome (`CHROME_PATH`), the bundled fonts, `npm ci --omit=dev`, `.env` at the repo root, a systemd unit for `serve`. Verified first in WSL Ubuntu on the dev machine. `studio/` is not needed on the VM.
+Node 22 LTS (>= 22.18, runs `.ts` by type stripping, no build step), FFmpeg, Google Chrome (`CHROME_PATH`), the bundled fonts, `npm ci`, `.env` at the repo root (or `CUTROOM_ENV_FILE`). Verified in WSL Ubuntu on the dev machine. `studio/` is not needed to run. Deploying to the VM (service unit, hosting) is out of scope for now (D22).
 
 ## 10. Known risks
 
