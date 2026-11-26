@@ -1,0 +1,21 @@
+node_modules/
+var/
+.env
+.env.*
+
+# reference reels are third-party videos: keep them local
+references/
+*.mp4
+
+# studio (developer tools): rea-video clone, its venv, full analysis runs
+studio/.venv/
+studio/rea-video/
+studio/runs/
+
+# Claude Code: local settings, agent worktrees
+.claude/settings.local.json
+.claude/worktrees/
+
+__pycache__/
+*.log
+!templates/*.log

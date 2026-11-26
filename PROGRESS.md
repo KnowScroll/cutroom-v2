@@ -1,0 +1,30 @@
+# PROGRESS
+
+Resume state for the orchestrator. Task status is in GitHub issues; this file holds only what issues cannot: what is in flight right now, user items, real-run spend, and the next action. Update it when an issue closes, when an agent starts or stops, and before context compaction.
+
+## State
+
+2026-11-27: preparation done (docs, labels, milestones, issues #1-#18). Implementation not started.
+
+## Waiting on the user
+
+- [ ] `.env` at the repo root with `MINIMAX_API_KEY`, `OPENROUTER_API_KEY`, `CUTROOM_API_TOKEN` (any long random string) and optionally `ELEVENLABS_API_KEY`. Needed from #2 on. It was missing on 2026-11-27.
+- [ ] Confirm design D20: "max 3" means the first cut plus up to 3 fix rounds (up to 4 cuts). Not blocking: it is one constant.
+- [ ] #13: approve the frame-gate calibration table (the issue gets `needs-user` when it is ready).
+- [ ] #17: OK to install Node 22, FFmpeg and Chrome in WSL Ubuntu.
+- [ ] After #17: VM access, or the user deploys with the README guide.
+
+## In flight
+
+| issue | agent / model | branch or worktree | started | note |
+|---|---|---|---|---|
+| none | | | | |
+
+## Real runs (budget: 20 full reels, docs/plan.md)
+
+| # | date | issue | purpose | voice | cost USD | run folder |
+|---|---|---|---|---|---|---|
+
+## Next action
+
+Run the preflight in HANDOFF.md, then start #1.
