@@ -20,7 +20,7 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 |---|---|---|---|---|
 | #5 | implementer / sonnet | claude/5-engine-runner (worktree) | 2026-11-27 | PR #25: fixing 2 re-review findings (SIGTERM rerun, crash-gap lock) |
 | #7 | implementer / opus | claude/7-review (worktree, based on #5 branch; rebase after #25 merges) | 2026-11-27 | one real review call on import-check |
-| #16 | implementer / sonnet | claude/16-open-fonts (worktree) | 2026-11-27 | cleared for free re-renders (0 model calls) under var/runs/fonts-* |
+| #16 | implementer / sonnet | claude/16-open-fonts (worktree) | 2026-11-27 | PR #28 in review; 1 free resume (0 calls) |
 
 ## Real cuts (budget: 40 cuts with model calls, docs/plan.md)
 
