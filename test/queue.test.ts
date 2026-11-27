@@ -353,7 +353,8 @@ await test('a restart after the engine finished a cut but before its review revi
   const run = await readRunRecord(varDir, id);
   assert.equal(run.status, 'done');
   assert.equal(run.approved, true);
-  assert.equal(run.cuts[0]?.gates.length, 5);
+  // the basic gates and the frame gates (#13) both ran on resume
+  assert.equal(run.cuts[0]?.gates.length, 12);
   assert.equal(countOf(await invocations(varDir, id), 1), 1);
 });
 
