@@ -7,11 +7,12 @@ import { pipeline } from 'node:stream/promises';
 import { z } from 'zod';
 import { readLoop } from './loop.ts';
 import { enqueue } from './queue.ts';
-import { readJob, readRunRecord, runDir, type CutRecord } from './record.ts';
+import { readJob, readRunRecord, runDir, type CutRecord, type Job } from './record.ts';
 
 // design §8: the HTTP API. node:http, no framework.
 
-const MAX_BODY_BYTES = 16 * 1024;
+// 4000 characters escaped as XXXX (6 bytes each) plus the other fields
+const MAX_BODY_BYTES = 32 * 1024;
 
 /** The ids createJob makes: YYYYMMDD-HHMMSS-<slug>[-n]. Anything else never reaches the filesystem. */
 const JOB_ID = /^\d{8}-\d{6}-[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -118,8 +119,8 @@ function cutSummary(cut: CutRecord): unknown {
   };
 }
 
-async function status(res: ServerResponse, o: ServerOptions, id: string): Promise<void> {
-  const job = await readJob(o.varDir, id);
+async function status(res: ServerResponse, o: ServerOptions, job: Job): Promise<void> {
+  const id = job.id;
   let cuts: CutRecord[] = [];
   try {
     cuts = (await readLoop(runDir(o.varDir, id)))?.cuts ?? [];
@@ -226,8 +227,9 @@ async function route(req: IncomingMessage, res: ServerResponse, o: ServerOptions
       fail(res, 404, 'unknown reel');
       return;
     }
+    let job: Job;
     try {
-      await readJob(o.varDir, id);
+      job = await readJob(o.varDir, id);
     } catch (e) {
       if (hasCode(e, 'ENOENT')) {
         fail(res, 404, 'unknown reel');
@@ -237,7 +239,7 @@ async function route(req: IncomingMessage, res: ServerResponse, o: ServerOptions
     }
     if (m[2] === 'reel.mp4') return reel(res, o, id);
     if (m[2] === 'report') return report(res, o, id);
-    return status(res, o, id);
+    return status(res, o, job);
   }
   fail(res, 404, 'not found');
 }

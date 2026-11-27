@@ -128,6 +128,10 @@ await test('400 on a bad body, nothing is queued', async () => {
     await assert.rejects(readFile(path.join(varDir, 'runs', 'index.jsonl')));
     const ok = await postReel(base, { request: 'x'.repeat(4000), seconds: 30, template: 'alpha' });
     assert.equal(ok.status, 202);
+    // a client that escapes every non-ASCII character (Python json.dumps) sends 6 bytes per character
+    const escaped = `{"request":"${'\\u00e9'.repeat(4000)}","seconds":45}`;
+    assert.ok(escaped.length > 16 * 1024);
+    assert.equal((await postReel(base, escaped)).status, 202);
   });
 });
 
