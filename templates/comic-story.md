@@ -70,6 +70,7 @@ required beats: hook, what, causes, help, outcome
 acting beat: 3.5
 hero size: 0.4 - 1.5
 background detail: 1.6
+gate alive: info
 
 ## director
 - Flag: a character lying beside a bed instead of in it; a prop or label covering a face; an empty or overflowing caption box; a flat or plain background (a colour, a gradient, an empty room); a character floating or too small to read their face; an expression that does not match the line; a character frozen with nothing moving; a line about other people with no other person on screen; the main character looking different from shot to shot; more than one sound word or caption box at once; text-heavy screens; anything that is not true to the reference.

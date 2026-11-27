@@ -6,6 +6,7 @@ import { z } from 'zod';
 import type { Config, VoiceModelKey } from './config.ts';
 import { EngineCrashError, runCut, type CutResult, type Spent } from './engine.ts';
 import { basicGates } from './gates/basic.ts';
+import { frameGates, frameSetup, measureFrames, readShots } from './gates/frames.ts';
 import { runIntake } from './intake.ts';
 import type { M3Request, M3Result } from './minimax.ts';
 import {
@@ -398,6 +399,10 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
     await writeFile(briefFile, result.brief);
     await event('intake', 'intake.done', intake);
     log(`intake: ${kind} (fit ${intake.fit}), ${String(seconds)} s`);
+    // ## checks may not be patched (D16), so the setup holds for every cut; a bad gate line stops the job here,
+    // before the engine spends anything
+    const frames = frameSetup(await readFile(path.join(workingDir, `${kind}.md`), 'utf8'));
+    await event('gates', 'gates.setup', frames);
 
     // design §6.7: only a refusal rules a model out (for this job); a voice_pitch switch moves on to a model no cut
     // has used yet, and the job fails only when every model is ruled out
@@ -513,9 +518,12 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
       }
 
       await stage('gates');
-      record.gates = await basicGates(cut);
-      await event('gates', 'gates.done', { cut: n, gates: record.gates });
-      log(`gates: ${record.gates.map((g) => `${g.name} ${g.pass ? 'pass' : 'FAIL'}`).join(', ')}`);
+      const measures = await measureFrames(cut.reelPath, frames.band, await readShots(cut.dir));
+      record.gates = [...(await basicGates(cut)), ...frameGates(measures, frames.settings)];
+      await event('gates', 'gates.done', { cut: n, gates: record.gates, frames: measures });
+      log(
+        `gates: ${record.gates.map((g) => `${g.name} ${g.pass ? 'pass' : 'FAIL'}${g.mode === 'info' ? ' (info)' : ''}`).join(', ')}`,
+      );
 
       await stage(`review-${String(n)}`);
       const reviewed = await reviewCut({

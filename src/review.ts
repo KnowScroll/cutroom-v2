@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { CutResult } from './engine.ts';
 import type { ContentBlock, M3Request, M3Result, Message } from './minimax.ts';
 import { gateValue, Review, type Gate, type HarnessCall } from './record.ts';
+import { sectionsOf } from './templates.ts';
 
 const PROMPT_FILE = new URL('./prompts/review.txt', import.meta.url);
 
@@ -80,20 +81,6 @@ async function readJson<S extends z.ZodType>(file: string, schema: S): Promise<z
   const parsed = schema.safeParse(JSON.parse(await readFile(file, 'utf8')));
   if (!parsed.success) throw new Error(`${file}: ${z.prettifyError(parsed.error)}`);
   return parsed.data;
-}
-
-/** The engine's parseMd: `## name` starts a section; a repeated name starts it again. */
-function sectionsOf(text: string): Map<string, string> {
-  const lines = new Map<string, string[]>();
-  let cur: string[] | null = null;
-  for (const ln of text.split(/\r?\n/)) {
-    const m = /^##\s+(\w+)\s*$/.exec(ln);
-    if (m?.[1] !== undefined) {
-      cur = [];
-      lines.set(m[1].toLowerCase(), cur);
-    } else if (cur !== null) cur.push(ln);
-  }
-  return new Map([...lines].map(([k, v]) => [k, v.join('\n').trim()]));
 }
 
 /** The engine's guide(...SECTIONS): per section the `_base.md` text, then the template's. */

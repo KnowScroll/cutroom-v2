@@ -90,6 +90,8 @@ beats: hook, blur, step, chain, ramp, loop
 required beats: hook, blur, step, chain, ramp, loop
 pixel grid: 180
 reference analysis: studio/refs/ref3
+gate balance: info
+gate alive: info
 
 ## director
 - Flag: a shot without the HUD row or without the placard; a counter unit or rate that differs between shots; a "FASTER" or "SLOWER" flash when the speed did not change; step badges on the hook, blur, ramp or loop, or numbered out of order; pop words outside step 1; glows or light blobs wider than their part; a device that does not have the real outside silhouette; parts of two different kinds of the device mixed together; a working end drawn as a thin strip; two step shots that show the same picture; a loop that does not match the hook's frame; an inside background lighter than lightness 0.36; a speed badge, dial or counter that does not match the shot's slowdown, or a counter value that is not rate / slow; parts that do not move or move at the same speed whatever the slowdown; more than one subject in a frame, or clutter beyond HUD, placard, one subject and 3 callouts; a step shot with no real number and unit on screen; callouts that point at nothing, overlap, or name things that are not real parts; placard text that spills out or is cut; smooth gradients, hairlines or soft blur (it must read as pixel art); parts without the dark rim or without 3 tone bands; a chain whose chips are not in the real order; an ending that does not return to the hook's frame; anything important below y 1440.

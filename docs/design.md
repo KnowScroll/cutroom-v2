@@ -141,7 +141,8 @@ Code only. Each gate: `{ name, value, threshold, pass, mode: "block" | "info" }`
 - `format`: ffprobe 1080x1920, 30 fps, an audio stream, duration = timeline total +-0.1 s. block.
 - `shipped_failing`: engine log lines `using the last` (a shot or asset shipped failing its validator). block.
 - `voice_pitch` (>= 4 st), `music_fit` (engine PASS), `voice_over_music` (10-14 dB): from `audio.json`. block. Kokoro cannot pass `voice_pitch` (measured 2.2-3.9 st on 10 fastreel reels; it ignores tone tags), so a reel voiced by Kokoro can never be approved; it stays in the voice list as the last resort so a job still returns a cut (§6.7).
-- Frame audit, ported from cutroom `scripts/frame_audit.py` (v1.7): `same_view` <= 14 s, `frame0` detail >= 0.05, `blank` none, `balance`, `flat` <= 60%, `static_band` <= 14 s, `alive` gap <= 3 s and still <= 20%. Caption band left out per the template's `captions:` check. **info until calibrated** (M3 of the plan): fastreel's looks differ from cutroom's (dan-koe is flat by design), so per-template modes are set from the 42 local fastreel reels by the rule in D23. Per-template overrides are developer lines in the template's `## checks`: `gate <name>: off | info | <threshold>`.
+- Frame audit, ported from cutroom `scripts/frame_audit.py` (v1.7): `same_view` <= 14 s, `frame0` detail >= 0.05, `blank` none, `balance`, `flat` <= 60%, `static_band` <= 14 s, `alive` gap <= 3 s and still <= 20%. Caption band left out per the template's `captions:` check. Fastreel's looks differ from cutroom's (dan-koe is flat by design), so per-template modes are set from the 42 local fastreel reels by the rule in D23. Per-template overrides are developer lines in the template's `## checks`: `gate <name>: off | info | <threshold>`.
+  2026-11-27 (#13): the D23 rule set the modes. Each template's `info` gates are `gate <name>: info` lines in its original; every other frame gate is `block` at the thresholds above (table in #13). `blank` does not count a sample inside the engine's 0.2 s cut transition at the start of a shot after the first (orchestrator ruling, a measurement fix).
 - Length against the target is passed to the review, not gated.
 
 ### 6.4 Review
@@ -201,4 +202,4 @@ Node 22 LTS (>= 22.18, runs `.ts` by type stripping, no build step), FFmpeg, Goo
 - Self-review: M3 reviewing M3 tends to approve. Guard: gates the review cannot waive; the review sees only the packet.
 - Template drift: patches change every later reel. Guards: D16, the topic-word check, the history with before/after grades, sync conflict flags.
 - A template round from the script costs about one full reel (fastreel: $0.25-0.35, 10-15 min); worst case 4 cuts per job.
-- Frame-audit thresholds come from cutroom's looks; they stay `info` until calibrated on fastreel reels.
+- Frame-audit thresholds come from cutroom's looks. 2026-11-27 (#13): per-template modes were set by the D23 rule on the 42 fastreel reels. A template with few reels (2 for most) or none (toon3d-story-2d) may still block on a look it was designed for; the guard is a developer `gate` line.

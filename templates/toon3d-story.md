@@ -71,6 +71,7 @@ captions: words
 labels: panels only
 numbers: reference
 reference analysis: studio/refs/3d
+gate alive: info
 
 ## director
 - Flag first, in every frame: a person standing inside or on furniture, or two people overlapping; a camera setup where the person it is about is hidden, cut off or tiny; people who talk to each other not facing each other; a small thing floating or standing on the floor; a number or date on screen the reference does not give, or with the wrong unit; an invented event to fill a beat.

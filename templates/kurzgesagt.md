@@ -117,6 +117,9 @@ beats: hook, yardstick, step, turn, answer, close
 required beats: hook, yardstick, step, answer, close
 hook: number or question
 reference analysis: studio/refs/kurzgesagt
+gate flat: info
+gate static_band: info
+gate alive: info
 
 ## director
 - Flag: outlines on anything; a thing lit from the left or without its dark night side on the left; flat discs without a halo, or halos far wider than their thing; things not in their true size ratio (check every R against the real sizes); more than 2 things on the stage (except the column and dots); a column that overlaps, leaves gaps between sizes that should touch, or runs past y 1400; a missing name tag or number tag; tags that overlap each other or cover a thing; tags in all caps or holding words that are not a name or a number with its unit; number tags whose quantity or unit changes from thing to thing; an answer tag that is missing, pops in a shot other than the answer, says something other than the answer, or uses "x" or hype words; a background that is flat, not violet-navy, or without twinkling stars; panels, cards, icons, arrows or titles; a frame that does not move; anything important below y 1440; a close that does not return to the hook's composition.

@@ -252,6 +252,20 @@ export function topicWordsIn(text: string, request: string): string[] {
 // the engine's section heading (asset_reel.mjs parseMd)
 const HEADING = /^##\s+(\w+)\s*$/;
 
+/** The engine's parseMd: `## name` starts a section; a repeated name starts it again. */
+export function sectionsOf(text: string): Map<string, string> {
+  const lines = new Map<string, string[]>();
+  let cur: string[] | null = null;
+  for (const ln of text.split(/\r?\n/)) {
+    const m = HEADING.exec(ln);
+    if (m?.[1] !== undefined) {
+      cur = [];
+      lines.set(m[1].toLowerCase(), cur);
+    } else if (cur !== null) cur.push(ln);
+  }
+  return new Map([...lines].map(([k, v]) => [k, v.join('\n').trim()]));
+}
+
 interface Heading {
   name: string;
   line: number;
