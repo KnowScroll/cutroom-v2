@@ -35,6 +35,9 @@ Voice refusals not counted as cuts (#18): 4 eleven-v4 HTTP 402 invocations; thei
 | 5 | 2026-11-27 | #45 | `--until script` Moon on 2775dc2 (orchestrator): failed, no usable fact sheet (derived facts cannot chain; bare unit in a rate rejected). The atom re-run resumed the old q-t1-atom checkpoints: 0 calls, not counted | none | ~0.0075 (tokens) | var/runs/q-t1-moon4 |
 | 6 | 2026-11-27 | #45 | `--until script` Moon on cea8190: failed, no usable fact sheet (conversion calc rejected) | none | ~0.008 | var/runs/q-t1-moon5 |
 | 7 | 2026-11-27 | #45 | `--until script` atom on cea8190: false sheet passed (hair fact relabelled as sand, meaningless calcs, lazy fact check) | none | 0.0166 | var/runs/q-t1-atom2 |
+| 8 | 2026-11-27 | #45 | `--until script` Moon on 9875f2e: maths right (8.6 years, a fraction of a lifetime); wall 342 s | none | 0.0407 | var/runs/q-t1-moon6 |
+| 9 | 2026-11-27 | #45 | `--until script` atom on 9875f2e: maths right (0.5 mm / 100 pm = 5 million) | none | 0.0438 | var/runs/q-t1-atom3 |
+| 10 | 2026-11-27 | #45 | `--until script` Venus on 9875f2e: premise inverted (reference lacks the 243-day spin: T2) | none | 0.0342 | var/runs/q-t1-venus |
 | 1 | 2026-11-27 | #2 | `--until script` import check | none | 0.0289 | var/runs/import-check |
 | 2 | 2026-11-27 | #2 | full reel `--rounds 0` (resumed from script) | heygen (4.66 st) | 0.0537 (folder total 0.0826) | var/runs/import-check |
 | 3 | 2026-11-27 | #9 | `--apply-notes --cut 2`, attempt 1 (shot-5 note rejected by validator; kept as reel-v2-attempt1) | heygen (4.72 st) | 0.0153 | var/runs/e2-check |
