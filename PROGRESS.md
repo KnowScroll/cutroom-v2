@@ -19,6 +19,7 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 | issue | agent / model | branch or worktree | started | note |
 |---|---|---|---|---|
 | #11 | implementer / opus | claude/11-fix-loop (worktree) | 2026-11-27 | PR #31 in review; CP2 runs done |
+| #13 | implementer / opus | claude/13-frame-gates (worktree, on #11 branch; rebase after #31) | 2026-11-27 | calibration first; then 1 real job (CP3a) after rebase |
 
 ## Real cuts (budget: 40 cuts with model calls, docs/plan.md)
 
