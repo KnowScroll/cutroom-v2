@@ -150,8 +150,9 @@ const valuesIn = text => numbersSaid(text).map(n => n.v);
 const untraced = (text, facts) => { const have = facts.flatMap(x => valuesIn(x.text)); return numbersSaid(text || '').filter(n => !n.one && !have.some(v => Math.abs(n.v - v) <= Math.abs(v) * 0.05)).map(n => n.s); };
 const quoted = xs => xs.map(x => `"${x}"`).join(', ');
 // a calc with units ("1 mm / 100 pm", "120 km / (60 km/h)", "41 / 10000"): {v: in SI units, d: dimension, qs: its quantities, ops};
-// unitOfBare(n) gives a bare number the unit the sheet states it with ({k, d, u}) or null; throws a reason
-function evalCalc(calc, unitOfBare = () => null) {
+// unitOfBare(n) gives a bare number the unit the sheet states it with ({k, d, u, m: its magnitude}) or null; `plain` drops every
+// unit (each number as written, with its magnitude); throws a reason
+function evalCalc(calc, unitOfBare = () => null, plain = false) {
   const src = normNum(calc), T = [], re = /\s*(?:(\d+(?:\.\d+)?(?:e[+-]?\d+)?)|([A-Za-zµμ](?:[\wµμ^]|-(?=[A-Za-z]))*(?:\/[A-Za-zµμ][\w^]*)*)|(\*\*|[-+*/()^×]))/iy;
   let pos = 0, m;
   for (;;) { re.lastIndex = pos; if (!(m = re.exec(src))) break; pos = re.lastIndex; T.push(m[1] ? { n: +m[1] } : m[2] ? { u: m[2] } : { op: m[3] === '×' ? '*' : m[3] === '**' ? '^' : m[3] }); }
@@ -175,7 +176,8 @@ function evalCalc(calc, unitOfBare = () => null) {
     let k = 1, d = Z, u = '', read = false, n = t.n;
     while (T[p]?.u && MAG[T[p].u.toLowerCase()]) n *= MAG[T[p++].u.toLowerCase()];
     if (T[p]?.u) { u = T[p++].u; const x = unitOf(u); if (!x) throw `"${u}" is not a unit the engine knows (m, km, mm, µm, nm, pm, g, kg, t, s, min, h, d, wk, yr, km/h, m/s, mi, ft, lb, au, ly, km2, m3, L)`; [k, d] = x; }
-    else { const s = unitOfBare(n); if (s) { ({ k, d, u } = s); read = true; } }
+    else { const s = unitOfBare(n); if (s) { ({ k, d, u } = s); read = true; if (plain) k = s.m || 1; } }
+    if (plain) { if (!read) k = 1; d = Z; }
     const q = { n, u, v: n * k, d, read }; qs.push(q); return { v: q.v, d };
   };
   const r = expr(); if (p < T.length) throw `"${T[p].op || T[p].u || T[p].n}" is out of place`;
@@ -190,28 +192,30 @@ const shownIn = (r, text) => {
 };
 // the quantities the non-derived facts state (what a calc may use), and how a bare number reads there: in the unit every fact
 // that states it gives it ("378000 / 5" is 378000 km / 5 km/h), or with its magnitude ("4.4 / 8" is 4.4 billion / 8 billion);
-// a plain factor stays bare, and a count per unit of time is a plain number ("100,000 times a day" * 365)
+// a plain factor stays bare
 const near = (a, b) => Math.abs(a - b) <= 1e-6 * Math.max(Math.abs(a), Math.abs(b));
-const sheetOf = facts => facts.filter(x => x.source !== 'derived').flatMap(x => quantitiesIn(x.text).map(q => ({ ...q, id: x.id, ...(q.d && sameDim(q.d, [0, 0, -1]) ? { v: q.n, k: 1, d: null, u: '' } : {}) })));
+const sheetOf = facts => facts.filter(x => x.source !== 'derived').flatMap(x => quantitiesIn(x.text).map(q => ({ ...q, id: x.id })));
 const bareUnit = sheet => n => {
   if (FREE.has(n)) return null;
   const same = sheet.filter(s => near(s.n, n));
   if (same.length) return same.every(s => s.d && near(s.k, same[0].k) && sameDim(s.d, same[0].d)) ? same[0] : null;
   const scaled = sheet.filter(s => s.mag && near(s.raw, n)), per = s => s.v / s.raw;
-  return scaled.length && scaled.every(s => near(per(s), per(scaled[0])) && sameDim(s.d || Z, scaled[0].d || Z)) ? { k: per(scaled[0]), d: scaled[0].d || Z, u: `${scaled[0].mag} ${scaled[0].u}`.trim() } : null;
+  return scaled.length && scaled.every(s => near(per(s), per(scaled[0])) && sameDim(s.d || Z, scaled[0].d || Z)) ? { k: per(scaled[0]), d: scaled[0].d || Z, u: `${scaled[0].mag} ${scaled[0].u}`.trim(), m: scaled[0].n / scaled[0].raw } : null;
 };
 // the problems of one derived fact; [] when it holds
 function calcErrors(x, sheet) {
   let r; try { r = evalCalc(x.calc ?? '', bareUnit(sheet)); } catch (e) { return [`fact ${x.id} is derived: its "calc" ${JSON.stringify(String(x.calc ?? ''))} does not compute (${e}). Give the arithmetic on the sheet's numbers, each quantity with its unit, for example "1 mm / 100 pm" or "41 / 10000"`]; }
   if (!r.ops) return [`fact ${x.id}: "calc" ${x.calc} has no arithmetic; compute it from the sheet's quantities (a conversion is "1 mm / 1 pm")`];
   if (!Number.isFinite(r.v)) return [`fact ${x.id}: "calc" ${x.calc} does not compute`];
-  const read = r.qs.filter(q => q.read), units = r.qs.some(q => q.d.some(Boolean)), odd = new Set();
+  // a calc with a length or a mass is checked by its dimensions alone; one of only times and counts may also be calendar
+  // arithmetic ("100,000 times a day" * 365 is 36.5 million a year), checked on its numbers as written
+  const read = r.qs.filter(q => q.read), physical = r.qs.some(q => q.d[0] || q.d[1]), odd = new Set();
   const readNote = read.length ? ` (the engine reads ${read.map(q => `${q.n} as ${q.n} ${q.u}`).join(', ')}, as the sheet states them)` : '';
   for (const q of r.qs) {
     if (q.read) continue;
     if (q.u) { if (q.n !== 1 && !sheet.some(s => s.d && sameDim(s.d, q.d) && near(s.v, q.v))) odd.add(`${q.n} ${q.u}, which no other fact on the sheet states`); continue; }
     const same = sheet.filter(s => near(s.n, q.n));
-    if (units && CALENDAR.has(q.n) && !same.some(s => !s.d)) { odd.add(`${q.n} as a unit conversion beside quantities with units`); continue; }
+    if (physical && CALENDAR.has(q.n) && !same.some(s => !s.d)) { odd.add(`${q.n} as a unit conversion beside quantities with units`); continue; }
     if (FREE.has(q.n)) continue;
     if (!same.length) odd.add(`${q.n}, which no other fact on the sheet states`);
     else if (same.every(s => s.d)) odd.add(`${q.n} without its unit (the sheet states ${quoted([...new Set(same.map(s => `${q.n} ${s.u}`))])}: write the one you mean)`);
@@ -221,7 +225,8 @@ function calcErrors(x, sheet) {
   if (r.qs.filter(q => !q.u && !q.read && q.n === 100).length > 1) odd.add('100 more than once (a chain of 100s is a hand-made decimal factor)');
   if (odd.size) return [`fact ${x.id}: "calc" ${x.calc} uses ${[...odd].join('; ')}${readNote}. Use only the sheet's own numbers, each with its unit as the sheet states it; the engine converts units itself and states the result in the text's unit, so never write a conversion factor such as 24, 1000 or 1000000`];
   const tq = quantitiesIn(x.text), close = (a, b) => Math.abs(a - b) <= Math.abs(b) * 0.03 + 1e-300; // relative only: an absolute margin let 0.00004 pass for 0.00017
-  const ok = r.d.some(Boolean) ? tq.some(q => q.d && sameDim(q.d, r.d) && close(q.v, r.v)) : valuesIn(x.text).some(v => close(v, r.v));
+  const ok = (r.d.some(Boolean) ? tq.some(q => q.d && sameDim(q.d, r.d) && close(q.v, r.v)) : valuesIn(x.text).some(v => close(v, r.v)))
+    || (!physical && valuesIn(x.text).some(v => close(v, evalCalc(x.calc, bareUnit(sheet), true).v)));
   return ok ? [] : [`fact ${x.id}: "calc" ${x.calc} gives ${shownIn(r, x.text)}${readNote}, but its text says "${x.text}". One of calc or text is wrong: check the calc's factors and units first (every quantity with its unit, as the sheet states it), then the claim; never change a true claim to fit the arithmetic`];
 }
 // the shown result of a derived fact, for the fact checker and the fixer ("1 mm / 100 pm = 10 million")

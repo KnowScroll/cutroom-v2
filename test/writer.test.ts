@@ -132,8 +132,13 @@ await test('rates, magnitude words and plain counts compute; a chain of 100s doe
     { id: 'p12', text: 'The band has 4 members and released 12 albums', source: 'general' },
     { id: 'p13', text: 'Monaco has about 26,000 people per square kilometre', source: 'general' },
     { id: 'p14', text: 'Monaco covers 2.08 km2', source: 'general' },
+    { id: 'p15', text: 'The contract pays $53 million a year for 13 years', source: 'general' },
+    { id: 'p16', text: 'People live about 80 years', source: 'general' },
   ];
-  const rates = (calc: string, text: string) => sheet([...facts, derived('d1', text, calc)]);
+  const rates = (calc: string, text: string): FactSheet => ({
+    ...sheet([]),
+    facts: [...BASE, F4, ...facts, derived('d1', text, calc)],
+  });
   for (const [calc, text] of [
     ['750000 / 12.4', 'At that price gold costs $60,500 per kg'],
     ['750000 / 12.4 kg', 'At that price gold costs $60,500 per kg'],
@@ -147,6 +152,9 @@ await test('rates, magnitude words and plain counts compute; a chain of 100s doe
     ['99000 * 60 * 60 * 24', 'That is about 8.6 billion searches a day'],
     ['12 / 4', 'That is 3 albums per member'],
     ['26000 * 2.08', 'Monaco has about 54,000 people'],
+    ['53000000 * 13', 'The contract is worth about $690 million'],
+    ['100000 * 80', 'A person blinks about 2.9 billion times in a life'],
+    ['100000 * 365 * 80', 'A person blinks about 2.9 billion times in a life'],
   ] as const)
     assert.deepEqual(errorsOf(rates(calc, text)), [], `${text} = ${calc}`);
 
