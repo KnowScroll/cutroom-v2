@@ -649,20 +649,29 @@ export function createWriter(E) {
     return next;
   }
   // a rewrite brings no number the sheet does not state (a fix once "corrected" a line to a number no fact held)
-  const newNumbers = (lines, f) => lines.flatMap(l => untraced(l.text, withRequest(f.facts, brief), SPOKEN));
+  // held to 2%; `old` (the fit's draft shot) may keep a 2-5% number it already said, so a draft kept with one can still be cut
+  const newNumbers = (lines, f, old) => {
+    const src = withRequest(f.facts, brief), had = (old?.lines || []).flatMap(l => numbersSaid(l.text).map(n => n.v));
+    return lines.flatMap(l => { const far = untraced(l.text, src); return untraced(l.text, src, SPOKEN).filter(s => far.includes(s) || !numbersSaid(s).some(n => had.includes(n.v))); });
+  };
   const sameLines = (a, b) => a.lines.map(l => l.text).join('\n') === b.lines.map(l => l.text).join('\n') && (a.see || '') === (b.see || '');
   // the shots a problem is about: its own shot, or for a wrong sheet fact ("f15: ...") every shot whose spine uses that fact (a
   // meaningless payoff fact stayed in the Mariana script: a sheet problem named no shot)
   const shotsOf = (p, o, sp) => { if (o.shots[+p.shot - 1]) return [+p.shot - 1]; const id = String(p.claim || '').match(/^(\w+):/)?.[1]; return id && sp ? sp.shots.map((s, i) => ((s.facts || []).includes(id) && o.shots[i] ? i : -1)).filter(i => i >= 0) : []; };
+  // the problems still flagged in o1, judged against o0: fixed only where every shot a problem touches was rewritten (a wrong fact
+  // in shots 2 and 3, fixed in 2 only, was dropped while 3 still said it); a change to the screen alone counts for a shot with one
+  // problem only. Judged against the script before every fix pass (a fact fixed in shot 2 by one pass and shot 3 by the next stayed)
+  function stillFlagged(o0, o1, ps, sp) {
+    const count = {}; for (const p of ps) for (const i of shotsOf(p, o0, sp)) count[i] = (count[i] || 0) + 1;
+    const fixedIn = i => o1.shots[i].lines.map(l => l.text).join('\n') !== o0.shots[i].lines.map(l => l.text).join('\n') || (!sameLines(o1.shots[i], o0.shots[i]) && count[i] === 1);
+    return ps.filter(p => { const at = shotsOf(p, o0, sp); return !at.length || !at.every(fixedIn); });
+  }
   // fix the claims a fact check flagged, shot by shot (a whole-script revision kept the wrong claim), keeping the length; returns
   // the script and the problems no taken fix touched (the harness reports those)
   async function fixClaims(o, sp, f, problems, step = 'script-fix', note = '') {
     const byShot = {}; for (const p of problems || []) for (const i of shotsOf(p, o, sp)) (byShot[i] ||= []).push({ claim: p.claim, problem: `${o.shots[+p.shot - 1] ? p.problem : `the sheet fact this shot uses is wrong: ${p.problem}`}${note}`, fix: p.fix });
     const req = Object.entries(byShot).map(([i, ps]) => ({ shot: +i + 1, max_words: countWords(o.shots[i]) + 2, keep: [o.shots[i].cue?.word].filter(Boolean), problems: ps, lines: o.shots[i].lines.map(l => ({ who: l.who, text: l.text, tone: l.tone })), see: o.shots[i].see || '' }));
-    // fixed only where every shot it touches was rewritten (a wrong fact in shots 2 and 3, fixed in 2 only, was dropped while 3
-    // still said it); a change to the screen alone counts for a shot with one problem only
-    const fixedIn = (x, i) => x.shots[i].lines.map(l => l.text).join('\n') !== o.shots[i].lines.map(l => l.text).join('\n') || (!sameLines(x.shots[i], o.shots[i]) && byShot[i].length === 1);
-    const left = (x, ps) => ps.filter(p => { const at = shotsOf(p, o, sp); return !at.length || !at.every(i => fixedIn(x, i)); });
+    const left = (x, ps) => stillFlagged(o, x, ps, sp);
     if (!req.length) return { o, left: problems || [] };
     // the fixer sees the sheet (with each derived fact's calc) and the reference: the fact checker once reversed who paid whom, and
     // its "fix" must not be applied blindly; a new on-screen number must be on the sheet too (a counter showed Earth's 365.25 days)
@@ -705,7 +714,7 @@ export function createWriter(E) {
       const long = shots.map((s, i) => [i, countWords(s)]).filter(([, n]) => n > 6), pool = long.reduce((a, [, n]) => a + n, 0), share = Math.max(0, pool - (total - allowed)) / pool;
       const req = long.map(([i, n]) => [i, n, Math.max(4, Math.floor(n * share))]).filter(([, n, t]) => t < n).map(([i, n, t]) => ({ shot: i + 1, target_words: t, now_words: n, keep: [shots[i].cue?.word].filter(Boolean), lines: shots[i].lines.map(l => ({ who: l.who, text: l.text, tone: l.tone })) }));
       if (!req.length) break;
-      cur = await editShots(`script-fit#${round}`, 'fit', req, cur, (s, lines) => lines.reduce((a, l) => a + words(l.text), 0) < countWords(s) && !newNumbers(lines, f).length, sp?.idea ? `\n\nWHAT THE STORY IS FOR: ${sp.idea}\nThe viewer should come away with: ${sp.takeaway}` : '');
+      cur = await editShots(`script-fit#${round}`, 'fit', req, cur, (s, lines) => lines.reduce((a, l) => a + words(l.text), 0) < countWords(s) && !newNumbers(lines, f, s).length, sp?.idea ? `\n\nWHAT THE STORY IS FOR: ${sp.idea}\nThe viewer should come away with: ${sp.takeaway}` : '');
     }
     // a shot whose cut breaks a hard check (a hook that lost its question) gets its draft back; the other shots keep their cuts
     const hard = x => scriptErrors(x, sp, f).filter(e => !e.soft).length;
@@ -834,10 +843,11 @@ export function createWriter(E) {
         // final script.json); a wrong sheet fact no shot uses is marked as not said
         const purpose = fixPurpose('fact check of the revision', fc2, sp), todo = toFix(fc2).filter(p => !purpose.includes(p));
         for (const p of todo) if (!shotsOf(p, o, sp).length && p.shot === 'sheet') p.unused = true;
-        let fx = todo.some(p => !p.unused) ? await fixClaims(o, sp, f, todo.filter(p => !p.unused)) : { o, left: todo.filter(p => !p.unused) };
+        const active = todo.filter(p => !p.unused), o0 = o;
+        let fx = active.length ? await fixClaims(o, sp, f, active) : { o, left: active };
         // a flagged line must not survive: what stays goes to the fixer once more, then a line still flagged is dropped where its shot
         // can lose it; whatever is left after that stays reported
-        if (fx.left.some(p => shotsOf(p, fx.o, sp).length)) fx = await fixClaims(fx.o, sp, f, fx.left, 'script-fix-2', ' (an earlier fix was not taken: its numbers were not the sheet\'s within 2%, or it ran too long; say the sheet\'s own number or cut the claim)');
+        if (fx.left.some(p => shotsOf(p, fx.o, sp).length)) { const again = await fixClaims(fx.o, sp, f, fx.left, 'script-fix-2', ' (an earlier fix was not taken: its numbers were not the sheet\'s within 2%, or it ran too long; say the sheet\'s own number or cut the claim)'); fx = { o: again.o, left: stillFlagged(o0, again.o, active, sp) }; }
         const drop = dropFlagged(fx.o, fx.left, sp, f);
         o = drop.o; fx = { o, left: fx.left.filter(p => !drop.dropped.includes(p)) };
         for (const p of drop.dropped) p.dropped = true;

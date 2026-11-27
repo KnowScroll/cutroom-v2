@@ -1263,6 +1263,42 @@ await test('a wrong fact two shots use stays reported until both are fixed', asy
     ['f2:'],
   );
   assert.ok(logs.includes('fact check of the revision: 0 fixed, 1 left'), logs.join('\n'));
+
+  // shot 2 fixed by the first pass and shot 3 by the second: fixed (it stayed listed, each pass judging only its own changes)
+  const both = await runWriter({
+    ...passed(),
+    spine,
+    viewer: flatViewer,
+    'factcheck-2': second,
+    'script-fix': {
+      shots: [
+        fixOf(2, 'But an atom is only about one hundred picometres wide.'),
+        fixOf(3, 'So one millimetre holds a billion picometres, five hundred atoms.'),
+      ],
+    },
+    'script-fix-2': { shots: [fixOf(3, 'So a single millimetre holds a billion picometres.')] },
+  });
+  assert.deepEqual(both.story.review?.factcheck2?.problems ?? [], []);
+  assert.ok(
+    both.logs.includes('fact check of the revision: 1 fixed, 0 left'),
+    both.logs.join('\n'),
+  );
+});
+
+await test('the fit can cut a shot that keeps a slightly rounded number its draft already said', async () => {
+  // 9.8 million for 10 million is 2% off (allowed); 9.7 million is 3% (asked to fix, kept after the last try)
+  const near = 'Which means an atom is nine point seven million times smaller than the sand.';
+  const long = LINES.map((l, i): [string, string] =>
+    i === 3
+      ? [`${near} That is a gap far beyond anything you can picture in your mind today.`, 'million']
+      : l,
+  );
+  const { story, logs } = await runWriter({
+    ...passed(),
+    script: script(long),
+    'script-fit': { shots: [fixOf(4, near)] },
+  });
+  assert.equal(lineOf(story, 4), near, logs.join('\n'));
 });
 
 await test('the viewer judges the reel against the request, and a request left unanswered rebuilds the spine', async () => {
