@@ -129,8 +129,8 @@ Each template's `## about` section in `templates/<name>.md` is the full descript
 - **New original:** copied into the var.
 - **Changed original, copy never patched:** the copy is replaced.
 - **Changed original, copy patched or edited:** reported as a `conflict`, and the copy is kept. `sync` exits 1, and `serve` logs the conflict.
-
 - **Deleted original:** the working copy is left (and kept in the manifest) until you remove it by hand.
+
 New templates and fixes to originals are developer work in Claude Code: the `/new-template` and `/fix-template` skills.
 
 ## Voices
