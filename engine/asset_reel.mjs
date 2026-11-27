@@ -316,7 +316,7 @@ function planLpErrors(p) {
   return E;
 }
 const writer = () => createWriter({ brief, seconds, budget: budgetGuess(), m3, prompt, guide, checks, range, list, ckSave, ckLoad, log, extractJson, refBlock, hasRef: () => !!REF, addArticles, numbersNotIn,
-  voiceGuide: voiceGuide(VM), feels: MUSIC_FEELS, wpsOf, padOf });
+  voiceGuide: voiceGuide(VM), voiceModel: voiceModel(VM).id, feels: MUSIC_FEELS, wpsOf, padOf });
 // the production plan: style, assets, backgrounds and a storyboard for each shot of the finished script, merged with it
 async function productionPlan(story) {
   const script = story.shots.map((s, i) => ({ shot: i + 1, beat: s.beat, point: s.point, device: s.device, link: s.link, lines: s.lines.map((l, k) => `${k}. ${l.who}: ${l.text}`), cue: s.cue, see: s.see, ...(s.hold ? { hold_s: s.hold } : {}) }));
@@ -735,10 +735,10 @@ async function main() {
     // a voice switch (the harness reruns the cut with the next voice when one is refused) leaves a script written to another speaking
     // rate: write it again from the spine, and drop what was built on it
     const savedScript = !NOTES_FILE && ckLoad('script.json'), oldScript = savedScript && JSON.parse(savedScript);
-    if (oldScript && rateMoved(oldScript, wpsOf(oldScript))) {
+    if (oldScript && rateMoved(oldScript, wpsOf(oldScript), voiceModel(VM).id)) {
       const keep = new Set(['reference.txt', 'facts.json', 'spine.json', 'calls.json']);
       for (const f of fs.readdirSync(WORK)) if (!keep.has(f)) fs.rmSync(path.join(WORK, f), { recursive: true, force: true });
-      log(`voice: ${voiceModel(VM).id} speaks about ${wpsOf(oldScript)} words/s, the script was written for ${oldScript.wps}; writing the script and the plan again from the spine`);
+      log(`voice: ${voiceModel(VM).id} speaks about ${wpsOf(oldScript)} words/s, the script was written for ${oldScript.voice_model} at ${oldScript.wps}; writing the script and the plan again from the spine`);
     }
     const savedPlan = ckLoad('plan.json');
     useTemplate((savedPlan && !flag('--template') && JSON.parse(savedPlan).template) || await pickTemplate());

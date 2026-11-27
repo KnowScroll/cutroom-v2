@@ -614,6 +614,7 @@ async function runWriter(
     addArticles: () => Promise.resolve(0),
     numbersNotIn: () => [],
     voiceGuide: '',
+    voiceModel: 'heygen-test',
     feels: '',
     wpsOf: () => 2.5,
     padOf: () => 0,
@@ -819,6 +820,24 @@ await test('a draft over the word budget is cut to length by the fit step, not s
   const targets = asked.shots.map((s) => s.target_words);
   assert.deepEqual(targets, [14, 10, 10, 12, 12], 'every shot gives words in proportion');
   assert.ok(targets.reduce((a, b) => a + b, 0) <= 60, 'the targets fit the budget');
+
+  // a cut that breaks a hard check (shot 1 opening with a definition) gives that shot its draft back; the others keep theirs
+  const hook = await runWriter({
+    ...passed(),
+    script: script(long),
+    'script-fit': {
+      shots: LINES.map(([text], i) => fixOf(i + 1, i ? text : 'An atom is far smaller than sand.')),
+    },
+  });
+  assert.equal(hook.story.shots[0]?.lines[0]?.text, long[0]?.[0]);
+  assert.equal(hook.story.shots[1]?.lines[0]?.text, LINES[1]?.[0]);
+  assert.ok(hook.logs.includes('script-fit: 98 -> 67 words (budget 60)'), hook.logs.join('\n'));
+
+  // a fit that takes no cut leaves the draft far over budget: the run stops instead of a reel that long
+  await assert.rejects(
+    runWriter({ ...passed(), script: script(long), 'script-fit': { shots: [] } }),
+    /no usable script: 98 words after the fit, for a budget of 60/,
+  );
 });
 
 await test('the spine says what the story is for, may bring a fact back, and runs forward in time outside a flashback', async () => {
@@ -933,9 +952,16 @@ await test('lead and tail are set per template, and by default a cut no longer l
 await test('a script keeps the speaking rate it was written for, and only a voice switch that moves it rewrites it', async () => {
   const { story } = await runWriter(passed());
   assert.equal(story.wps, 2.5);
-  assert.equal(rateMoved({ wps: 2.18 }, 2.9), true, 'eleven-v4 to heygen');
-  assert.equal(rateMoved({ wps: 2.9 }, 3.1), false, 'another heygen voice');
-  assert.equal(rateMoved({}, 2.9), false, 'an older checkpoint without a rate is kept');
+  assert.equal(story.voice_model, 'heygen-test');
+  const eleven = { voice_model: 'eleven_v4', wps: 2.18 };
+  assert.equal(rateMoved(eleven, 2.9, 'heygen'), true, 'eleven-v4 to heygen');
+  assert.equal(rateMoved({ voice_model: 'heygen', wps: 2.9 }, 3.1, 'minimax'), false, 'within 15%');
+  assert.equal(
+    rateMoved(eleven, 2.9, 'eleven_v4'),
+    false,
+    'the same voice measured at a new rate (a resumed cut) is kept',
+  );
+  assert.equal(rateMoved({}, 2.9, 'heygen'), false, 'an older checkpoint without a rate is kept');
 });
 
 await test('a fix that changes nothing is not logged as a rewrite', async () => {

@@ -63,6 +63,7 @@ export interface WriterEnv {
   addArticles: (needs: unknown[]) => Promise<number>;
   numbersNotIn: (texts: string[]) => string[];
   voiceGuide: string;
+  voiceModel: string;
   feels: string;
   wpsOf: (p: unknown) => number;
   padOf: (shots: unknown[]) => number;
@@ -82,6 +83,7 @@ export interface FactCheckProblem {
 export interface Story {
   idea?: string;
   takeaway?: string;
+  voice_model?: string;
   wps?: number;
   shots: { point?: string; lines: Line[] }[];
   review?: {
@@ -112,5 +114,9 @@ export function shotTimes(
   last: boolean,
 ): { lines: { start: number; end: number }[]; dur: number };
 export function silenceOf(shots: TimedShot[], pad: Pad): number;
-export function rateMoved(story: { wps?: number } | null | undefined, wps: number): boolean;
+export function rateMoved(
+  story: { wps?: number; voice_model?: string } | null | undefined,
+  wps: number,
+  model: string,
+): boolean;
 export function repeatErrors(shots: { lines?: Line[] }[]): Problem[];

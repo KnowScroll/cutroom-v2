@@ -57,10 +57,11 @@ export function shotTimes(s, secs, pad, last) {
 }
 // the seconds of a reel that are not speech; the word budget fills the rest
 export const silenceOf = (shots, pad) => shots.reduce((a, s, i) => a + shotTimes(s, [], pad, i === shots.length - 1).dur, 0);
-// a checkpointed script was written to its narrator's speaking rate (story.wps). The harness reruns a cut with the next voice when
-// one is refused (design 6.7); a rate more than 15% off makes the reel that much too long or short (an eleven-v4 script spoken by
-// heygen ran 33 s of 45), so the script is written again
-export const rateMoved = (story, wps) => !!(+story?.wps > 0) && Math.abs(wps / story.wps - 1) > 0.15;
+// a checkpointed script was written to its voice model's speaking rate (story.voice_model, story.wps). The harness reruns a cut with
+// the next voice when one is refused (design 6.7); a rate more than 15% off makes the reel that much too long or short (an eleven-v4
+// script spoken by heygen ran 33 s of 45), so the script is written again. The same model's rate drifts as it is measured
+// (cache/voice/rates.json) and never rewrites a resumed cut
+export const rateMoved = (story, wps, model) => !!story?.voice_model && story.voice_model !== model && +story.wps > 0 && Math.abs(wps / story.wps - 1) > 0.15;
 
 // ---------- text checks ----------
 const toks = s => String(s).toLowerCase().replace(/[’‘]/g, "'").replace(/[^a-z0-9'\s-]+/g, ' ').replace(/-/g, ' ').split(/\s+/).filter(Boolean);
@@ -598,6 +599,7 @@ export function createWriter(E) {
     if (SCRIPT()) return o;
     const withHolds = x => x.shots.map((s, i) => ({ ...s, hold: sp ? sp.shots[i].hold : s.hold }));
     const total0 = o.shots.reduce((a, s) => a + countWords(s), 0);
+    if (total0 <= budgetFor(withHolds(o), o.cast) * 1.05) return o;
     let cur = o;
     for (let round = 1; round <= 3; round++) {
       const shots = withHolds(cur), allowed = budgetFor(shots, cur.cast), total = shots.reduce((a, s) => a + countWords(s), 0);
@@ -609,10 +611,14 @@ export function createWriter(E) {
       if (!req.length) break;
       cur = await editShots(`script-fit#${round}`, 'fit', req, cur, (s, lines) => lines.reduce((a, l) => a + words(l.text), 0) < countWords(s) && !newNumbers(lines, f).length, sp?.idea ? `\n\nWHAT THE STORY IS FOR: ${sp.idea}\nThe viewer should come away with: ${sp.takeaway}` : '');
     }
-    const total1 = cur.shots.reduce((a, s) => a + countWords(s), 0);
-    if (total1 === total0) return o;
-    if (scriptErrors(cur, sp, f).some(e => !e.soft)) { log(`script-fit: the cut broke a check; keeping the ${total0}-word script`); return o; }
-    log(`script-fit: ${total0} -> ${total1} words (budget ${budgetFor(withHolds(cur), cur.cast)})`);
+    // a shot whose cut breaks a hard check (a hook that lost its question) gets its draft back; the other shots keep their cuts
+    const hard = x => scriptErrors(x, sp, f).filter(e => !e.soft).length;
+    for (let i = 0; i < cur.shots.length && hard(cur); i++) if (!sameLines(cur.shots[i], o.shots[i])) { const back = { ...cur, shots: cur.shots.map((s, k) => (k === i ? o.shots[i] : s)) }; if (hard(back) < hard(cur)) cur = back; }
+    if (hard(cur)) { log(`script-fit: the cut broke a check; keeping the ${total0}-word script`); cur = o; }
+    const total1 = cur.shots.reduce((a, s) => a + countWords(s), 0), allowed = budgetFor(withHolds(cur), cur.cast);
+    log(total1 === total0 ? `script-fit: no cut was taken; ${total0} words (budget ${allowed})` : `script-fit: ${total0} -> ${total1} words (budget ${allowed})`);
+    // the fit is the only cut: a script it leaves far over budget would run that much past the requested length
+    if (total1 > allowed * 1.3) throw new Error(`no usable script: ${total1} words after the fit, for a budget of ${allowed}`);
     return cur;
   }
   // note: what the script on a rebuilt spine must not repeat (the first draft's problems)
@@ -691,7 +697,7 @@ export function createWriter(E) {
         if (!sp2) {
           messages.push({ role: 'user', content: `A test viewer who knows nothing about the topic watched your script (without the fact sheet):\n${JSON.stringify(v || {}, null, 1)}\n\nThe question the reel should open: "${sp.question || f.question}". The answer it should give: "${sp.answer || f.answer}". The viewer should come away with: "${sp.takeaway || f.answer}"; if what they would remember is a detail that does not serve it, cut that detail or make it serve the answer.\n\nThe fact checker found: ${fix.length ? JSON.stringify(fix, null, 1) : 'nothing wrong'}.\n\nRewrite the script to fix: every fact problem (use its fix), every shot the viewer got lost in or found flat, and any gap between the viewer's question and answer and the intended ones. Keep the spine's shots and holds and about the word budget. Return the complete JSON.` });
           const o2 = await ask('script-revise', scriptSystem(), messages, x => scriptErrors(x, sp, f), 3);
-          if (o2) { o = await fitWords(o2, sp, f); revised = true; messages[messages.length - 1] = { role: 'assistant', content: JSON.stringify(o) }; }
+          if (o2) { try { o = await fitWords(o2, sp, f); revised = true; } catch (e) { log(`script-revise: ${e.message}; keeping the script from before the review`); } }
           else log('script-revise: no revision passed the checks; keeping the script from before the review');
         }
       }
@@ -705,7 +711,7 @@ export function createWriter(E) {
         if (toFix(fc2).length) o = await fixClaims(o, sp, f, toFix(fc2));
       }
       story = { title: o.title, idea: sp.idea, takeaway: sp.takeaway, question: sp.question || f.question, answer: sp.answer || f.answer, callback: sp.callback, music: { ...(o.music || {}), payoff_shot: +sp.payoff_shot },
-        cast: o.cast, wps: wps(o.cast), facts: f.facts, payoff: f.payoff, review: { ...review, revised, ...(rebuilt ? { spine_rebuilt: true } : {}) },
+        cast: o.cast, voice_model: E.voiceModel, wps: wps(o.cast), facts: f.facts, payoff: f.payoff, review: { ...review, revised, ...(rebuilt ? { spine_rebuilt: true } : {}) },
         shots: sp.shots.map((s, i) => ({ beat: s.beat, point: s.point, facts: s.facts, link: i ? s.link : 'hook', device: s.device, hold: Math.max(0, Math.min(2, +s.hold || 0)), lines: o.shots[i].lines, cue: o.shots[i].cue, see: o.shots[i].see })) };
     }
     story.shots.forEach(s => s.lines.forEach(l => { if (l.gap_before != null) l.gap_before = Math.max(0, Math.min(1.5, +l.gap_before || 0)); }));
