@@ -561,23 +561,30 @@ const CallsFile = z.object({
   ),
 });
 
+/** Moves reel-work/calls.json to `<runDir>/<name>` and returns its text, or null when there is none. */
+async function setAsideCalls(runDir: string, name: string): Promise<string | null> {
+  const file = path.join(runDir, 'reel-work', 'calls.json');
+  let text: string;
+  try {
+    text = await readFile(file, 'utf8');
+  } catch (e) {
+    if (errCode(e) === 'ENOENT') return null;
+    throw e;
+  }
+  await rename(file, path.join(runDir, name));
+  return text;
+}
+
 /**
  * An invocation that stopped early leaves its model calls in reel-work/calls.json, and the next invocation overwrites
  * the file. Move it aside as calls-<cut>-<k>.json and price it (engine prices, design §6.6).
  */
 async function harvestCalls(runDir: string, cut: number): Promise<Spent> {
   const spent: Spent = { usd: 0, tokensIn: 0, tokensOut: 0, wallS: 0 };
-  const file = path.join(runDir, 'reel-work', 'calls.json');
-  let text: string;
-  try {
-    text = await readFile(file, 'utf8');
-  } catch (e) {
-    if (errCode(e) === 'ENOENT') return spent;
-    throw e;
-  }
   const prefix = `calls-${String(cut)}-`;
   const k = (await readdir(runDir)).filter((f) => f.startsWith(prefix)).length + 1;
-  await rename(file, path.join(runDir, `${prefix}${String(k)}.json`));
+  const text = await setAsideCalls(runDir, `${prefix}${String(k)}.json`);
+  if (text === null) return spent;
   for (const c of CallsFile.parse(JSON.parse(text)).calls) {
     spent.usd +=
       (c.input_tokens * PRICE.in + c.cached * PRICE.cached + c.output_tokens * PRICE.out) / 1e6;
@@ -656,6 +663,9 @@ export async function runCut(opts: RunCutOptions): Promise<CutResult | VoiceRefu
       const thisRun = readFileSync(logPath, 'utf8').slice(before);
       if (code === 0) {
         const result = await parseOutputs(runDir, cut, logPath);
+        // The summary already counts these calls. Left in place, the next invocation would re-count them as lost
+        // if it stopped before its first model call (the engine rewrites the file only on a call).
+        await setAsideCalls(runDir, `calls-${String(cut)}.json`);
         if (earlier.usd > 0 || earlier.wallS > 0) {
           result.cost['earlier attempts'] = {
             usd: earlier.usd,
