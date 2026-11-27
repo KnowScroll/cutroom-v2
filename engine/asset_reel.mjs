@@ -14,7 +14,7 @@ import { report } from './cost_report.mjs';
 import { pathToFileURL } from 'node:url';
 import { HERE, VAR, TEMPLATE_DIR, SR, log, sha1, clamp, slugify, stamp, run, pool, withRetry, loadKeys, decodeMono, trimSilence, renderVideo, addSfx, writeWavStereo, extractJson, extractCode, launchStage, BANNED } from './lib.mjs';
 import { voiceModel, normVoice, voiceGuide, speak, voiceCacheKey, voiceRate, recordRate, voiceCheck, wordTimes, MUSIC_FEELS, pickMusic, mixReel } from './audio.mjs';
-import { createWriter, words, numWords, DEVICES, numbersNotInSource, requestOf, padding, shotTimes, silenceOf, rateMoved } from './writer.mjs';
+import { createWriter, words, numWords, DEVICES, numbersNotInSource, requestOf, padding, shotTimes, silenceOf, rateMoved, lineNoteErrors } from './writer.mjs';
 import { findPhotos, snapQuote } from './photos.mjs';
 import { fetchArticles, fetchPassages } from './reference.mjs';
 import { placeErrors, subjectErrors } from './plan_checks.mjs';
@@ -337,7 +337,15 @@ async function make(label, system, firstUser, validate, craftAsk, prevCode = nul
     messages.push({ role: 'assistant', content: text || '(empty)' }, { role: 'user', content: `The validator rejected it:\n- ${res.errors.join('\n- ')}\nReturn the complete corrected code.` });
   }
   if (!code && !prevCode && lastRunnable) log(`${label}: no attempt passed every check; using the last one that runs (it failed: ${lastRunnable.errors.slice(0, 2).join('; ').slice(0, 200)})`);
-  if (!code) return { code: prevCode || lastRunnable?.code || null, preview: null, crafted: false };
+  if (!code && prevCode) { // a redraw that never passed ships failing, said in the line the harness's shipped_failing gate counts (27 of 164 redraws kept the old code silently, findings §P)
+    // the old code is checked against the step as it is now (its lines may have changed): kept while it still passes, else the last attempt that runs replaces it
+    const bad = bannedIn(prevCode), old = bad ? { ok: false, errors: [`uses the forbidden browser global "${bad}" in code`] } : await validate(prevCode);
+    const errs = es => es.slice(0, 2).join('; ').replace(/\s+/g, ' ').slice(0, 200), keep = old.ok || !lastRunnable, tried = errs((lastRunnable || res).errors);
+    const why = old.ok ? `the note is not applied: no redraw passed (${tried}); the previous code still passes and is kept` : keep ? `the previous code is kept and fails now: ${errs(old.errors)}` : `${tried}; the previous code fails too: ${errs(old.errors)}`;
+    log(`${label}: no attempt passed every check; using the last one that runs (it failed: ${why})`);
+    return { code: keep ? prevCode : lastRunnable.code, preview: null, crafted: false };
+  }
+  if (!code) return { code: lastRunnable?.code || null, preview: null, crafted: false };
   if (craftAsk && res.preview && !label.endsWith('-rev')) { // craft pass: the model looks at its own render and improves it (not on director revisions: the director's notes are that review)
     messages.push({ role: 'user', content: [{ type: 'text', text: craftAsk }, img(res.preview), { type: 'text', text: 'If it already meets the craft guide fully, reply with just KEEP. Otherwise return the complete improved code.' }] });
     const text = await m3(`${label}-craft`, system, messages);
@@ -589,7 +597,8 @@ async function sheetReview(plan, stage, maxRounds = 2) {
   }
   ckSave('sheet-review.json', { rounds: history.length });
 }
-async function makeShot(plan, stage, tl, i, notes = null) {
+// recheck: the shot's lines changed (applyNotes); its code is kept while it still passes against them, and redrawn only when not
+async function makeShot(plan, stage, tl, i, notes = null, recheck = false) {
   const page = await stage.newPage(), s = plan.shots[i], sh = tl.shots[i];
   try {
     if (PHOTOMODE() && tl.photos?.length) await page.evaluate(p => window.loadPhotos(p), tl.photos);
@@ -611,6 +620,12 @@ async function makeShot(plan, stage, tl, i, notes = null) {
       if (mustSlice && res.stats && res.stats.lp) { if (res.stats.lp.slice < 0.6) E.push(`this ${s.beat} shot never opens the subject (slice reaches ${res.stats.lp.slice.toFixed(2)} in its second half): pass slice to h.d3.thing, rising from 0 to 1 over 0.6 s on the cue word, e.g. h.d3.thing('<id>', { x, z, slice: h.clamp((lt - h.cue('<word>')) / 0.6) }), and keep it open to the end`); if (!res.stats.lp.labels) E.push(`this ${s.beat} shot labels no part: once the subject is open, call h.d3.label('<thing id>', '<inside part>', '<NAME>', { k: lt - <when it appears> }) after h.d3.render(), every frame to the end of the shot`); }
       if (E.length) { res.errors = [...res.errors, ...E]; res.ok = false; } return res; };
     const validate = !mine.length ? validateL : async c => { const res = await validateL(c); const miss = mine.filter(([f, id]) => !new RegExp(`h\\.${f}\\(\\s*['"\`]${id}['"\`]`).test(c)); if (miss.length) { res.errors = [...res.errors, ...miss.map(([f, id]) => `the storyboard pins the real ${f} "${id}" in this shot: draw it with h.${f}('${id}', ...)`)]; res.ok = false; } return res; };
+    if (recheck && s.code) { // h.cue finds its words at their new times; a word the lines no longer say is an error here (the stage's strict h.cue)
+      const res = await validate(s.code);
+      if (res.ok) { log(`shot${i + 1}: its lines changed and its code still passes every check; kept`); return; }
+      log(`shot${i + 1} kept code rejected: ${res.errors.slice(0, 3).join('; ')}; redrawing it for the new lines`);
+      notes = `${notes}\nAgainst the new lines the current code fails these checks:\n- ${res.errors.join('\n- ')}`;
+    }
     const evidence = !PHOTOMODE() ? '' : `\nReference articles (the only sources to name in h.note, as 'Wikipedia: <title>'): ${JSON.stringify([...new Set([...String(REF).matchAll(/^### (.+?)(?: \(passages about:.*\))?$/gm)].map(m => m[1].trim()))])}\nReal photos of this reel (h.photo draws one with its credit line): ${JSON.stringify((plan.pics || []).map(p => ({ id: p.id, shows: p.label || p.shows, aspect_w_over_h: +(p.w / p.h).toFixed(2), planned_for_shot: p.shot })))}\nReference quotes (h.quote draws one with its source line): ${JSON.stringify((plan.quotes || []).map(q => ({ id: q.id, underlined: q.mark, planned_for_shot: q.shot })))}${(plan.photos || []).filter(p => p.shot === i + 1 && !(plan.pics || []).some(x => x.id === p.id)).map(p => `\nNo real photo was found for "${p.id}" (${p.shows}): leave its h.photo out and draw that thing yourself in the drawing style.`).join('')}`;
     const cast = Object.fromEntries(Object.entries(plan.cast).filter(([k]) => k !== 'narrator').map(([k, v]) => [k, v.asset]));
     const user = D3MODE() ? `Art style: ${plan.style.name}: ${plan.style.description}\n\n${LPMODE() ? kitApiLp(plan) : kitApi3d(plan)}\n\nShot ${i + 1} of ${plan.shots.length}. Storyboard: ${s.idea}${shotStory(s, plan.shots[i - 1])}\n${LPMODE() ? 'Set' : 'Room'}: "${s.background}"\nShot length: ${sh.dur.toFixed(2)} s\nLines (sh.lines): ${JSON.stringify(sh.lines.map(({ who, text, start, end }) => ({ who, text, start, end })))}\n${LPMODE() ? `Sentences of the narration with their times (h.d3.sentences() returns these): ${JSON.stringify(sentencesOfShot(sh))}\nThe host (h.d3.actor id) and the subjects (h.d3.thing ids) with the inside parts h.d3.label can name: ${JSON.stringify(cast3d(plan))}` : `Cast (h.d3.actor ids with their roles) and the story's own prop (an extra h.d3.thing id): ${JSON.stringify(cast3d(plan))}`}${notes ? `\n\nThe director reviewed this shot and asks:\n${notes}\n\nCurrent code:\n\`\`\`js\n${s.code}\n\`\`\`` : ''}\n\nWrite draw.`
@@ -694,15 +709,23 @@ async function applyNotes(plan, stage, notes, dir) {
   for (const [k, ls] of Object.entries(notes.lines || {})) {
     const s = plan.shots[+k - 1]; if (!s || !Array.isArray(ls) || !ls.length) continue;
     const nl = ls.map(l => ({ ...l, who: plan.cast[l?.who] ? l.who : byVoice[String(l?.who || '').toLowerCase()] })).filter(l => l?.text && plan.cast[l.who]).map(l => ({ who: l.who, text: l.text, ...(l.tone ? { tone: l.tone } : {}) }));
-    if (nl.length) { s.lines = nl; relined.add(+k); } else log(`director lines for shot ${k} ignored: no speaker is in the cast (${ls.map(l => l?.who).join(', ')})`);
+    if (!nl.length) { log(`director lines for shot ${k} ignored: no speaker is in the cast (${ls.map(l => l?.who).join(', ')})`); continue; }
+    // the writer's line checks (engine/writer.mjs lineNoteErrors): a hard problem keeps the old lines, a soft one is logged
+    const errs = lineNoteErrors(plan.shots, +k - 1, nl, plan.story?.facts || null, Math.floor((seconds - padOf(plan.shots)) * wpsOf(plan))), hard = errs.filter(e => !e.soft);
+    if (hard.length) { log(`director lines for shot ${k} rejected: ${hard.join('; ')}; the old lines are kept`); continue; }
+    if (errs.length) log(`director lines for shot ${k} taken with craft problems: ${errs.join('; ')}`);
+    s.lines = nl; relined.add(+k);
   }
   await voiceAll(plan);
   const saved = JSON.parse(ckLoad('plan.json')); saved.shots.forEach((s, i) => { s.lines = plan.shots[i].lines.map(({ _clip, ...l }) => l); }); ckSave('plan.json', saved); // only the lines change in the plan checkpoint; code lives in kit.js, asset_*.js and shot_*.js
   notes.shots = notes.shots || {};
-  for (const k of relined) { const s = plan.shots[k - 1]; if (/\bh\.cue\(/.test(s.code || '') && !notes.shots[k]) notes.shots[k] = `The lines of this shot changed to: ${s.lines.map(l => `"${l.text}"`).join(' ')}. Keep the staging; time every h.cue(...) to a word the new lines say.`; }
+  // a shot whose lines changed keeps its code while that code still passes against them (makeShot recheck); when it fails (a cue
+  // word no longer said, a label now late) it is redrawn with this note, and a redraw that fails too ships failing (make)
+  const recheck = new Set();
+  for (const k of relined) { const s = plan.shots[k - 1]; if (s.code && !notes.shots[k]) { notes.shots[k] = `The lines of this shot changed to: ${s.lines.map(l => `"${l.text}"`).join(' ')}. Keep the staging; time every h.cue(...) to a word the new lines say.`; recheck.add(k); } }
   if (!NOASSETS) await pool(Object.entries(notes.assets || {}).map(([id, n]) => () => { const a = plan.assets.find(x => x.id === id); if (a && D3MODE() && a.kind === 'character') { log(`director note on 3D character ${id} not applied (the engine builds it from look3d): ${String(n).slice(0, 120)}`); return null; } return a ? (D3MODE() ? makeProp3d(plan, stage, a, n, true) : makeAsset(plan, stage, a, n, true)) : null; }), 8);
   const tl = timeline(plan);
-  await pool(Object.entries(notes.shots || {}).map(([k, n]) => () => (plan.shots[+k - 1] ? makeShot(plan, stage, tl, +k - 1, n).then(() => { if (plan.shots[+k - 1].code) ckSave(`shot_${k}.js`, plan.shots[+k - 1].code); }) : null)), 10);
+  await pool(Object.entries(notes.shots || {}).map(([k, n]) => () => (plan.shots[+k - 1] ? makeShot(plan, stage, tl, +k - 1, n, recheck.has(+k)).then(() => { if (plan.shots[+k - 1].code) ckSave(`shot_${k}.js`, plan.shots[+k - 1].code); }) : null)), 10);
   fs.mkdirSync(dir, { recursive: true }); if (!NOASSETS) await (D3MODE() ? renderSheets3d(plan, stage, dir) : renderSheets(plan, stage, dir));
   return produce(plan, dir);
 }
