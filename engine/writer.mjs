@@ -173,8 +173,9 @@ function evalCalc(calc) {
   const atom = () => {
     const t = T[p++] || {};
     if (t.op === '(') { const a = expr(); if (!take(')')) throw 'a "(" is not closed'; return a; }
-    if (t.n == null) throw t.u ? `the unit "${t.u}" needs a number before it (write a rate as one unit: km/h)` : 'a number is missing';
-    let k = 1, d = Z, u = '', n = t.n;
+    if (t.n == null && !t.u) throw 'a number is missing';
+    let k = 1, d = Z, u = '', n = t.n ?? 1;
+    if (t.u) p--; // a unit alone is 1 of it: "24 h / d" is 24 h per 1 d
     while (T[p]?.u && MAG[T[p].u.toLowerCase()]) n *= MAG[T[p++].u.toLowerCase()];
     if (T[p]?.u) { u = T[p++].u; const x = unitOf(u); if (!x) throw `"${u}" is not a unit the engine knows (m, km, mm, µm, nm, pm, g, kg, t, s, min, h, d, wk, yr, km/h, m/s, mi, ft, lb, au, ly, km2, m3, L)`; [k, d] = x; }
     const q = { n, u, v: n * k, d }; qs.push(q); return { v: q.v, d };
@@ -197,9 +198,17 @@ const shownIn = (r, text) => {
   const tw = perTime(r.d) && timeUnitsIn(text)[0];
   return tu ? `${fmtNum(r.v / (tu.v / tu.n))} ${tu.u}` : tw ? `${fmtNum(r.v * tw[0])} per ${tw[2]}` : `${fmtNum(r.v)} ${SI(r.d)}`;
 };
-// the quantities the non-derived facts state: what a calc may use
+// the quantities a derived fact may use: those of the non-derived facts and of every other derived fact whose own calc holds,
+// found until stable, so a chain (hours, then years, then days at 8 hours a day) works in any order; a failing fact feeds none
 const near = (a, b) => Math.abs(a - b) <= 1e-6 * Math.max(Math.abs(a), Math.abs(b));
-const sheetOf = facts => facts.filter(x => x.source !== 'derived').flatMap(x => quantitiesIn(x.text).map(q => ({ ...q, id: x.id })));
+const stated = xs => xs.flatMap(x => quantitiesIn(x.text).map(q => ({ ...q, id: x.id })));
+function sheetsFor(facts) {
+  const base = stated(facts.filter(x => x.source !== 'derived')), der = facts.filter(x => x.source === 'derived');
+  let ok = new Set();
+  const sheetFor = x => [...base, ...stated(der.filter(y => y !== x && ok.has(y.id)))];
+  for (let i = 0; i <= der.length; i++) { const next = new Set(der.filter(x => !calcErrors(x, sheetFor(x)).length).map(x => x.id)); if (next.size === ok.size) break; ok = next; } // ok only grows
+  return sheetFor;
+}
 // the problems of one derived fact; [] when it holds
 function calcErrors(x, sheet) {
   let r; try { r = evalCalc(x.calc ?? ''); } catch (e) { return [`fact ${x.id} is derived: its "calc" ${JSON.stringify(String(x.calc ?? ''))} does not compute (${e}). Give the arithmetic on the sheet's numbers, each quantity with its unit, for example "1 mm / 100 pm" or "41 / 10000"`]; }
@@ -218,7 +227,7 @@ function calcErrors(x, sheet) {
   }
   if (r.qs.filter(q => !q.u && q.n === 100).length > 1) odd.add('100 more than once');
   if (!odd.size && !r.qs.some(q => q.u || sheet.some(s => near(s.n, q.n) || near(s.raw, q.n)))) odd.add('no number the sheet states');
-  if (odd.size) return [`fact ${x.id}: "calc" ${x.calc} uses ${[...odd].join('; ')}. Check the calc's factors and units: write each quantity with its unit, as a fact on the sheet states it (e.g. "75600 h", "378000 km / (5 km/h)"); the engine converts units and states the result in the text's unit; never write a conversion factor`];
+  if (odd.size) return [`fact ${x.id}: "calc" ${x.calc} uses ${[...odd].join('; ')}. Check the calc's factors and units: write each quantity with its unit, as a fact on the sheet states it (e.g. "75600 h", "378000 km / (5 km/h)"); the engine converts units itself and states the result in the text's unit: to state hours as years, write the hours quantity and put years in the text; no calendar factors needed`];
   const tq = quantitiesIn(x.text), close = (a, b) => Math.abs(a - b) <= Math.abs(b) * 0.05 + 1e-300; // relative only (an absolute margin let 0.00004 pass for 0.00017); 5% as for spoken numbers
   const ok = r.d.some(Boolean) ? tq.some(q => q.d && sameDim(q.d, r.d) && close(q.v, r.v)) || (perTime(r.d) && timeUnitsIn(x.text).some(u => tq.some(q => !q.d && close(q.n, r.v * u[0]))))
     : valuesIn(x.text).some(v => close(v, r.v));
@@ -230,7 +239,7 @@ function calcErrors(x, sheet) {
 // a derived fact for the fact checker and the fixer: its calc, and that it holds (a second rounding of the result, "= 8.62 years"
 // beside a text of 8.63, set off a nitpick fix that split the narration from the tags)
 const calcShown = (x, sheet) => `${x.calc}; ${calcErrors(x, sheet).length ? 'the engine found it does not match its text' : 'the engine computed it, units converted, and it matches its text'}`;
-const calcList = f => { const facts = f?.facts || [], sheet = sheetOf(facts); return facts.map(x => `${x.id}: ${x.text}${x.source === 'derived' ? ` [derived: ${calcShown(x, sheet)}]` : ''}`).join('\n'); };
+const calcList = f => { const facts = f?.facts || [], sheetFor = sheetsFor(facts); return facts.map(x => `${x.id}: ${x.text}${x.source === 'derived' ? ` [derived: ${calcShown(x, sheetFor(x))}]` : ''}`).join('\n'); };
 // a soft problem: asked to be fixed, but an answer left with only soft problems is kept after the last try
 const soft = msg => Object.assign(new String(msg), { soft: true });
 const digitNums = s => (String(s).replace(/(\d),(\d)/g, '$1$2').match(/\d+(?:\.\d+)?/g) || []).map(Number);
@@ -307,8 +316,8 @@ export function factErrors(f, E) {
   // a problem with one fact: dropped from the sheet after the last try, unless it is the payoff fact (then the sheet is retried)
   const bad = (x, msg) => Er.push(x.id === f.payoff ? msg : Object.assign(soft(msg), { drop: x.id }));
   // derived facts: the engine does the arithmetic, with units (M3 once said $41 for 10,000 coins was "about twenty cents each")
-  const sheet = sheetOf(f.facts);
-  for (const x of f.facts.filter(x => x.source === 'derived')) for (const e of calcErrors(x, sheet)) bad(x, e);
+  const sheetFor = sheetsFor(f.facts);
+  for (const x of f.facts.filter(x => x.source === 'derived')) for (const e of calcErrors(x, sheetFor(x))) bad(x, e);
   if (!f.question || !f.answer) Er.push('need "question" and "answer"');
   if (!ids.has(f.payoff)) Er.push(`"payoff" must be the id of the fact that answers the question, got "${f.payoff}"`);
   // a fact the sheet says comes from the brief must have its numbers in the brief (M3 marked an invented present-day value "brief")

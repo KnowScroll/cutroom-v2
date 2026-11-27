@@ -269,6 +269,40 @@ await test('a calendar number is literal; AU is a unit; number words stop at pun
   );
 });
 
+await test('derived facts build on each other in any order; a failing one feeds none; a unit alone is 1 of it', () => {
+  const base = [
+    ...sheet([]).facts,
+    { id: 'c0', text: 'A hiker walks 12 hours a day', source: 'general' } satisfies Fact,
+  ];
+  const hours = derived('c1', 'Walking non-stop takes about 75,600 hours', '378000 km / (5 km/h)');
+  const days = derived('c2', 'At 12 hours a day it takes about 6,300 days', '75600 h / (12 h/d)');
+  assert.deepEqual(errorsOf({ ...sheet([]), facts: [...base, days, hours] }), []);
+
+  const badHours = derived('c1', hours.text, '378000 km / (5 km/h) * 1000');
+  const fed = errorsOf({ ...sheet([]), facts: [...base, days, badHours] });
+  assert.ok(
+    fed.some((e) => e.startsWith('fact c2') && /uses 75600 h, which no other fact/.test(e)),
+    fed.join('\n'),
+  );
+
+  const years = derived('c3', 'That is about 8.6 years', '75600 h / (24 h / d) / (365 d / yr)');
+  const lone = (more: Fact[]) =>
+    errorsFor({ ...sheet([]), facts: [...base, hours, ...more, years] }, 'c3');
+  assert.deepEqual(
+    lone([
+      { id: 'c4', text: 'A day has 24 hours', source: 'general' },
+      { id: 'c5', text: 'A year has 365 days', source: 'general' },
+    ]),
+    [],
+  );
+  const unstated = lone([]);
+  assert.match(unstated[0] ?? '', /uses 24 h, which no other fact on the sheet states/);
+  assert.match(
+    unstated[0] ?? '',
+    /to state hours as years, write the hours quantity and put years in the text/,
+  );
+});
+
 await test('the answer and the yardstick may say only numbers the sheet states', () => {
   const scaled = derived(
     'f6',
