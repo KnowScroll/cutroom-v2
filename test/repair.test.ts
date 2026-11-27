@@ -53,19 +53,30 @@ await test("a review's new line passes the writer's line checks or says why not"
     26,
   );
   assert.deepEqual(hard(untraced), [
-    `"Walking there takes seventeen years." says "seventeen", which no fact on the sheet states: use the sheet's numbers (rounding is fine) or leave the number out`,
+    `"Walking there takes seventeen years." says "seventeen", which no fact on the sheet states: say the sheet's numbers (rounded no further than 2%) or leave the number out`,
   ]);
-  // the sheet's number, rounded, is fine
+  // the sheet's number rounded within 2% is fine; 2-5% off is asked to be rounded closer, not rejected
+  const line = (text: string, brief?: string) =>
+    lineNoteErrors(shots, 1, [narrator(text)], facts, 26, brief);
   assert.deepEqual(
-    lineNoteErrors(
-      shots,
-      1,
-      [narrator('Walking three hundred eighty thousand kilometres takes years.')],
-      facts,
-      26,
-    ).map(String),
+    line('Walking three hundred eighty thousand kilometres takes years.').map(String),
     [],
   );
+  const near = line('Walking three hundred seventy-five thousand kilometres takes years.');
+  assert.deepEqual(hard(near), []);
+  assert.ok(soft(near).some((e) => e.includes('which no fact on the sheet states within 2%')));
+  // a number the request states is a source too; the intake's Goal line is not
+  const brief =
+    'How long would it take to walk to the Moon, twelve hours a day?\nGoal: forty seconds';
+  assert.deepEqual(line('Walking twelve hours a day takes years.', brief).map(String), []);
+  assert.equal(hard(line('Walking twelve hours a day takes years.')).length, 1);
+  assert.equal(hard(line('Walking forty days takes years.', brief)).length, 1);
+  // the spoken-number rules: a figure read out to more digits than people say is asked to be rounded
+  const exact = line(
+    'Walking three hundred eighty-four thousand four hundred kilometres takes years.',
+  );
+  assert.deepEqual(hard(exact), []);
+  assert.ok(soft(exact).some((e) => e.includes('say it rounded the way people say it')));
 
   const digits = hard(
     lineNoteErrors(shots, 1, [narrator('Walking there takes 9 years.')], facts, 26),

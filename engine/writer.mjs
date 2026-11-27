@@ -343,19 +343,21 @@ export function repeatErrors(shots) {
 }
 
 // a review's new lines for shot i (asset_reel.mjs applyNotes) through the script's line checks, so a note cannot bring back what the
-// writer keeps out (findings §P: review-written lines skipped them). Hard: digits, a number no fact on the sheet states, the shot's cue
-// word not said. Soft: a hype word, a line that says again what an earlier shot said, a script pushed off its word budget
-export function lineNoteErrors(shots, i, lines, facts, budget) {
-  const now = shots.map((s, j) => (j === i ? { ...s, lines } : s)), cue = shots[i]?.cue?.word, Er = [];
+// writer keeps out (findings §P: review-written lines skipped them), as scriptErrors runs them. Hard: digits, a number neither the
+// sheet nor the request states (more than 5% off), the shot's cue word not said. Soft: a number rounded 2-5% off, a hype word, a
+// spoken-number rule (spokenErrors) or a repeat of an earlier shot that the new lines bring in, a script pushed off its word budget
+export function lineNoteErrors(shots, i, lines, facts, budget, brief = '') {
+  const now = shots.map((s, j) => (j === i ? { ...s, lines } : s)), cue = shots[i]?.cue?.word, Er = [], src = facts && withRequest(facts, brief);
+  const fresh = check => { const was = new Set(check(shots).map(String)); return check(now).filter(e => !was.has(String(e))); };
   for (const l of lines) {
     if (/[0-9]/.test(l.text)) Er.push(`"${l.text}" has digits; write numbers as words (${spellDigits(l.text)})`);
-    const n = facts ? untraced(l.text, facts) : [];
-    if (n.length) Er.push(`"${l.text}" says ${quoted(n)}, which no fact on the sheet states: use the sheet's numbers (rounding is fine) or leave the number out`);
+    const far = src ? untraced(l.text, src) : [], near = src ? untraced(l.text, src, SPOKEN).filter(x => !far.includes(x)) : [];
+    if (far.length) Er.push(`"${l.text}" says ${quoted(far)}, which no fact on the sheet states: say the sheet's numbers (rounded no further than 2%) or leave the number out`);
+    if (near.length) Er.push(soft(`"${l.text}" says ${quoted(near)}, which no fact on the sheet states within 2%: round no further than 2% (a stated comparison must stay true)`));
     if (l.who === 'narrator' && HYPE.test(l.text)) Er.push(soft(`"${l.text.match(HYPE)[0]}" is a hype word; say the concrete thing instead`));
   }
   if (cue && !lines.some(l => says(l.text, cue))) Er.push(`the lines never say the shot's cue word "${cue}", which its picture change lands on: keep that word`);
-  const was = new Set(repeatErrors(shots).map(String));
-  Er.push(...repeatErrors(now).filter(e => !was.has(String(e))));
+  Er.push(...fresh(repeatErrors), ...(src ? fresh(ss => spokenErrors(ss, src)) : []));
   const count = ss => ss.reduce((a, s) => a + (s.lines || []).reduce((b, l) => b + words(l.text), 0), 0), before = count(shots), after = count(now);
   if (budget > 0 && after > before && after > budget * 1.05) Er.push(soft(`the script grows to ${after} words, over its budget of about ${budget}: the reel runs long`));
   if (budget > 0 && after < before && after < budget * 0.8) Er.push(soft(`the script shrinks to ${after} words, under 80% of its budget of about ${budget}: the reel runs short`));

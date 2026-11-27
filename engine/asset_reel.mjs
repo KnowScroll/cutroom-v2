@@ -713,7 +713,7 @@ async function applyNotes(plan, stage, notes, dir) {
     const nl = ls.map(l => ({ ...l, who: plan.cast[l?.who] ? l.who : byVoice[String(l?.who || '').toLowerCase()] })).filter(l => l?.text && plan.cast[l.who]).map(l => ({ who: l.who, text: l.text, ...(l.tone ? { tone: l.tone } : {}) }));
     if (!nl.length) { log(`director lines for shot ${k} ignored: no speaker is in the cast (${ls.map(l => l?.who).join(', ')})`); continue; }
     // the writer's line checks (engine/writer.mjs lineNoteErrors): a hard problem keeps the old lines, a soft one is logged
-    const errs = lineNoteErrors(plan.shots, +k - 1, nl, plan.story?.facts || null, Math.floor((seconds - padOf(plan.shots)) * wpsOf(plan))), hard = errs.filter(e => !e.soft);
+    const errs = lineNoteErrors(plan.shots, +k - 1, nl, plan.story?.facts || null, Math.floor((seconds - padOf(plan.shots)) * wpsOf(plan)), brief), hard = errs.filter(e => !e.soft);
     if (hard.length) { log(`director lines for shot ${k} rejected: ${hard.join('; ')}; the old lines are kept`); continue; }
     if (errs.length) log(`director lines for shot ${k} taken with craft problems: ${errs.join('; ')}`);
     s.lines = nl; relined.add(+k);

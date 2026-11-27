@@ -33,13 +33,15 @@ export function factErrors(
 export function numbersNotInSource(src: string, texts: string[]): string[];
 // the brief without the intake's Audience / Goal / Tone lines
 export function requestOf(brief: string): string;
-// a review's new lines for shot i through the script's line checks; a problem without `soft` rejects them
+// a review's new lines for shot i through the script's line checks (numbers against the sheet and the request in `brief`); a
+// problem without `soft` rejects them
 export function lineNoteErrors(
   shots: { lines?: Line[]; cue?: { word?: string } }[],
   i: number,
   lines: Line[],
   facts: { text: string }[] | null,
   budget: number,
+  brief?: string,
 ): Problem[];
 
 export interface Message {
