@@ -28,6 +28,8 @@ Voice refusals not counted as cuts (#18): 4 eleven-v4 HTTP 402 invocations; thei
 
 | # | date | issue | purpose | voice | cost USD | run folder |
 |---|---|---|---|---|---|---|
+| 1 | 2026-11-27 | #45 | `--until script` atom brief (code before review fixes) | none (script only) | 0.0205 | var/runs/q-t1-atom |
+| 2 | 2026-11-27 | #45 | `--until script` Moon brief on final PR #65 code (orchestrator) | none (script only) | (running) | var/runs/q-t1-moon |
 | 1 | 2026-11-27 | #2 | `--until script` import check | none | 0.0289 | var/runs/import-check |
 | 2 | 2026-11-27 | #2 | full reel `--rounds 0` (resumed from script) | heygen (4.66 st) | 0.0537 (folder total 0.0826) | var/runs/import-check |
 | 3 | 2026-11-27 | #9 | `--apply-notes --cut 2`, attempt 1 (shot-5 note rejected by validator; kept as reel-v2-attempt1) | heygen (4.72 st) | 0.0153 | var/runs/e2-check |
@@ -88,7 +90,8 @@ QC0 items done directly: patched working copies reset (Windows globe-zoom-explai
 ### In flight
 
 - Merged: #44 (PR #61, c1ceb02, QC0 done), #58 (PR #62, 8b23d5c; both vars cleaned, WSL clone at 8b23d5c), #54 (PR #64, 5eaf742).
-- Running: #45 T1 (opus). In review: #48 T5 (PR #63; H7 holds: free re-render recipe on #48).
+- Merged also: #48 (PR #63, cced615; H7 holds: free re-render recipe on #48).
+- In review: #45 T1 (PR #65). Running: #50 T6 (opus; started early: its asset_reel.mjs regions are disjoint from the writer lane).
 - Scope moves: line-note checks from #54 to #49 (engine applyNotes reuses the writer checks).
 
 ### Real cuts, phase Q (budget 80)
