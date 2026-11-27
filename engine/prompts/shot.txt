@@ -30,7 +30,7 @@ WHAT GOOD LOOKS LIKE
 Helpers (h): h.asset, h.anchor, h.mouth, h.talking, h.line(i), h.cue(word, n), h.clamp, h.lerp, h.easeOut, h.easeIn, h.easeInOut, h.easeBack, h.rng(seed), h.rr, h.poly, h.mix(colourA, colourB, t) (colour strings only: hex, rgb or rgba; to tint a gradient, mix its colour stops), h.rgba, h.wrap, h.speedlines(cx, cy, lt, colour), h.burst(x, y, k, colour) radial burst k seconds after an impact.
 
 Placement helpers (a thing is what h.asset returned, or any {x0, y0, x1, y1} box you drew):
-- h.label(thing, side, gap): where the thing's name tag goes, gap px (default 30) 'above' (default), 'below', 'left' or 'right' of its drawn part, inside x 60 to 1020: kit.tag(ctx, 'Earth', ...h.label(earth)) stays with the thing as it moves.
+- h.label(thing, side, gap): where the thing's name tag goes, gap px (default 30) 'above' (default), 'below', 'left' or 'right' of its drawn part, inside x 60 to 1020: kit.title(ctx, 'EARTH', ...h.label(earth)) stays with the thing as it moves.
 - h.measure(a, b): a measuring line from a's edge to b's edge, {from: [x, y], to: [x, y], mid: [x, y], length}; h.measure(a) spans a's own width. Draw the line from from to to and put its number at mid.
 - h.toScale(sizes, px): real sizes at one true scale, the largest at px: h.toScale([12742, 3474], 500) gives [500, 136.3]. Draw each thing at its size; one under 3 px is a bright dot with a ring around it at its true place, never enlarged alone.
 

@@ -23,6 +23,12 @@ declare const HK: {
   toScale: (sizes: number[], px: number) => number[];
 };
 declare function setup(tl: unknown): Promise<boolean>;
+declare function render(t: number, opts: { still: boolean }): void;
+declare let TRACK: {
+  texts: unknown[];
+  assets: unknown[];
+  bubbles?: { who: string; x0: number }[];
+} | null;
 
 const stage: Stage = await openStage();
 const earth = body('earth', '#3a7bd5');
@@ -164,7 +170,7 @@ await test('the reel opens on its subject: waiting for the last word is rejected
   );
 });
 
-await test('speech bubbles move aside to miss each other, and are rejected when they cannot', async () => {
+await test('speech bubbles lean apart to miss each other, and are rejected when they cannot', async () => {
   const lines = [
     { who: 'left', text: 'We want our own king.', start: 0.3, end: 3.2 },
     { who: 'right', text: 'You cannot have one.', start: 0.5, end: 3.4 },
@@ -181,6 +187,45 @@ await test('speech bubbles move aside to miss each other, and are rejected when 
   assert.ok(!has(apart.errors, /is not anchored/), 'who anchors the speaker');
   const close = await validateShot(stage, { code: shot(40), assets: [ball], lines, dur: 4 });
   assert.ok(has(close.errors, clash), close.errors.join(' | '));
+  // one line after the other: each bubble keeps its place while the other one comes and goes
+  const turns = [
+    { who: 'left', text: 'We want our own king.', start: 0.3, end: 2.0 },
+    { who: 'right', text: 'You cannot have one.', start: 2.1, end: 3.4 },
+  ];
+  const at = await stage.page.evaluate(
+    async (tl, times) => {
+      await setup(tl);
+      return times.map((t) => {
+        TRACK = { texts: [], assets: [] };
+        render(t, { still: true });
+        const b = TRACK.bubbles ?? [];
+        TRACK = null;
+        return Object.fromEntries(b.map((x) => [x.who, Math.round(x.x0)]));
+      });
+    },
+    {
+      W: 1080,
+      H: 1920,
+      kit: KIT,
+      assets: [ball],
+      shots: [{ start: 0, dur: 4, lines: turns, code: shot(250) }],
+    },
+    [1.0, 2.15, 2.25, 3.0],
+  );
+  assert.equal(
+    at[1]?.['left'],
+    at[0]?.['left'],
+    `the left bubble stays when the right one appears: ${JSON.stringify(at)}`,
+  );
+  assert.equal(
+    at[3]?.['right'],
+    at[1]?.['right'],
+    `the right bubble stays when the left one goes: ${JSON.stringify(at)}`,
+  );
+  assert.ok(
+    at[1]?.['right'] !== undefined && at[2]?.['left'] !== undefined,
+    'both bubbles show at 2.15 and 2.25 s',
+  );
 });
 
 await test('h.asset returns the drawn box and hand points; the label, measure and true-scale helpers use them', async () => {
