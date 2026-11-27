@@ -40,6 +40,8 @@ Voice refusals not counted as cuts (#18): 4 eleven-v4 HTTP 402 invocations; thei
 | 10 | 2026-11-27 | #45 | `--until script` Venus on 9875f2e: premise inverted (reference lacks the 243-day spin: T2) | none | 0.0342 | var/runs/q-t1-venus |
 | 11 | 2026-11-27 | #50 | full cut on PR #66 (Moon): stopped at voice, heygen free HTTP 429 free-models-per-day | heygen (refused) | ~0.03 (script stage) | var/runs/q-t6-moon |
 | 12 | 2026-11-27 | #50 | cut on PR #66 from the old Moon script (cached voice, new plan/assets/shots): 4 first-attempt shot rejections, all real; no overlaps | heygen (cached) | 0.1114 | var/runs/q-t6-moon2 |
+| 13 | 2026-11-27 | #46 | `--until script` Venus on PR #67: premise kept (243-day spin vs 224.7-day year) | none | 0.0467 | var/runs/q-t2-venus |
+| 14 | 2026-11-27 | #46 | `--until script` Norway on PR #67: right article, 1905 events in order | none | 0.0712 | var/runs/q-t2-norway |
 | 1 | 2026-11-27 | #2 | `--until script` import check | none | 0.0289 | var/runs/import-check |
 | 2 | 2026-11-27 | #2 | full reel `--rounds 0` (resumed from script) | heygen (4.66 st) | 0.0537 (folder total 0.0826) | var/runs/import-check |
 | 3 | 2026-11-27 | #9 | `--apply-notes --cut 2`, attempt 1 (shot-5 note rejected by validator; kept as reel-v2-attempt1) | heygen (4.72 st) | 0.0153 | var/runs/e2-check |
@@ -103,8 +105,8 @@ QC0 items done directly: patched working copies reset (Windows globe-zoom-explai
 
 - Merged: #44 (PR #61, c1ceb02, QC0 done), #58 (PR #62, 8b23d5c; both vars cleaned, WSL clone at 8b23d5c), #54 (PR #64, 5eaf742).
 - Merged also: #48 (PR #63, cced615; H7 holds: free re-render recipe on #48), #45 (PR #65, 5290aff; 9 script cuts to get the maths right).
-- Merged also: #50 (PR #66, e2681fd).
-- Running: #47 T3 (writer), #51 T4 (stage lane; the same agent then does #52 T7 and #53 T8, one PR each). In review: #46 T2 (PR #67; orchestrator Venus/Norway script cuts running).
+- Merged also: #50 (PR #66, e2681fd), #46 (PR #67, 172e613).
+- Running: #47 T3 (writer), #51 T4 (stage lane; the same agent then does #52 T7 and #53 T8, one PR each). 
 - Scope moves: line-note checks from #54 to #49 (engine applyNotes reuses the writer checks).
 
 ### Real cuts, phase Q (budget 80)
