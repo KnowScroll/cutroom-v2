@@ -4,7 +4,7 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 
 ## State
 
-2026-11-27: preparation done (docs, labels, milestones, issues #1-#18). Implementation started. #1 merged (PR #19, 3107663). #4 merged (PR #20, 8dbef11). #3 merged (PR #21, 482a73b). #2 merged (PR #22, e0cbf2c). #12 merged (PR #23, fbdb64a). #6 merged (PR #24, 392bb28). #9 merged (PR #26, 3713298). #10 merged (PR #27, ec301b7). #5 merged (PR #25, 8fd890c). #16 merged (PR #28, 4e5b00b). #7 merged (PR #29, adc2cb2). #8 merged (PR #30, 253126b): **CP1 done** (recorded in #8). #11 merged (PR #31, 51d9c19): **CP2 done** (recorded in #11). #13 merged (PR #32, 2a63883): **CP3a done** (recorded in #13). #14 merged (PR #33, 04f16eb). #15 merged (PR #34, 0185057): **CP3b done** (recorded in #15). Session interrupted once (2026-11-27); #5, #6, #9, #10 resumed from their worktrees.
+2026-11-27: preparation done (docs, labels, milestones, issues #1-#18). Implementation started. #1 merged (PR #19, 3107663). #4 merged (PR #20, 8dbef11). #3 merged (PR #21, 482a73b). #2 merged (PR #22, e0cbf2c). #12 merged (PR #23, fbdb64a). #6 merged (PR #24, 392bb28). #9 merged (PR #26, 3713298). #10 merged (PR #27, ec301b7). #5 merged (PR #25, 8fd890c). #16 merged (PR #28, 4e5b00b). #7 merged (PR #29, adc2cb2). #8 merged (PR #30, 253126b): **CP1 done** (recorded in #8). #11 merged (PR #31, 51d9c19): **CP2 done** (recorded in #11). #13 merged (PR #32, 2a63883): **CP3a done** (recorded in #13). #14 merged (PR #33, 04f16eb). #15 merged (PR #34, 0185057): **CP3b done** (recorded in #15). #17 merged (PR #35, 5445b0e): **CP4 done** (recorded in #17). Session interrupted once (2026-11-27); #5, #6, #9, #10 resumed from their worktrees.
 
 ## Waiting on the user
 
@@ -14,13 +14,13 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 - [ ] Later, not blocking: look at #13's calibration table (posted: https://github.com/KnowScroll/cutroom-v2/issues/13#issuecomment-7206270682).
 - [x] #17: the user approved installing Node 22, FFmpeg and Chrome in WSL Ubuntu (2026-11-27).
 
-- [ ] Budget (decide before #18): 23 of 40 cuts used (~$1.9). Projection: CP3b ~4, CP4 ~4, CP5 5 jobs x up to 4 = 20 -> ~43, over 40. Cuts are cheap (~$0.04-0.15 each with the free voice). Orchestrator recommendation: raise the cap to 55 cuts. Until the user answers, work continues; the orchestrator stops before cut 40 if no answer.
+- [ ] Budget (decide before #18): 23 of 40 cuts used (~$1.9). CP5 needs 5 jobs x up to 4 = 20 -> ~43, over 40 (cuts counted as produced reel-v<n>; voice refusals logged separately). Cuts are cheap (~$0.04-0.15 each with the free voice). Orchestrator recommendation: raise the cap to 55 cuts. Until the user answers, work continues; the orchestrator stops before cut 40 if no answer.
 
 ## In flight
 
 | issue | agent / model | branch or worktree | started | note |
 |---|---|---|---|---|
-| #17 | implementer / sonnet | claude/17-linux (worktree + WSL clone ~/cutroom-v2) | 2026-11-27 | PR #35 in review; CP4 job done |
+| #18 | acceptance / opus | WSL ~/cutroom-v2 (main), var ~/cutroom-var | 2026-11-27 | 5 API jobs, production voice list; budget guard: a job only if used + 4 <= 40 |
 
 ## Real cuts (budget: 40 cuts with model calls, docs/plan.md)
 
@@ -54,4 +54,4 @@ Free re-renders (no model calls) not counted: #16 radio-lp-e4 resume (fonts-radi
 
 ## Next action
 
-#17 in flight (CP4). Then #18 (CP5; budget decision first).
+#18 in flight (CP5). Defects it finds become issues, fixed before #18 closes. Then PROGRESS complete + report to the user.
