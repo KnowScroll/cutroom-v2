@@ -17,6 +17,7 @@ import { voiceModel, normVoice, voiceGuide, speak, voiceCacheKey, voiceRate, rec
 import { createWriter, words, numWords, DEVICES, numbersNotInSource, requestOf, padding, shotTimes, silenceOf, rateMoved } from './writer.mjs';
 import { findPhotos, snapQuote } from './photos.mjs';
 import { fetchArticles, fetchPassages } from './reference.mjs';
+import { placeErrors, subjectErrors } from './plan_checks.mjs';
 
 const MODEL = 'MiniMax-M3', PRICE = { in: 0.30, cached: 0.06, out: 1.20 };
 const STAGE = pathToFileURL(path.join(HERE, 'engine', 'stage_asset.html')).href;
@@ -103,50 +104,6 @@ async function addArticles(needs) {
     const have = `${REF}${add}`; if (title) add += words.length ? await fetchPassages(title, words, { have }) : await fetchArticles([title], { have, firstMax: 0 });
   }
   add = add.trim(); if (add) { REF = `${REF}\n\n${add}`.trim(); ckSave('reference.txt', REF); } return add.length;
-}
-// ---------- places (template check "places: wikipedia"): real coordinates and distances for globe reels ----------
-// M3 misremembers coordinates (it put Dubai at 51.5 E, which is Doha) and distances. Every MARKER, LINE end and RING centre in the
-// shot ideas ("MARKER at Name [lon, lat]") is looked up on Wikipedia, and a LINE's km counter is compared with the great-circle distance.
-const PLACES = {};
-async function wikiCoords(name) {
-  if (name in PLACES) return PLACES[name];
-  let c = null;
-  try {
-    const r = await fetch(`https://en.wikipedia.org/w/api.php?action=query&prop=coordinates&redirects=1&format=json&titles=${encodeURIComponent(name)}`, { headers: { 'User-Agent': 'fastreel-reference/1.0' }, signal: AbortSignal.timeout(15000) });
-    const page = Object.values((await r.json()).query?.pages || {})[0], k = page?.coordinates?.[0];
-    if (k) c = { lon: k.lon, lat: k.lat, title: page.title };
-  } catch { }
-  return (PLACES[name] = c);
-}
-const gcKm = (lo1, la1, lo2, la2) => { const d = Math.PI / 180, a = Math.sin((la2 - la1) * d / 2) ** 2 + Math.cos(la1 * d) * Math.cos(la2 * d) * Math.sin((lo2 - lo1) * d / 2) ** 2; return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(a))); };
-const placeName = s => { let n = String(s).replace(/^(the)\s+/i, '').replace(/[“”"']/g, '').trim(); if (n === n.toUpperCase()) n = n.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()); return n; };
-async function placeErrors(p) {
-  const E = [], NUM = '(-?\\d+(?:\\.\\d+)?)', PT = `\\[\\s*${NUM}\\s*,\\s*${NUM}\\s*\\]`, NAME = '([^\\[\\];:"]{2,40}?)';
-  // named points: "MARKER at Name [lon, lat]", "around Name [..]", "LINE from Name [..] to Name [..]", and LABEL "NAME" at [lon, lat]
-  const AT = new RegExp(`(?:MARKER at|around|LINE from|to)\\s+${NAME}\\s*${PT}`, 'g'), LAB = new RegExp(`LABEL\\s+"([^"]{2,40})"\\s+at\\s+(?:[^\\[\\];:"]{0,40}?)${PT}`, 'g');
-  const LINE = new RegExp(`LINE from\\s+(?:${NAME}\\s*)?${PT}\\s*to\\s+(?:${NAME}\\s*)?${PT}`, 'g');
-  const fmt = n => (Math.round(n * 10) / 10).toFixed(1), key = (lon, lat) => `${+lon},${+lat}`, atPoint = {}, reported = new Set();
-  const check = async (i, raw, lon, lat, tol) => {
-    const name = placeName(raw); if (/^(lon|lat|longitude|latitude|\d)/i.test(name)) return;
-    const w = await wikiCoords(name); if (!w) return;
-    atPoint[key(lon, lat)] = { ...w, name };
-    const off = gcKm(lon, lat, w.lon, w.lat);
-    if (off > tol && !reported.has(name + key(lon, lat))) { reported.add(name + key(lon, lat)); E.push(`shot ${i + 1}: "${name}" is at [${fmt(w.lon)}, ${fmt(w.lat)}] (longitude, latitude; Wikipedia "${w.title}"), not [${lon}, ${lat}] (${Math.round(off)} km off). Use the real coordinates everywhere: overlays, cameras, counters and lines`); }
-  };
-  for (const [i, s] of p.shots.entries()) {
-    const idea = String(s.idea || '');
-    for (const m of idea.matchAll(AT)) await check(i, m[1], +m[2], +m[3], 80);
-    for (const m of idea.matchAll(LAB)) await check(i, m[1], +m[2], +m[3], 250); // a label may sit beside its place
-  }
-  for (const [i, s] of p.shots.entries()) { // a LINE's km counter against the great-circle distance between its (real) ends
-    const idea = String(s.idea || '');
-    for (const m of idea.matchAll(LINE)) {
-      const end = (n, lon, lat) => (n && PLACES[placeName(n)]) || atPoint[key(lon, lat)] || { lon: +lon, lat: +lat, name: n ? placeName(n) : `[${lon}, ${lat}]` };
-      const a = end(m[1], m[2], m[3]), b = end(m[4], m[5], m[6]), km = gcKm(a.lon, a.lat, b.lon, b.lat), c = idea.match(/COUNTER\s+[a-z ]*?\s*([\d][\d,]*(?:\.\d+)?)\s*KM\b/i);
-      if (c && km > 1) { const said = +c[1].replace(/,/g, ''); if (Math.abs(said - km) / km > 0.03) E.push(`shot ${i + 1}: the great-circle distance from ${a.name || a.title} to ${b.name || b.title} is ${Math.round(km).toLocaleString('en-US')} km, but its counter says ${c[1]} KM. Use ${Math.round(km).toLocaleString('en-US')} KM on the counter and "${numWords(Math.round(km)) || 'that number'}" kilometres in the line`); }
-    }
-  }
-  return E;
 }
 let REF = '';
 const refBlock = () => (REF ? `\n\nREFERENCE (Wikipedia). It wins over your memory: every name, position, size, proportion, shape, date and step in your lines and asset descriptions must agree with it, and a procedure uses its real steps in its order.\n${REF}` : '');
@@ -236,9 +193,25 @@ function checkProduction(p, story) {
     if (!s?.idea) E.push(`shot ${i + 1} needs an "idea"`);
     (s?.uses || []).forEach(u => { if (!ids.has(u)) E.push(`shot ${i + 1} uses unknown asset "${u}"`); });
     if (!bgs.has(s?.background)) E.push(`shot ${i + 1} uses unknown background "${s?.background}"; "background" must be exactly the "name" of one of style.backgrounds: ${[...bgs].map(n => JSON.stringify(n)).join(', ')}`);
+    if (!['how', 'start', 'end'].every(k => typeof s?.demo?.[k] === 'string' && s.demo[k].trim())) E.push(`shot ${i + 1} needs "demo": {"how", "start", "end"}: how its picture shows its point, its first frame and its last frame`);
+    if (!D3MODE() && i < p.shots.length - 1) E.push(...carryErrors(s?.carry, i, ids));
   });
   for (const [id, c] of Object.entries(p.cast || {})) if (c?.asset && !ids.has(c.asset)) E.push(`cast "${id}" is shown by unknown asset "${c.asset}"`);
+  E.push(...subjectErrors(p, brief, { d3: D3MODE() }));
   if (PHOTOMODE()) E.push(...evidenceErrors(p, story));
+  return E;
+}
+// a shot's "carry": what is on screen at its end and still there, unchanged, when the next shot starts (validateShot checks both sides)
+function carryErrors(carry, i, ids) {
+  if (carry == null) return []; if (!Array.isArray(carry)) return [`shot ${i + 1}: "carry" is a list (empty when nothing carries over)`];
+  const E = [], num = v => typeof v === 'number' && Number.isFinite(v);
+  for (const c of carry) {
+    if (c?.label != null) { if (!String(c.label).trim() || !num(c.x) || !num(c.y)) E.push(`shot ${i + 1} carry: a label needs its exact words and numbers x, y (its centre on screen), got ${JSON.stringify(c)}`); continue; }
+    if (!ids.has(c?.thing)) { E.push(`shot ${i + 1} carry: "thing" must be an asset id (${[...ids].join(', ')}) or the entry a "label", got ${JSON.stringify(c?.thing)}`); continue; }
+    if (!num(c.x) || !num(c.y) || !(num(c.scale) && c.scale > 0)) E.push(`shot ${i + 1} carry "${c.thing}" needs numbers x, y (its centre on screen) and scale (h.asset's scale)`);
+    if (c.look != null && (typeof c.look !== 'object' || Array.isArray(c.look))) E.push(`shot ${i + 1} carry "${c.thing}": "look" is an object of its params, such as {"pose": "wave"}`);
+  }
+  for (const c of carry) if (c?.alpha != null && !(num(c.alpha) && c.alpha > 0 && c.alpha <= 1)) E.push(`shot ${i + 1} carry "${c.thing ?? c.label}": "alpha" is its opacity, above 0 and at most 1 (leave it out for 1)`);
   return E;
 }
 // photos and quotes of a documentary plan; quotes are snapped to the reference's own words here (p.quotes is fixed in place)
@@ -335,9 +308,10 @@ async function productionPlan(story) {
 // the shots keep the script's line objects (the voice may already be attaching its clips to them)
 function mergePlan(story, p) {
   const cast = Object.fromEntries(Object.entries(story.cast).map(([id, c]) => [id, { voice: normVoice(VM, c?.voice, id === 'narrator'), asset: id === 'narrator' ? null : (p.cast?.[id]?.asset || null) }]));
-  const shots = story.shots.map((s, i) => { const q = p.shots[i]; return { ...s, idea: q.idea, background: q.background, uses: q.uses || [], sfx: (q.sfx || []).filter(f => SFX.includes(f.kind) && Number.isInteger(f.line) && f.line < s.lines.length) }; });
+  const shots = story.shots.map((s, i) => { const q = p.shots[i]; return { ...s, idea: q.idea, background: q.background, uses: q.uses || [], sfx: (q.sfx || []).filter(f => SFX.includes(f.kind) && Number.isInteger(f.line) && f.line < s.lines.length),
+    ...(q.demo ? { demo: q.demo } : {}), ...(!D3MODE() && i < p.shots.length - 1 && q.carry?.length ? { carry: q.carry } : {}) }; });
   const evidence = PHOTOMODE() ? { photos: (p.photos || []).map(x => ({ id: x.id, shot: +x.shot, shows: x.shows, search: x.search, also: x.also, label: x.label })), quotes: (p.quotes || []).map(q => ({ id: q.id, shot: +q.shot, text: q.text, mark: q.mark, source: q.source })) } : {};
-  return { title: story.title, music: story.music, ...(story.question ? { story: { question: story.question, answer: story.answer, payoff: story.payoff, facts: story.facts } } : {}), style: p.style, cast, assets: p.assets, shots, ...evidence };
+  return { title: story.title, music: story.music, ...(story.question ? { story: { question: story.question, answer: story.answer, payoff: story.payoff, facts: story.facts } } : {}), subject: p.subject, style: p.style, cast, assets: p.assets, shots, ...evidence };
 }
 const planJson = plan => JSON.stringify(plan, (k, v) => (k === '_clip' ? undefined : v), 2);
 
@@ -429,7 +403,8 @@ function timeline(plan) {
     });
     const o = { start: +t.toFixed(3), dur: +st.dur.toFixed(3), lines, code: s.code, background: s.background, ...(s.cue?.word ? { cue: s.cue.word } : {}) }; t += o.dur; return o;
   });
-  return { W: 1080, H: 1920, fps: 30, total: +t.toFixed(3), pixel: +checks()['pixel grid'] || 0, captions: checks().captions || '', kit: plan.kit, assets: plan.assets.map(a => ({ id: a.id, w: a.w, h: a.h, code: a.code, poses: a.poses ? a.poses.map(p => p.name) : null })), shots, ...(D3MODE() ? { d3: d3Data(plan) } : {}), ...(PHOTOMODE() ? { photos: photoData(plan), quotes: plan.quotes || [] } : {}) };
+  // "host zoom: 0.03" in a template's checks: the host's slow push-in over each shot (stage_asset.html render; off by default)
+  return { W: 1080, H: 1920, fps: 30, total: +t.toFixed(3), pixel: +checks()['pixel grid'] || 0, captions: checks().captions || '', zoom: +checks()['host zoom'] || 0, kit: plan.kit, assets: plan.assets.map(a => ({ id: a.id, w: a.w, h: a.h, code: a.code, poses: a.poses ? a.poses.map(p => p.name) : null })), shots, ...(D3MODE() ? { d3: d3Data(plan) } : {}), ...(PHOTOMODE() ? { photos: photoData(plan), quotes: plan.quotes || [] } : {}) };
 }
 // the found photos as JPEG bytes for the stage (it never touches the network), read once
 const PHOTO_B64 = {};
@@ -450,8 +425,13 @@ const kitApi3d = plan => `Style kit API (kit), for the 2D layer drawn AFTER h.d3
 const cast3d = plan => plan.assets.map(a => a.kind === 'character' ? { actor: a.id, description: a.description, ...(LPMODE() ? {} : { roles: Object.keys(a.look3d?.roles || {}) }) } : { thing: a.id, description: a.description, size_m: a.size, ...(LPMODE() ? { inside_parts: a.parts } : {}) });
 const kitApiLp = plan => `Style kit API (kit), for the 2D layer drawn AFTER h.d3.render(): kit.palette = ${JSON.stringify(plan.style.palette)}; kit.header(ctx, n, total, text, {k}) draws the step header at the top left ("n/total" in the accent colour, then the text in white with a dark outline, wrapped to two lines; total 0 shows n alone); kit.title(ctx, text, x, y, {size, color, align, k}) draws outlined text centred on x, y; kit.panel(ctx, x, y, w, hgt) draws a wooden sign board (only with text on it); k = seconds since the text appeared (leave it out to simply show it). Sets (h.d3.set): ${plan.style.backgrounds.map(b => `"${b.name}" (${b.set?.kind || 'studio'})`).join(', ')}.`;
 // what the script asks of a shot (writer): the point the picture must make, its device, the word its change lands on, its silent hold
-const shotStory = s => [s.point && `Point (what the viewer must understand from the picture): ${s.point}`, s.device && `Device: ${s.device}${DEVICES[s.device] ? ` (${DEVICES[s.device]})` : ''}`,
-  s.cue?.word && `Cue: on the word "${s.cue.word}" (h.cue(${JSON.stringify(s.cue.word)})): ${s.cue.show || ''}`, s.hold && `Hold: ${s.hold} s of silent screen time after the last line: the payoff stays on screen and keeps moving gently`].filter(Boolean).map(x => `\n${x}`).join('');
+// and the plan's demonstration (first and last frame) and what carries over each cut (prev: the shot before)
+const carried = list => (list || []).map(c => `${c.label != null ? `the label "${c.label}" centred at x ${c.x}, y ${c.y}` : `h.asset('${c.thing}', ${c.x}, ${c.y}, ${c.scale}${c.look && Object.keys(c.look).length ? `, ${JSON.stringify(c.look)}` : ''})`}${c.alpha != null && c.alpha < 1 ? ` at opacity ${c.alpha}` : ''}`).join('; ');
+const shotStory = (s, prev) => [s.point && `Point (the claim the picture must make the viewer understand): ${s.point}`, s.device && `Device: ${s.device}${DEVICES[s.device] ? ` (${DEVICES[s.device]})` : ''}`,
+  s.demo && `Demonstration: ${s.demo.how}\nFirst frame: ${s.demo.start}\nLast frame: ${s.demo.end}`,
+  prev?.carry?.length && `Carried in from the shot before (it ends this way, so the cut must not jump): your first frame (lt = 0) already shows ${carried(prev.carry)}, in full, with no entrance; change them only after that, as the storyboard says. x, y and scale are on screen, after any camera move`,
+  s.carry?.length && `Carried into the next shot (it starts this way): your last frame shows ${carried(s.carry)}, in full. x, y and scale are on screen, after any camera move`,
+  s.cue?.word && `Cue: on the word "${s.cue.word}" (h.cue(${JSON.stringify(s.cue.word)})): ${s.cue.show || ''}`, s.hold && `Hold: ${s.hold} s of silent screen time after the last line: the payoff stays on screen, still and readable`].filter(Boolean).map(x => `\n${x}`).join('');
 // the narrator's sentences of a shot with times from the timeline's lines (the same split as h.d3.sentences() on the stage)
 function sentencesOfShot(sh) {
   const out = [];
@@ -616,7 +596,7 @@ async function makeShot(plan, stage, tl, i, notes = null) {
     const ck = checks(), hero = NOASSETS ? { id: null } : plan.assets[0];
     const heroBox = hero.code && !D3MODE() ? (await page.evaluate((code, spec, kit) => window.validateAsset(code, spec, kit).box, hero.code, hero, plan.kit)) : null;
     // "subject size: off": shots may hold a quote, a map or a number instead of an asset (documentary reels), so no subject size or opening rule
-    const sc = { hero: ck['subject size'] === 'off' ? null : hero.id, heroBox, acting: +ck['acting beat'] || 0, heroSize: range(ck['hero size']), heroWidth: range(ck['hero width']), heroCentreY: range(ck['hero centre y']), labels: ck.labels || null, uses: s.uses || [], scenery: plan.assets.filter(a => a.kind === 'scenery').map(a => a.id) };
+    const sc = { hero: ck['subject size'] === 'off' ? null : hero.id, heroBox, acting: +ck['acting beat'] || 0, heroSize: range(ck['hero size']), heroWidth: range(ck['hero width']), heroCentreY: range(ck['hero centre y']), labels: ck.labels || null, uses: s.uses || [], scenery: plan.assets.filter(a => a.kind === 'scenery').map(a => a.id), carryIn: plan.shots[i - 1]?.carry || [], carryOut: s.carry || [] };
     const validate0 = c => page.evaluate((code, shot, t, k) => window.validateShot(code, shot, t, k), c, { ...sh, code: null }, { ...tl, shots: [], photos: undefined }, sc);
     // "numbers: reference": every number written on screen must appear in the fetched reference or the brief (M3 invented values to fill a beat)
     const validateN = ck.numbers !== 'reference' ? validate0 : async c => { const res = await validate0(c); const bad = numbersNotIn((res.stats && res.stats.shown) || []); if (bad.length) { res.errors = [...res.errors, `the number(s) ${bad.map(b => `"${b}"`).join(', ')} on screen are not in the reference: show only numbers the reference states (with their unit), or leave the number out`]; res.ok = false; } return res; };
@@ -633,8 +613,8 @@ async function makeShot(plan, stage, tl, i, notes = null) {
     const validate = !mine.length ? validateL : async c => { const res = await validateL(c); const miss = mine.filter(([f, id]) => !new RegExp(`h\\.${f}\\(\\s*['"\`]${id}['"\`]`).test(c)); if (miss.length) { res.errors = [...res.errors, ...miss.map(([f, id]) => `the storyboard pins the real ${f} "${id}" in this shot: draw it with h.${f}('${id}', ...)`)]; res.ok = false; } return res; };
     const evidence = !PHOTOMODE() ? '' : `\nReference articles (the only sources to name in h.note, as 'Wikipedia: <title>'): ${JSON.stringify([...new Set([...String(REF).matchAll(/^### (.+?)(?: \(passages about:.*\))?$/gm)].map(m => m[1].trim()))])}\nReal photos of this reel (h.photo draws one with its credit line): ${JSON.stringify((plan.pics || []).map(p => ({ id: p.id, shows: p.label || p.shows, aspect_w_over_h: +(p.w / p.h).toFixed(2), planned_for_shot: p.shot })))}\nReference quotes (h.quote draws one with its source line): ${JSON.stringify((plan.quotes || []).map(q => ({ id: q.id, underlined: q.mark, planned_for_shot: q.shot })))}${(plan.photos || []).filter(p => p.shot === i + 1 && !(plan.pics || []).some(x => x.id === p.id)).map(p => `\nNo real photo was found for "${p.id}" (${p.shows}): leave its h.photo out and draw that thing yourself in the drawing style.`).join('')}`;
     const cast = Object.fromEntries(Object.entries(plan.cast).filter(([k]) => k !== 'narrator').map(([k, v]) => [k, v.asset]));
-    const user = D3MODE() ? `Art style: ${plan.style.name}: ${plan.style.description}\n\n${LPMODE() ? kitApiLp(plan) : kitApi3d(plan)}\n\nShot ${i + 1} of ${plan.shots.length}. Storyboard: ${s.idea}${shotStory(s)}\n${LPMODE() ? 'Set' : 'Room'}: "${s.background}"\nShot length: ${sh.dur.toFixed(2)} s\nLines (sh.lines): ${JSON.stringify(sh.lines.map(({ who, text, start, end }) => ({ who, text, start, end })))}\n${LPMODE() ? `Sentences of the narration with their times (h.d3.sentences() returns these): ${JSON.stringify(sentencesOfShot(sh))}\nThe host (h.d3.actor id) and the subjects (h.d3.thing ids) with the inside parts h.d3.label can name: ${JSON.stringify(cast3d(plan))}` : `Cast (h.d3.actor ids with their roles) and the story's own prop (an extra h.d3.thing id): ${JSON.stringify(cast3d(plan))}`}${notes ? `\n\nThe director reviewed this shot and asks:\n${notes}\n\nCurrent code:\n\`\`\`js\n${s.code}\n\`\`\`` : ''}\n\nWrite draw.`
-      : `Art style: ${plan.style.name}: ${plan.style.description}\n\n${kitApi(plan)}\n\nShot ${i + 1} of ${plan.shots.length}. Storyboard: ${s.idea}${shotStory(s)}\nBackground: "${s.background}"\nShot length: ${sh.dur.toFixed(2)} s\nLines (sh.lines): ${JSON.stringify(sh.lines.map(({ who, text, start, end }) => ({ who, text, start, end })))}\n${NOASSETS
+    const user = D3MODE() ? `Art style: ${plan.style.name}: ${plan.style.description}\n\n${LPMODE() ? kitApiLp(plan) : kitApi3d(plan)}\n\nShot ${i + 1} of ${plan.shots.length}. Storyboard: ${s.idea}${shotStory(s, plan.shots[i - 1])}\n${LPMODE() ? 'Set' : 'Room'}: "${s.background}"\nShot length: ${sh.dur.toFixed(2)} s\nLines (sh.lines): ${JSON.stringify(sh.lines.map(({ who, text, start, end }) => ({ who, text, start, end })))}\n${LPMODE() ? `Sentences of the narration with their times (h.d3.sentences() returns these): ${JSON.stringify(sentencesOfShot(sh))}\nThe host (h.d3.actor id) and the subjects (h.d3.thing ids) with the inside parts h.d3.label can name: ${JSON.stringify(cast3d(plan))}` : `Cast (h.d3.actor ids with their roles) and the story's own prop (an extra h.d3.thing id): ${JSON.stringify(cast3d(plan))}`}${notes ? `\n\nThe director reviewed this shot and asks:\n${notes}\n\nCurrent code:\n\`\`\`js\n${s.code}\n\`\`\`` : ''}\n\nWrite draw.`
+      : `Art style: ${plan.style.name}: ${plan.style.description}\n\n${kitApi(plan)}\n\nShot ${i + 1} of ${plan.shots.length}. Storyboard: ${s.idea}${shotStory(s, plan.shots[i - 1])}\nBackground: "${s.background}"\nShot length: ${sh.dur.toFixed(2)} s\nLines (sh.lines): ${JSON.stringify(sh.lines.map(({ who, text, start, end }) => ({ who, text, start, end })))}\n${NOASSETS
       ? `NO ASSETS IN THIS REEL: h.asset is not available. Draw every character and object yourself with canvas code in this shot, in the art style, following these design notes exactly so they look the same in every shot (same shapes, proportions, colours, outline and face). Where the directions mention an asset or its params, draw that thing yourself in that state, and act the characters with your own drawing (pose, expression, gestures). Speakers and the design that represents each: ${JSON.stringify(cast)}\nDesign notes: ${JSON.stringify(assetCatalog(plan).map(({ id, kind, description, box, params }) => ({ id, kind, description, size: box, states: params.map(p => `${p.name}: ${p.description}`) })))}`
       : `Speakers and the asset that represents each: ${JSON.stringify(cast)}\nAssets (every one is yours to use; the storyboard shows ${JSON.stringify(s.uses || [])} in this shot, and each of those must be visible): ${JSON.stringify(assetCatalog(plan))}`}${evidence}${notes ? `\n\nThe director reviewed this shot and asks:\n${notes}\n\nCurrent code:\n\`\`\`js\n${s.code}\n\`\`\`` : ''}\n\nWrite draw.`;
     const craft = LPMODE() ? 'These are three frames of your shot (20%, 55% and 92% of its length, side by side; each is a separate vertical frame). Judge like a viewer: is the subject big and clearly the real thing, does the slice open it where the line explains it and does the one label point at the right part, is the host beside it (never inside it) in a pose that fits the sentence, is the header readable?' : D3MODE() ? 'These are three frames of your shot (20%, 55% and 92% of its length, side by side; each is a separate vertical frame). Judge like a viewer: does everyone stand where a person could stand, face whom they deal with, does each camera setup show the right person clearly, do the expressions match the lines, do the insert panels read? Fix staging with positions, facing, poses and camera types.' : 'These are three frames of your shot (20%, 55% and 92% of its length, side by side; each is a separate vertical frame). Judge staging, hero size, depth, motion and payoff timing against the template directions and the storyboard.';

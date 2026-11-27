@@ -1,5 +1,5 @@
 {
-  "_about": "English Wikipedia API responses recorded 2026-11-27 for test/reference.test.ts (article text CC BY-SA 4.0, Wikipedia contributors)",
+  "_about": "English Wikipedia API responses recorded 2026-11-27 for test/reference.test.ts and test/plan.test.ts (article text CC BY-SA 4.0, Wikipedia contributors)",
   "https://en.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&explaintext=1&redirects=1&titles=Day%20on%20Venus": {
     "batchcomplete": "",
     "query": {
@@ -151,6 +151,458 @@
         "totalhits": 0
       },
       "search": []
+    }
+  },
+  "https://en.wikipedia.org/w/api.php?action=query&prop=coordinates&coprimary=all&colimit=max&redirects=1&format=json&titles=Venus": {
+    "batchcomplete": "",
+    "query": {
+      "pages": {
+        "32745": {
+          "pageid": 32745,
+          "ns": 0,
+          "title": "Venus"
+        }
+      }
+    },
+    "limits": {
+      "coordinates": 500
+    }
+  },
+  "https://en.wikipedia.org/w/api.php?action=query&prop=coordinates&coprimary=all&colimit=max&redirects=1&format=json&titles=Point%20Nemo": {
+    "batchcomplete": "",
+    "query": {
+      "redirects": [
+        {
+          "from": "Point Nemo",
+          "to": "Pole of inaccessibility",
+          "tofragment": "Oceanic pole of inaccessibility"
+        }
+      ],
+      "pages": {
+        "547235": {
+          "pageid": 547235,
+          "ns": 0,
+          "title": "Pole of inaccessibility",
+          "coordinates": [
+            {
+              "lat": -82.1,
+              "lon": 54.96666667,
+              "globe": "earth"
+            },
+            {
+              "lat": -83.1,
+              "lon": 54.96666667,
+              "globe": "earth"
+            },
+            {
+              "lat": -85.83333333,
+              "lon": 65.78333333,
+              "globe": "earth"
+            },
+            {
+              "lat": -83.904,
+              "lon": 64.89,
+              "globe": "earth"
+            },
+            {
+              "lat": -83.61,
+              "lon": 53.72,
+              "globe": "earth"
+            },
+            {
+              "lat": -82.1,
+              "lon": 54.96666667,
+              "globe": "earth"
+            },
+            {
+              "lat": -82.88722222,
+              "lon": 55.075,
+              "globe": "earth"
+            },
+            {
+              "lat": -83.84361111,
+              "lon": 65.725,
+              "globe": "earth"
+            },
+            {
+              "lat": -82.1,
+              "lon": 54.96666667,
+              "globe": "earth"
+            },
+            {
+              "lat": 46.28333333,
+              "lon": 86.66666667,
+              "globe": "earth"
+            },
+            {
+              "lat": 46.56666667,
+              "lon": 85.96666667,
+              "globe": "earth"
+            },
+            {
+              "lat": 46.33333333,
+              "lon": 86.36666667,
+              "globe": "earth"
+            },
+            {
+              "lat": 46.25,
+              "lon": 86.83333333,
+              "globe": "earth"
+            },
+            {
+              "lat": 44.29,
+              "lon": 82.19,
+              "globe": "earth"
+            },
+            {
+              "lat": 45.28,
+              "lon": 88.14,
+              "globe": "earth"
+            },
+            {
+              "lat": 43.68111111,
+              "lon": 87.33111111,
+              "globe": "earth"
+            },
+            {
+              "lat": 43.36,
+              "lon": -101.97,
+              "globe": "earth"
+            },
+            {
+              "lat": -14.05,
+              "lon": -56.85,
+              "globe": "earth"
+            },
+            {
+              "lat": -23.17,
+              "lon": 132.27,
+              "globe": "earth"
+            },
+            {
+              "lat": 5.65,
+              "lon": 26.17,
+              "globe": "earth"
+            },
+            {
+              "lat": -47.411667,
+              "lon": 177.379167,
+              "globe": "earth"
+            },
+            {
+              "lat": -4.97,
+              "lon": -158.75,
+              "globe": "earth"
+            },
+            {
+              "lat": 5.65,
+              "lon": 26.17,
+              "globe": "earth"
+            },
+            {
+              "lat": 5.6413,
+              "lon": 26.1533,
+              "globe": "earth"
+            },
+            {
+              "lat": 5.6589,
+              "lon": 26.1295,
+              "globe": "earth"
+            },
+            {
+              "lat": -83.904,
+              "lon": 64.89,
+              "globe": "earth"
+            },
+            {
+              "lat": -83.61,
+              "lon": 53.72,
+              "globe": "earth"
+            },
+            {
+              "lat": -77.3963,
+              "lon": 105.3855,
+              "globe": "earth"
+            },
+            {
+              "lat": -78.2633,
+              "lon": 103.634,
+              "globe": "earth"
+            },
+            {
+              "lat": 85.7911,
+              "lon": 176.2386,
+              "globe": "earth"
+            },
+            {
+              "lat": 85.8015,
+              "lon": 176.1423,
+              "globe": "earth"
+            },
+            {
+              "lat": 85.802,
+              "lon": 176.149,
+              "globe": "earth"
+            },
+            {
+              "lat": 24.1851,
+              "lon": -43.3704,
+              "globe": "earth"
+            },
+            {
+              "lat": 24.1923,
+              "lon": -43.3728,
+              "globe": "earth"
+            },
+            {
+              "lat": -23.17,
+              "lon": 132.27,
+              "globe": "earth"
+            },
+            {
+              "lat": -23.1732,
+              "lon": 132.2759,
+              "globe": "earth"
+            },
+            {
+              "lat": -23.1948,
+              "lon": 132.1727,
+              "globe": "earth"
+            },
+            {
+              "lat": 45.28,
+              "lon": 88.14,
+              "globe": "earth"
+            },
+            {
+              "lat": 45.3413,
+              "lon": 88.2483,
+              "globe": "earth"
+            },
+            {
+              "lat": 45.4435,
+              "lon": 88.3172,
+              "globe": "earth"
+            },
+            {
+              "lat": 44.29,
+              "lon": 82.19,
+              "globe": "earth"
+            },
+            {
+              "lat": 44.3184,
+              "lon": 82.1144,
+              "globe": "earth"
+            },
+            {
+              "lat": 44.674,
+              "lon": 83.9694,
+              "globe": "earth"
+            },
+            {
+              "lat": 52.65,
+              "lon": -1.56,
+              "globe": "earth"
+            },
+            {
+              "lat": 52.0141,
+              "lon": -0.964,
+              "globe": "earth"
+            },
+            {
+              "lat": 52.6552,
+              "lon": -1.5641,
+              "globe": "earth"
+            },
+            {
+              "lat": 76.5,
+              "lon": -41,
+              "globe": "earth"
+            },
+            {
+              "lat": 75.966,
+              "lon": -40.4239,
+              "globe": "earth"
+            },
+            {
+              "lat": 76.0305,
+              "lon": -40.3902,
+              "globe": "earth"
+            },
+            {
+              "lat": -47.6319,
+              "lon": 99.9677,
+              "globe": "earth"
+            },
+            {
+              "lat": -47.7347,
+              "lon": 100.0547,
+              "globe": "earth"
+            },
+            {
+              "lat": -18.33,
+              "lon": 46.67,
+              "globe": "earth"
+            },
+            {
+              "lat": -18.3382,
+              "lon": 46.6663,
+              "globe": "earth"
+            },
+            {
+              "lat": -18.2645,
+              "lon": 46.7003,
+              "globe": "earth"
+            },
+            {
+              "lat": 43.46,
+              "lon": -101.97,
+              "globe": "earth"
+            },
+            {
+              "lat": 43.3764,
+              "lon": -102.0111,
+              "globe": "earth"
+            },
+            {
+              "lat": 43.437,
+              "lon": -102.0101,
+              "globe": "earth"
+            },
+            {
+              "lat": -48.89,
+              "lon": -123.45,
+              "globe": "earth"
+            },
+            {
+              "lat": -49.0031,
+              "lon": -123.392,
+              "globe": "earth"
+            },
+            {
+              "lat": -49.0273,
+              "lon": -123.4345,
+              "globe": "earth"
+            },
+            {
+              "lat": -14.05,
+              "lon": -56.85,
+              "globe": "earth"
+            },
+            {
+              "lat": -14.3902,
+              "lon": -56.9922,
+              "globe": "earth"
+            },
+            {
+              "lat": -6.3248,
+              "lon": -63.1885,
+              "globe": "earth"
+            },
+            {
+              "lat": -10.7342,
+              "lon": -59.2126,
+              "globe": "earth"
+            },
+            {
+              "lat": -5.0537,
+              "lon": -65.5487,
+              "globe": "earth"
+            },
+            {
+              "lat": -82.1,
+              "lon": 54.96666667,
+              "globe": "earth"
+            },
+            {
+              "lat": -23.03333333,
+              "lon": 132.16666667,
+              "globe": "earth"
+            },
+            {
+              "lat": 48.87666667,
+              "lon": 56.60666667,
+              "globe": "earth"
+            },
+            {
+              "lat": 85.8,
+              "lon": -176.15,
+              "globe": "earth"
+            },
+            {
+              "lat": -34.95,
+              "lon": -150.5,
+              "globe": "earth"
+            },
+            {
+              "lat": -48.87666667,
+              "lon": -123.39333333,
+              "globe": "earth"
+            }
+          ]
+        }
+      }
+    },
+    "limits": {
+      "coordinates": 500
+    }
+  },
+  "https://en.wikipedia.org/w/api.php?action=query&prop=coordinates&coprimary=all&colimit=max&redirects=1&format=json&titles=Ducie%20Island": {
+    "batchcomplete": "",
+    "query": {
+      "pages": {
+        "932139": {
+          "pageid": 932139,
+          "ns": 0,
+          "title": "Ducie Island",
+          "coordinates": [
+            {
+              "lat": -24.68333333,
+              "lon": -124.78333333,
+              "primary": "",
+              "globe": "earth"
+            },
+            {
+              "lat": -24.66916667,
+              "lon": -124.78638889,
+              "globe": "earth"
+            }
+          ]
+        }
+      }
+    },
+    "limits": {
+      "coordinates": 500
+    }
+  },
+  "https://en.wikipedia.org/w/api.php?action=query&prop=coordinates&coprimary=all&colimit=max&redirects=1&format=json&titles=South%20Pacific%20Gyre": {
+    "batchcomplete": "",
+    "query": {
+      "pages": {
+        "24754574": {
+          "pageid": 24754574,
+          "ns": 0,
+          "title": "South Pacific Gyre"
+        }
+      }
+    },
+    "limits": {
+      "coordinates": 500
+    }
+  },
+  "https://en.wikipedia.org/w/api.php?action=query&prop=coordinates&coprimary=all&colimit=max&redirects=1&format=json&titles=Sun": {
+    "batchcomplete": "",
+    "query": {
+      "pages": {
+        "26751": {
+          "pageid": 26751,
+          "ns": 0,
+          "title": "Sun"
+        }
+      }
+    },
+    "limits": {
+      "coordinates": 500
     }
   }
 }
