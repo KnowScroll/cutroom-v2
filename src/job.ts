@@ -399,8 +399,19 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
     await event('intake', 'intake.done', intake);
     log(`intake: ${kind} (fit ${intake.fit}), ${String(seconds)} s`);
 
+    // design §6.7: only a refusal rules a model out (for this job); a voice_pitch switch moves on to a model no cut
+    // has used yet, and the job fails only when every model is ruled out
     const refusals: Refusal[] = [];
-    let voice = 0;
+    const ruledOut = new Set<VoiceModelKey>();
+    const tried = new Set<VoiceModelKey>();
+    let current: VoiceModelKey | undefined; // the model of the last cut made
+    const untried = (): VoiceModelKey | undefined =>
+      config.voiceModels.find((m) => !tried.has(m) && !ruledOut.has(m));
+    const chooseVoice = (pitchSwitch: boolean): VoiceModelKey | undefined => {
+      const first = config.voiceModels.find((m) => !ruledOut.has(m));
+      if (pitchSwitch) return untried() ?? first;
+      return current !== undefined && !ruledOut.has(current) ? current : first;
+    };
     let made: Round | null = null; // the round that makes the next cut
     let notesRounds: number[] = [];
     for (let n = 1; ; n++) {
@@ -408,11 +419,12 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
       // the working copy the engine reads for this cut
       const templateSha = sha256(await readFile(path.join(workingDir, `${kind}.md`)));
       const notesFile = made?.record.notes_file ?? undefined;
+      const pitchSwitch = made !== null && made.record.voice !== null;
 
       // the voice fallback of design §6.7 (trigger 1: the engine's voice refusal; the same cut reruns, not a round)
-      let cut: CutResult | null = null;
-      while (cut === null) {
-        const model = config.voiceModels[voice];
+      let written: { cut: CutResult; model: VoiceModelKey } | null = null;
+      while (written === null) {
+        const model = chooseVoice(pitchSwitch);
         if (model === undefined) {
           throw new Error(
             `every voice model was refused: ${refusals.map((r) => `${r.model} (HTTP ${String(r.status)}: ${r.message})`).join('; ')}`,
@@ -441,8 +453,9 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
         });
         if (run.kind === 'voice_refused') {
           refusals.push(run);
+          ruledOut.add(model);
           pending = run.spent;
-          const next = config.voiceModels[voice + 1];
+          const next = chooseVoice(pitchSwitch);
           await event('engine', 'voice.refused', { cut: n, ...run });
           if (next !== undefined) {
             const sw = {
@@ -455,13 +468,14 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
             await event('engine', 'voice.switch', sw);
             log(`voice ${model} refused (HTTP ${String(run.status)}); trying ${next}`);
           }
-          voice++;
           continue;
         }
-        cut = run;
+        written = { cut: run, model };
       }
+      const { cut, model: voiceKey } = written;
       pending = undefined;
-      const voiceKey = config.voiceModels[voice] ?? 'unknown';
+      tried.add(voiceKey);
+      current = voiceKey;
       await event('engine', 'engine.end', {
         cut: n,
         voice_model: voiceKey,
@@ -543,10 +557,16 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
 
       await stage(`round-${String(n)}`);
       const pitch = record.gates.find((g) => g.name === 'voice_pitch');
-      const next = config.voiceModels[voice + 1];
+      // the voice cannot be fixed by notes (§6.7 trigger 2): switch only to a model no cut has used and none refused
+      const next = untried();
       const pitchFails = pitch !== undefined && pitch.mode === 'block' && !pitch.pass;
       if (pitchFails && next === undefined) {
-        await event('round', 'voice.none_left', { cut: n, voice_model: voiceKey });
+        await event('round', 'voice.none_left', {
+          cut: n,
+          voice_model: voiceKey,
+          tried: [...tried],
+          ruled_out: [...ruledOut],
+        });
       }
       const planned = await planRound({
         n,
@@ -577,7 +597,6 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
           reason: `voice_pitch FAIL on cut ${String(n)} (${gateValue(pitch.value)} st, needs >= ${String(pitch.threshold)})`,
         };
         switches.push(sw);
-        voice++;
         await event('round', 'voice.switch', sw);
       }
       if (made.record.kind === 'notes') notesRounds.push(n);

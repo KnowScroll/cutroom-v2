@@ -517,8 +517,8 @@ await test('an invalid patch and no notes is no valid fix: the loop stops', asyn
   assert.match(run.loop_end, /no valid fix after cut 1 \(1 patch\(es\) rejected, no notes\)/);
 });
 
-await test('a voice_pitch FAIL switches the voice in the next round', async () => {
-  const { run, dir } = await job([intake, review(false), review(true)], {
+await test('a voice_pitch FAIL switches the voice in the next round, and later cuts keep it', async () => {
+  const { run, dir } = await job([intake, review(false), review(false), review(true)], {
     FAKE_ENGINE_LOW_PITCH: 'heygen',
   });
   assert.equal(run.cuts[0]?.gates.find((g) => g.name === 'voice_pitch')?.pass, false);
@@ -534,8 +534,46 @@ await test('a voice_pitch FAIL switches the voice in the next round', async () =
   assert.ok(sw);
   assert.equal(sw.cut, 2);
   assert.match(sw.reason, /voice_pitch FAIL on cut 1 \(3\.1 st/);
-  assert.match(run.cuts[1]?.voice_model ?? '', /^minimax /);
+  assert.deepEqual(
+    run.cuts.map((c) => c.voice_model.split(' ')[0]),
+    ['heygen', 'minimax', 'minimax'],
+  );
+  assert.equal(run.rounds[1]?.voice, null);
   assert.equal(run.approved, true);
+});
+
+await test('a model left behind by a voice_pitch switch is not ruled out: a refused switch falls back to it', async () => {
+  const { run, varDir } = await job([intake, review(false)], {
+    FAKE_ENGINE_LOW_PITCH: 'heygen',
+    FAKE_ENGINE_REFUSE: 'minimax',
+  });
+  assert.equal(run.status, 'done', run.error ?? '');
+  assert.equal(run.error, null);
+  assert.equal(run.cuts.length, MAX_FIX_ROUNDS + 1);
+  assert.ok(run.cuts.every((c) => c.voice_model.startsWith('heygen ')));
+  assert.deepEqual(
+    run.voice_switches.map((s) => [s.cut, s.from, s.to]),
+    [
+      [2, 'heygen', 'minimax'],
+      [2, 'minimax', 'heygen'],
+    ],
+  );
+  assert.match(run.voice_switches[1]?.reason ?? '', /HTTP 402/);
+  // minimax is ruled out and heygen tried: the later pitch FAILs have no model to switch to
+  assert.deepEqual(
+    run.rounds.map((r) => r.voice),
+    [{ from: 'heygen', to: 'minimax' }, null, null],
+  );
+  assert.ok((await readEvents(varDir, run.id)).some((e) => e.event === 'voice.none_left'));
+});
+
+await test('a voice_pitch FAIL with no untried model and no other fix stops the loop', async () => {
+  const { run } = await job([intake, review(true)], { FAKE_ENGINE_LOW_PITCH: 'heygen' }, 'heygen');
+  assert.equal(run.status, 'done');
+  assert.equal(run.cuts.length, 1);
+  assert.deepEqual(run.rounds, []);
+  assert.equal(run.approved, false);
+  assert.match(run.loop_end, /no valid fix after cut 1 \(no patch, no notes\)/);
 });
 
 await test('a voice_pitch FAIL with no other fix still makes a voice round', async () => {
