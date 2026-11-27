@@ -11,7 +11,7 @@ One request becomes one job:
 3. **Gates and review:** 12 measured gates check the mp4, then an M3 vision review grades it.
 4. **Fix rounds** run if the cut is not approved, up to 3, and each one makes a new cut:
    - a *notes* round re-runs from the engine's checkpoints with the review's fixes;
-   - a *template* round patches the working template (the patch is undone if the next cut is not better);
+   - a *template* round patches the working template (the job undoes the patch when it ends if the next cut was not better);
    - a *voice* round switches voice;
    - an *intake* round (at most once, only when you did not name the template) picks another template when the review finds the template cannot show the subject, and starts the reel over.
 5. **The best cut** is selected and the job writes `run.json` and `report.md`. Best means approved first, then no fact error found by the review, then the fewest blocking gate FAILs, then the highest review score, then the later cut.

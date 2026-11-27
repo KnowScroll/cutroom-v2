@@ -306,6 +306,39 @@ function restoreRound(state: LoopState): Round | null {
   };
 }
 
+/**
+ * Design §5.3 when a job ends: every patch it applied whose next cut was not better, or was never reviewed (the job
+ * failed first), goes out of the working copy, latest first so each finds its own result there. Not sooner: the job's
+ * later cuts resume from checkpoints built with the patch. A patch that a kept later patch builds on stays (logged).
+ */
+async function revertUnkept(
+  workingDir: string,
+  cuts: readonly CutRecord[],
+  rounds: readonly FixRound[],
+  event: (stage: string, name: string, data: unknown) => Promise<void>,
+  log: (line: string) => void,
+): Promise<void> {
+  for (const r of [...rounds].reverse()) {
+    const p = r.patch;
+    if (p === null || p.kept === true) continue;
+    // round n patches the template cut n was made with
+    const kind = cuts.find((c) => c.n === r.n)?.template;
+    if (kind === undefined) throw new Error(`round ${String(r.n)} has no cut ${String(r.n)}`);
+    const res = await revertPatch(workingDir, kind, p.k);
+    p.reverted = res !== 'changed';
+    const why =
+      p.kept === false
+        ? `cut ${String(r.cut)} was not better than cut ${String(r.n)}`
+        : `cut ${String(r.cut)} was never reviewed`;
+    await event('round', p.reverted ? 'patch.reverted' : 'patch.not_reverted', {
+      k: p.k,
+      round: r.n,
+      why: p.reverted ? why : `${why}, but a later patch builds on it; left in the working copy`,
+    });
+    if (p.reverted) log(`template patch ${String(p.k)} reverted: ${why}`);
+  }
+}
+
 /** A new job, or the queued / running job `options.jobId` names (a running one is a resume). */
 async function openJob(
   varDir: string,
@@ -488,7 +521,13 @@ async function planRound(i: RoundInput): Promise<Round | { none: string }> {
     if (res.k !== null) {
       const inv = await invalidateCheckpoints(i.workDir, res.sections);
       record.kind = 'template';
-      record.patch = { k: res.k, from: inv.from, deleted: inv.deleted, kept: null };
+      record.patch = {
+        k: res.k,
+        from: inv.from,
+        deleted: inv.deleted,
+        kept: null,
+        reverted: false,
+      };
       record.drops_rounds = [...i.notesRounds];
       // a round is never both (§6.1): the patch makes the shots regenerate anyway
       record.ignored_notes = noteList(i.review.notes).map(
@@ -882,7 +921,7 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
         });
         log(`review ${String(n)}: ${review.approve ? 'approve' : 'fixes wanted'}`);
       }
-      // recordNextCut rewrites the entry's `next` and revertPatch finds a done revert, so a resume may repeat them
+      // recordNextCut rewrites the entry's `next`, so a resume may repeat it
       const patched = made?.record.patch ?? null;
       const asked = cuts.find((c) => c.n === made?.record.n);
       if (patched !== null && asked !== undefined) {
@@ -891,25 +930,15 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
           gates: record.gates,
           scores: review.scores,
         });
-        await event('round', 'patch.graded', { k: patched.k, cut: n });
-        // design §5.3: a patch stays in the working copy only if the cut it made ranks better than the cut that asked
-        if (compareCuts(record, asked) < 0) {
-          patched.kept = true;
-        } else {
-          const res = await revertPatch(workingDir, kind, patched.k);
-          if (res !== 'changed') patched.kept = false;
-          await event('round', res === 'changed' ? 'patch.not_reverted' : 'patch.reverted', {
-            k: patched.k,
-            cut: n,
-            than: asked.n,
-            why:
-              res === 'changed'
-                ? 'the working copy changed since the patch; left as it is'
-                : `cut ${String(n)} is not better than cut ${String(asked.n)}`,
-          });
-          if (res !== 'changed')
-            log(`patch ${String(patched.k)} reverted: cut ${String(n)} is not better`);
-        }
+        // design §5.3: a patch stays only if the cut it made ranks better than the cut that asked for it; one that
+        // does not is undone when the job ends (revertUnkept), since this job's later cuts resume from its checkpoints
+        patched.kept = compareCuts(record, asked) < 0;
+        await event('round', 'patch.graded', {
+          k: patched.k,
+          cut: n,
+          than: asked.n,
+          better: patched.kept,
+        });
         await save();
       }
 
@@ -1000,6 +1029,14 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
     loopEnd = `stopped by an error after ${String(cuts.length)} cut(s)`;
     await event('error', 'job.error', { error });
     log(`error: ${error}`);
+  }
+  try {
+    await revertUnkept(workingDir, cuts, rounds, event, log);
+  } catch (e) {
+    const why = `template patch revert failed: ${describe(e)}`;
+    error ??= why;
+    await event('error', 'job.error', { error: why });
+    log(`error: ${why}`);
   }
   await event('done', 'loop.end', { reason: loopEnd, cuts: cuts.length, rounds: rounds.length });
 

@@ -187,8 +187,10 @@ export const FixRound = z.object({
       k: z.number().int().positive(),
       from: z.string(),
       deleted: z.array(z.string()),
-      /** Set when the next cut is reviewed: kept only if that cut ranks better than the one that asked for it. */
+      /** Set when the next cut is reviewed: whether that cut ranks better than the one that asked for it. */
       kept: z.boolean().nullable().default(null),
+      /** At the job's end the working copy went back to before the patch (not kept, or its cut never reviewed). */
+      reverted: z.boolean().default(false),
     })
     .nullable(),
   rejected_patches: z.array(z.object({ patch: TemplatePatch, reason: z.string() })),
@@ -478,7 +480,13 @@ function roundLine(r: FixRound): string {
     parts.push(
       `template patch (history ${String(r.patch.k)}), checkpoints from ${r.patch.from} deleted (${String(r.patch.deleted.length)} files)`,
     );
-    if (r.patch.kept === false) parts.push('patch reverted: the next cut was not better');
+    if (r.patch.reverted) {
+      parts.push(
+        `patch reverted: ${r.patch.kept === false ? 'the next cut was not better' : 'the next cut was never reviewed'}`,
+      );
+    } else if (r.patch.kept === false) {
+      parts.push('the next cut was not better, but a later patch builds on this one: not reverted');
+    }
   }
   if (r.drops_rounds.length > 0) {
     parts.push(`drops the changes of round ${r.drops_rounds.join(', ')}`);

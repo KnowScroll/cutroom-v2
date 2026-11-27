@@ -648,17 +648,25 @@ await test('an invalid patch and no notes is no valid fix: the loop stops', asyn
   assert.match(run.loop_end, /no valid fix after cut 1 \(1 patch\(es\) rejected, no notes\)/);
 });
 
-await test('a patch whose next cut is not better is reverted in the working copy', async () => {
-  // cut 1 (sum 24) asks for a look patch; cut 2, made with it, scores 20 and has no fix left
+await test('a patch whose next cut is not better is reverted when the job ends; its later cuts keep it', async () => {
+  // cut 1 (sum 24) asks for a look patch; cut 2, made with it, scores 20; a notes round makes cut 3 from cut 2's
+  // checkpoints, which were built with the patch
   const { run, varDir, dir } = await job([
     intake,
     answer({ scores: sum(24), patch: [LOOK_PATCH] }),
-    answer({ scores: sum(20), notes: {} }),
+    answer({ scores: sum(20) }),
+    review(true),
   ]);
-  assert.equal(run.cuts.length, 2);
+  assert.equal(run.cuts.length, 3);
   const r = run.rounds[0];
   assert.equal(r?.kind, 'template');
   assert.equal(r.patch?.kept, false);
+  assert.equal(r.patch.reverted, true);
+  assert.equal(run.rounds[1]?.kind, 'notes');
+  // cut 3 was made with the patched text its checkpoints came from, and says so
+  const [, cut2, cut3] = run.cuts;
+  assert.notEqual(cut2?.template_sha, sha(ALPHA));
+  assert.equal(cut3?.template_sha, cut2?.template_sha);
   const working = path.join(varDir, 'templates');
   assert.equal(await readFile(path.join(working, 'alpha.md'), 'utf8'), ALPHA);
   assert.deepEqual((await readManifest(working))['alpha.md'], {
@@ -671,11 +679,34 @@ await test('a patch whose next cut is not better is reverted in the working copy
   );
   assert.equal(entry.reverted, true);
   assert.equal(entry.next?.cut, 2);
-  // cut 2 was made with the patch, and says so
-  assert.notEqual(run.cuts[1]?.template_sha, sha(ALPHA));
-  const ev = (await readEvents(varDir, run.id)).find((e) => e.event === 'patch.reverted');
-  assert.deepEqual(ev?.data, { k: 1, cut: 2, than: 1, why: 'cut 2 is not better than cut 1' });
-  assert.match(await readFile(path.join(dir, 'report.md'), 'utf8'), /patch reverted/);
+  const events = await readEvents(varDir, run.id);
+  const names = events.map((e) => e.event);
+  assert.ok(
+    names.indexOf('patch.reverted') > names.lastIndexOf('review.done'),
+    'after the last cut',
+  );
+  const ev = events.find((e) => e.event === 'patch.reverted');
+  assert.deepEqual(ev?.data, { k: 1, round: 1, why: 'cut 2 was not better than cut 1' });
+  assert.match(
+    await readFile(path.join(dir, 'report.md'), 'utf8'),
+    /patch reverted: the next cut was not better/,
+  );
+});
+
+await test('a patch whose next cut is never reviewed (the job fails) is reverted too', async () => {
+  const { run, varDir, dir } = await job(
+    [intake, answer({ scores: sum(24), patch: [LOOK_PATCH] })],
+    { FAKE_ENGINE_CRASH: 'always', FAKE_ENGINE_CRASH_CUT: '2' },
+  );
+  assert.equal(run.status, 'failed');
+  assert.equal(run.cuts.length, 1);
+  assert.equal(run.rounds[0]?.patch?.kept, null);
+  assert.equal(run.rounds[0].patch.reverted, true);
+  assert.equal(await readFile(path.join(varDir, 'templates', 'alpha.md'), 'utf8'), ALPHA);
+  assert.match(
+    await readFile(path.join(dir, 'report.md'), 'utf8'),
+    /patch reverted: the next cut was never reviewed/,
+  );
 });
 
 await test('no patch for a template the intake rated "partial": a patch may not widen it', async () => {
