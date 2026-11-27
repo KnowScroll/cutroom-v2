@@ -54,7 +54,7 @@ const says = (text, phrase) => { const w = toks(text), p = toks(phrase); if (!p.
 // ---------- numbers and units ----------
 // derived facts: the plain factors a calc may use without a fact stating them. A bare number is taken literally; units count
 // only where the calc writes them, and the unit table converts them (M3 wrote 1 mm = 1,000,000 pm as "1 * 1000000")
-const FREE = new Set([2, 3, 4]); // and 100 for a percent; a bare 1 changes nothing ("1 million / 1" passed a false fact)
+const FREE = new Set([1, 2, 3, 4, 100]); // 100 at most once; "* 1" or "/ 1" changes nothing ("1 million / 1" passed a false fact)
 const MAG = { thousand: 1e3, million: 1e6, billion: 1e9, trillion: 1e12 };
 // each unit's SI factor and dimension [length, mass, time]; SI prefixes and plurals are read too ("km", "picometres", "mg", "hours")
 const UNITS = {}, LEN = [1, 0, 0], MASS = [0, 1, 0], TIME = [0, 0, 1], Z = [0, 0, 0];
@@ -154,7 +154,7 @@ const quoted = xs => xs.map(x => `"${x}"`).join(', ');
 // a calc with units ("1 mm / 100 pm", "120 km / (60 km/h)", "41 / 10000"): {v: in SI units, d: dimension, qs: its quantities, ops};
 // a bare number is plain; throws a reason
 function evalCalc(calc) {
-  const src = normNum(calc), T = [], re = /\s*(?:(\d+(?:\.\d+)?(?:e[+-]?\d+)?)|([A-Za-zµμ](?:[\wµμ^]|-(?=[A-Za-z]))*(?:\/[A-Za-zµμ][\w^]*)*)|(\*\*|[-+*/()^×]))/iy;
+  const src = normNum(calc), T = [], re = /\s*(?:(\d+(?:\.\d+)?(?:e[+-]?\d+)?)|([A-Za-zµμ](?:[\wµμ]|\^-?|-(?=[A-Za-z]))*(?:\/[A-Za-zµμ][\w^]*)*)|(\*\*|[-+*/()^×]))/iy;
   let pos = 0, m;
   for (;;) { re.lastIndex = pos; if (!(m = re.exec(src))) break; pos = re.lastIndex; T.push(m[1] ? { n: +m[1] } : m[2] ? { u: m[2] } : { op: m[3] === '×' ? '*' : m[3] === '**' ? '^' : m[3] }); }
   if (src.slice(pos).trim()) throw `"${src.slice(pos).trim()}" is not a number, a unit or + - * / ( )`;
@@ -162,7 +162,8 @@ function evalCalc(calc) {
   const add = (a, b, s) => { if (!sameDim(a.d, b.d)) throw `it adds or subtracts ${dimName(a.d)} and ${dimName(b.d)}`; return { v: a.v + s * b.v, d: a.d }; };
   const mul = (a, b, s) => ({ v: s > 0 ? a.v * b.v : a.v / b.v, d: a.d.map((x, j) => x + s * b.d[j]) });
   const expr = () => { let a = term(); for (;;) { if (take('+')) a = add(a, term(), 1); else if (take('-')) a = add(a, term(), -1); else return a; } };
-  const term = () => { let a = unary(); for (;;) { if (take('*')) a = mul(a, unary(), 1); else if (take('/')) a = mul(a, unary(), -1); else return a; } };
+  let pointless = 0; const right = b => { if (b.one) pointless++; return b; };
+  const term = () => { let a = unary(); for (;;) { if (take('*')) a = mul(a, right(unary()), 1); else if (take('/')) a = mul(a, right(unary()), -1); else return a; } };
   const unary = () => take('-') ? mul({ v: -1, d: Z }, unary(), 1) : take('+') ? unary() : power();
   const power = () => {
     const n = qs.length, a = atom(); if (!take('^')) return a;
@@ -177,11 +178,14 @@ function evalCalc(calc) {
     let k = 1, d = Z, u = '', n = t.n ?? 1;
     if (t.u) p--; // a unit alone is 1 of it: "24 h / d" is 24 h per 1 d
     while (T[p]?.u && MAG[T[p].u.toLowerCase()]) n *= MAG[T[p++].u.toLowerCase()];
-    if (T[p]?.u) { u = T[p++].u; const x = unitOf(u); if (!x) throw `"${u}" is not a unit the engine knows (m, km, mm, µm, nm, pm, g, kg, t, s, min, h, d, wk, yr, km/h, m/s, mi, ft, lb, au, ly, km2, m3, L)`; [k, d] = x; }
-    const q = { n, u, v: n * k, d }; qs.push(q); return { v: q.v, d };
+    const unknown = w => `"${w}" is not a unit the engine knows (m, km, mm, µm, nm, pm, g, kg, t, s, min, h, d, wk, yr, km/h, m/s, mi, ft, lb, au, ly, km2, m3, L)`;
+    if (!t.u && (T[p]?.op === '/' || /^per$/i.test(T[p]?.u || '')) && T[p + 1]?.u && !MAG[T[p + 1].u.toLowerCase()]) { // "41 /d" is 41 a day
+      const x = unitOf(T[p + 1].u); if (!x) throw unknown(T[p + 1].u); u = `per ${T[p + 1].u}`; k = 1 / x[0]; d = x[1].map(e => -e); p += 2;
+    } else if (T[p]?.u) { u = T[p++].u; const x = unitOf(u); if (!x) throw unknown(u); [k, d] = x; }
+    const q = { n, u, v: n * k, d }; qs.push(q); return { v: q.v, d, one: !u && n === 1 };
   };
   const r = expr(); if (p < T.length) throw `"${T[p].op || T[p].u || T[p].n}" is out of place`;
-  return { ...r, qs, ops: T.some(t => t.op && t.op !== '(' && t.op !== ')') };
+  return { ...r, qs, pointless, ops: T.some(t => t.op && t.op !== '(' && t.op !== ')') };
 }
 const fmtNum = v => Math.abs(v) >= 1e12 || (v && Math.abs(v) < 1e-3) ? v.toPrecision(3) : Math.abs(v) >= 1e9 ? `${+(v / 1e9).toFixed(2)} billion` : Math.abs(v) >= 1e6 ? `${+(v / 1e6).toFixed(2)} million` : Math.abs(v) >= 1 ? `${+v.toFixed(2)}` : `${+v.toPrecision(3)}`;
 // the time units a text names anywhere ("in a year", "annually", "daily"), as [SI factor, dimension, word]
@@ -219,16 +223,16 @@ function calcErrors(x, sheet) {
   // of 100s passed 1 mm = 1,000,000 pm); a quantity with a unit is one the sheet states, or 1 of a unit (a conversion)
   // beside quantities with units, a bare number every fact states with a unit must carry it ("/ 12" for "12 hours a day")
   // a unit-ratio constant (8760 h/yr, 1000 m/km: its dimensions cancel) need not be stated: it must be the true conversion
-  const odd = new Set(), units = r.qs.some(q => q.u), percent = /%|\bper ?cent\b/i.test(x.text);
+  const odd = new Set(), units = r.qs.some(q => q.u && q.n !== 1); // "41 * 1 yr / 1 d": only conversions beside 41
   for (const q of r.qs) {
     const same = q.u ? [] : sheet.filter(s => near(s.n, q.n) || near(s.raw, q.n));
     if (q.u) { if (q.n !== 1 && !sheet.some(s => s.d && sameDim(s.d, q.d) && near(s.v, q.v))) odd.add(!q.d.some(Boolean) && q.v ? (Math.abs(q.v - 1) > 0.01 ? `${q.n} ${q.u}, which is not the true conversion (that is ${fmtNum(q.n / q.v)} ${q.u})` : '') : `${q.n} ${q.u}, which no other fact on the sheet states`); }
-    else if (q.n === 1) odd.add('a bare 1, which changes nothing');
-    else if (FREE.has(q.n) || (q.n === 100 && percent)) continue;
+    else if (FREE.has(q.n)) continue;
     else if (!same.length) odd.add(`${q.n}, which no other fact on the sheet states`);
     else if (units && same.every(s => s.u)) odd.add(`${q.n} without its unit (the sheet states "${q.n} ${same[0].u}"; write it with its unit)`);
   }
   odd.delete(''); if (r.qs.filter(q => !q.u && q.n === 100).length > 1) odd.add('100 more than once');
+  if (r.pointless) odd.add('"* 1" or "/ 1", which changes nothing');
   if (!odd.size && !r.qs.some(q => q.u || sheet.some(s => near(s.n, q.n) || near(s.raw, q.n)))) odd.add('no number the sheet states');
   if (odd.size) return [`fact ${x.id}: "calc" ${x.calc} uses ${[...odd].join('; ')}. Check the calc's factors and units: write each quantity with its unit, as a fact on the sheet states it (e.g. "75600 h", "378000 km / (5 km/h)"); the engine converts units itself and states the result in the text's unit: to state hours as years, write the hours quantity and put years in the text; no calendar factors needed`];
   const tq = quantitiesIn(x.text), close = (a, b) => Math.abs(a - b) <= Math.abs(b) * 0.05 + 1e-300; // relative only (an absolute margin let 0.00004 pass for 0.00017); 5% as for spoken numbers
@@ -243,7 +247,7 @@ function calcErrors(x, sheet) {
 // a derived fact for the fact checker and the fixer: its calc, and that it holds (a second rounding of the result, "= 8.62 years"
 // beside a text of 8.63, set off a nitpick fix that split the narration from the tags)
 const calcShown = (x, sheet) => `${x.calc}; ${calcErrors(x, sheet).length ? 'the engine found it does not match its text' : 'the engine computed it, units converted, and it matches its text'}`;
-const calcList = f => { const facts = f?.facts || [], sheetFor = sheetsFor(facts); return facts.map(x => `${x.id}: ${x.text}${x.source === 'derived' ? ` [derived: ${calcShown(x, sheetFor(x))}]` : x.source === 'reference' && x.quote ? ` [quote: "${x.quote}"]` : ''}`).join('\n'); };
+const calcList = f => { const facts = f?.facts || [], sheetFor = sheetsFor(facts); return facts.map(x => `${x.id}: ${x.text}${x.source === 'derived' ? ` [derived: ${calcShown(x, sheetFor(x))}]` : x.source === 'reference' && (x.quote || x.quote_check) ? ` [quote: "${x.quote || ''}"${x.quote_check ? `; the engine found: ${x.quote_check}` : ''}]` : ''}`).join('\n'); };
 // a soft problem: asked to be fixed, but an answer left with only soft problems is kept after the last try
 const soft = msg => Object.assign(new String(msg), { soft: true });
 const digitNums = s => (String(s).replace(/(\d),(\d)/g, '$1$2').match(/\d+(?:\.\d+)?/g) || []).map(Number);
@@ -334,7 +338,7 @@ export function factErrors(f, E) {
   if (E.hasRef()) for (const x of f.facts.filter(x => x.source === 'reference')) {
     const nums = E.numbersNotIn([x.text]);
     if (nums.length) bad(x, `fact ${x.id} ("${x.text}") says ${quoted(nums)}, which the REFERENCE never states: use the reference's own number, or drop the fact`);
-    for (const e of quoteErrors(x, E.refBlock?.() || '')) bad(x, e);
+    for (const e of quoteErrors(x, E.refBlock?.() || '')) if (x.id === f.payoff) Er.push(soft(e)); else bad(x, e); // a quote never fails the sheet
   }
   // the answer and the yardstick are free text the spine and script build on: their numbers must be facts that hold
   // (a yardstick said "10,000 km" beside a sheet whose ratio made it 10 km; an answer said "19 years" beside a 2,442-day payoff)
@@ -344,19 +348,15 @@ export function factErrors(f, E) {
   return Er;
 }
 
-// a reference fact's "quote": one sentence of the reference, verbatim, holding the fact's numbers and most of its content words
-// (a sheet said "a grain of sand is about 1 million carbon atoms wide" from a sentence about a human hair)
+// a reference fact's "quote": one sentence of the reference, verbatim, holding the fact's numbers; whether it says the same thing
+// is the fact checker's to judge (a sheet said "a grain of sand is about 1 million carbon atoms wide" from a sentence about a hair)
 const plainText = t => ` ${String(t).toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9]+/g, ' ').trim()} `;
 function quoteErrors(x, ref) {
   const q = String(x.quote || '');
   if (!q.trim()) return [`fact ${x.id} is from the reference: give "quote", the one sentence of the REFERENCE that states it, word for word`];
   if (!plainText(ref).includes(plainText(q))) return [`fact ${x.id}: its quote "${q}" is not in the REFERENCE word for word; copy the sentence exactly`];
   const qv = valuesIn(q), nums = numbersSaid(x.text).filter(n => !n.one && !qv.some(v => near(v, n.v))).map(n => n.s);
-  const qw = toks(q), content = [...new Set(toks(x.text).filter(w => w.length >= 4 && !STOP.has(w) && !NUM_WORD.has(w) && !/\d/.test(w)))], missing = content.filter(w => !qw.some(v => sameWord(v, w) || sameWord(w, v)));
-  return [
-    ...(nums.length ? [`fact ${x.id} says ${quoted(nums)}, which its quote "${q}" does not state`] : []),
-    ...(missing.length * 3 > content.length ? [`fact ${x.id} names ${missing.join(', ')} that its quote "${q}" does not mention: state only what the quoted sentence says, about the thing it names`] : []),
-  ];
+  return nums.length ? [`fact ${x.id} says ${quoted(nums)}, which its quote "${q}" does not state`] : [];
 }
 
 // numbers in `texts` that `src` (the reference and the brief) never states: digits compared without separators, a magnitude by
@@ -422,6 +422,7 @@ export function createWriter(E) {
       log(`facts: fetched ${names} (${added} chars) for missing facts`);
       if (added) { const f2 = await ask('facts-more', system(), [{ role: 'user', content: `Brief: ${briefFor(brief)}\nThe REFERENCE now also holds what you asked for: ${names}. Return only the JSON object, with "need" empty.` }], check); if (f2) f = clean(f2); }
     }
+    if (E.hasRef()) for (const x of f.facts.filter(x => x.source === 'reference')) { const q = quoteErrors(x, E.refBlock()); if (q.length) x.quote_check = q.join('; '); } // for the fact checker
     E.ckSave('facts.json', f);
     log(`facts: ${f.facts.length} (${['reference', 'brief', 'general', 'derived'].map(s => `${f.facts.filter(x => x.source === s).length} ${s}`).join(', ')}); Q: ${f.question} | payoff ${f.payoff}`);
     return f;

@@ -303,7 +303,7 @@ await test('derived facts build on each other in any order; a failing one feeds 
   );
 });
 
-await test('a conversion is one quantity; a unit ratio must be true; a bare 1 or a non-percent 100 is no factor', () => {
+await test('a conversion is one quantity; a unit ratio must be true; a rate can be written; a pointless 1 is no factor', () => {
   const hours = derived('c1', 'Walking non-stop takes about 75,600 hours', '378000 km / (5 km/h)');
   const on = (text: string, calc: string) =>
     errorsFor(
@@ -323,12 +323,30 @@ await test('a conversion is one quantity; a unit ratio must be true; a bare 1 or
   );
   assert.match(
     on('A grain of sand is about 1 million atoms wide', '1 million / 1')[0] ?? '',
-    /a bare 1/,
+    /"\* 1" or "\/ 1", which changes nothing/,
   );
-  assert.match(on('An atom is about 1 pm wide', '100 pm / 100')[0] ?? '', /100 without its unit/);
+
+  // a rate after a bare number is its unit; a reciprocal 1 and a percent 100 are plain factors
+  const daily: Fact[] = [
+    { id: 'r1', text: 'A family spends $41 a day', source: 'general' },
+    { id: 'r2', text: 'People blink about 100,000 times a day', source: 'general' },
+    { id: 'r3', text: 'A machine fails once in 0.0008 of its runs', source: 'general' },
+    { id: 'r4', text: 'The Moon has 1.2% of the mass of Earth', source: 'general' },
+    { id: 'r5', text: 'Earth has a mass of 5.97e24 kg', source: 'general' },
+  ];
+  const at = (text: string, calc: string) =>
+    errorsFor(
+      { ...sheet([]), facts: [...sheet([]).facts, ...daily, derived('c9', text, calc)] },
+      'c9',
+    );
+  for (const calc of ['41 /d', '41/d', '41 per d', '41 * 1 yr / 1 d', '41 d^-1 * 1 yr'])
+    assert.deepEqual(at('That is about $15,000 a year', calc), [], calc);
+  assert.deepEqual(at('That is about 36.5 million blinks a year', '100000 /d'), []);
+  assert.deepEqual(at('That is 1 failure in 1,250 runs', '1 / 0.0008'), []);
+  assert.deepEqual(at('The Moon has a mass of about 7.2e22 kg', '1.2 / 100 * 5.97e24 kg'), []);
 });
 
-await test('a reference fact quotes its sentence; the quote must name the same thing and numbers', () => {
+await test('a reference fact quotes its sentence in the reference with its numbers; a payoff quote never fails the sheet', () => {
   const ref =
     'A human hair is about a million carbon atoms wide. An atom is about 100 picometers across.';
   const withRef = {
@@ -367,20 +385,42 @@ await test('a reference fact quotes its sentence; the quote must name the same t
     ),
     [],
   );
-  assert.match(
+  // whether the quote says the same thing is the fact checker's call: it sees the fact with its quote
+  assert.deepEqual(
     quoteOf(
       fact(
         'q1',
         'A grain of sand is about 1 million carbon atoms wide',
         'A human hair is about a million carbon atoms wide.',
       ),
-    )[0] ?? '',
-    /names grain, sand that its quote/,
+    ),
+    [],
+  );
+  assert.match(
+    quoteOf(
+      fact('q1', 'An atom is about 200 pm across', 'An atom is about 100 picometers across.'),
+    ).join(' '),
+    /says "200", which its quote .* does not state/,
   );
   assert.match(quoteOf(fact('q1', 'An atom is about 100 pm across'))[0] ?? '', /give "quote"/);
   assert.match(
     quoteOf(fact('q1', 'An atom is about 100 pm across', 'An atom is 100 pm wide.'))[0] ?? '',
     /not in the REFERENCE word for word/,
+  );
+  const payoff = factErrors(
+    {
+      ...sheet([]),
+      payoff: 'q1',
+      facts: [
+        ...sheet([]).facts,
+        fact('q1', 'An atom is about 100 pm across', 'An atom is 100 pm wide.'),
+      ],
+    },
+    withRef,
+  ).filter((e) => e.toString().startsWith('fact q1'));
+  assert.ok(
+    payoff.length > 0 && payoff.every((e) => e.soft === true && e.drop === undefined),
+    'kept, not failed or dropped',
   );
 });
 
@@ -443,7 +483,9 @@ const SHEET = {
   yardstick: 'an atom at 1 m makes the sand 10,000 km wide',
   need: [],
   facts: [
-    ...BASE,
+    ...BASE.map((x) =>
+      x.id === 'f2' ? { ...x, quote: 'An atom is typically about 100 picometers across.' } : x,
+    ),
     derived('f3', '1 mm is 1,000,000,000 pm', '1 mm / 1 pm'),
     F4,
     derived(
@@ -595,6 +637,10 @@ await test("the fact checker's input holds the brief and each derived fact's cal
     /f4: An atom is about 10 million times smaller than a grain of sand \[derived: 1 mm \/ 100 pm; the engine computed it, units converted, and it matches its text\]/,
   );
   assert.match(input, /f6: .* \[derived: 1 m \* \(1 mm \/ 100 pm\); the engine computed it/);
+  assert.match(
+    input,
+    /f2: An atom is about 100 pm across \[quote: "An atom is typically about 100 picometers across\."\]/,
+  );
   assert.match(userMessage(calls, 'factcheck-2'), /^BRIEF\n/);
 });
 
