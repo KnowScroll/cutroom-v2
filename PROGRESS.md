@@ -44,6 +44,16 @@ Voice refusals not counted as cuts (#18): 4 eleven-v4 HTTP 402 invocations; thei
 | 14 | 2026-11-27 | #46 | `--until script` Norway on PR #67: right article, 1905 events in order | none | 0.0712 | var/runs/q-t2-norway |
 | 15 | 2026-11-27 | #47 | `--until script` atom on PR #68 (T3 agent): question drifted to a volume count, answer unsaid | none | 0.0543 | var/runs/q-t3-atom |
 | 16 | 2026-11-27 | #47 | `--until script` Moon on PR #68 (T3 agent): connected, right numbers; takeaway inverted | none | 0.0226 | var/runs/q-t3-moon |
+| 17 | 2026-11-27 | #47 QC1 | `--until script` atom on PR #68 b69c316: ok | none | 0.0276 | var/runs/qc1-atom |
+| 18 | 2026-11-27 | #47 QC1 | `--until script` moon on PR #68 b69c316: ok | none | 0.0460 | var/runs/qc1-moon |
+| 19 | 2026-11-27 | #47 QC1 | `--until script` sun on PR #68 b69c316: ok | none | 0.0371 | var/runs/qc1-sun |
+| 20 | 2026-11-27 | #47 QC1 | `--until script` venus on PR #68 b69c316: ok | none | 0.0398 | var/runs/qc1-venus |
+| 21 | 2026-11-27 | #47 QC1 | `--until script` nemo on PR #68 b69c316: ok | none | 0.0578 | var/runs/qc1-nemo |
+| 22 | 2026-11-27 | #47 QC1 | `--until script` norway on PR #68 b69c316: failed: hard payoff-number check on a date | none | ~0.024 | var/runs/qc1-norway |
+| 23 | 2026-11-27 | #47 QC1 | `--until script` proxima on PR #68 b69c316: ok (new topic) | none | 0.0760 | var/runs/qc1-proxima |
+| 24 | 2026-11-27 | #47 QC1 | `--until script` mariana on PR #68 b69c316: ok (new topic) | none | 0.1000 | var/runs/qc1-mariana |
+| 25 | 2026-11-27 | #47 QC1 | `--until script` panama on PR #68 b69c316: failed: fit could not reach the budget (new topic) | none | ~0.021 | var/runs/qc1-panama |
+| 26 | 2026-11-27 | #47 QC1 | `--until script` quit on PR #68 b69c316: ok (new topic, dan-koe) | none | 0.0403 | var/runs/qc1-quit |
 | 1 | 2026-11-27 | #2 | `--until script` import check | none | 0.0289 | var/runs/import-check |
 | 2 | 2026-11-27 | #2 | full reel `--rounds 0` (resumed from script) | heygen (4.66 st) | 0.0537 (folder total 0.0826) | var/runs/import-check |
 | 3 | 2026-11-27 | #9 | `--apply-notes --cut 2`, attempt 1 (shot-5 note rejected by validator; kept as reel-v2-attempt1) | heygen (4.72 st) | 0.0153 | var/runs/e2-check |
