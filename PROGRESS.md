@@ -42,6 +42,8 @@ Voice refusals not counted as cuts (#18): 4 eleven-v4 HTTP 402 invocations; thei
 | 12 | 2026-11-27 | #50 | cut on PR #66 from the old Moon script (cached voice, new plan/assets/shots): 4 first-attempt shot rejections, all real; no overlaps | heygen (cached) | 0.1114 | var/runs/q-t6-moon2 |
 | 13 | 2026-11-27 | #46 | `--until script` Venus on PR #67: premise kept (243-day spin vs 224.7-day year) | none | 0.0467 | var/runs/q-t2-venus |
 | 14 | 2026-11-27 | #46 | `--until script` Norway on PR #67: right article, 1905 events in order | none | 0.0712 | var/runs/q-t2-norway |
+| 15 | 2026-11-27 | #47 | `--until script` atom on PR #68 (T3 agent): question drifted to a volume count, answer unsaid | none | 0.0543 | var/runs/q-t3-atom |
+| 16 | 2026-11-27 | #47 | `--until script` Moon on PR #68 (T3 agent): connected, right numbers; takeaway inverted | none | 0.0226 | var/runs/q-t3-moon |
 | 1 | 2026-11-27 | #2 | `--until script` import check | none | 0.0289 | var/runs/import-check |
 | 2 | 2026-11-27 | #2 | full reel `--rounds 0` (resumed from script) | heygen (4.66 st) | 0.0537 (folder total 0.0826) | var/runs/import-check |
 | 3 | 2026-11-27 | #9 | `--apply-notes --cut 2`, attempt 1 (shot-5 note rejected by validator; kept as reel-v2-attempt1) | heygen (4.72 st) | 0.0153 | var/runs/e2-check |
