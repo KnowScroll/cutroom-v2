@@ -23,7 +23,7 @@ A PS1-style low-poly 3D explainer hosted by a cartoon animal in a suit. The engi
 - A new pose on every sentence: the host snaps (0.16 s) into a different pose at the start of each sentence of the narration and holds it, while the engine breathes it, blinks it and moves its mouth with the voice. The pose acts the sentence: point or present at the part being explained, shrug at a wrong idea, count for a number, shiver or fan for cold or heat, think at a question, arms_up at the payoff, wave to open and close.
 - The slice: on the word that names what is inside, the casing splits down the middle and the two halves slide apart over 0.6 s (easeOut) and stay open; the inside parts stay in place. The label pops 0.3 s later on the word that names the part and holds to the end of the shot.
 - The part at work glows (glow on that inside part) while the line says what it does: heat, cold, current, flow.
-- Cut like the reference (about 25 cuts a minute): a NEW camera setup on every sentence, together with the new pose (wide, then part or subject, then face; never the same setup twice in a row). Within a setup the camera never stands still: a slow orbit of 6 to 12 degrees (angle animated with lt) and a gentle push-in.
+- Cut like the reference (about 25 cuts a minute): a NEW camera setup on every sentence, together with the new pose (wide, then part or subject, then face; never the same setup twice in a row). Within a setup the camera may orbit slowly (6 to 12 degrees, angle animated with lt) or push in to show something new, then hold.
 - Between steps the subject stays where it was (same set, same place); the slice closes again at the start of the next step shot and reopens on its word, so every step has its own reveal.
 
 ## story
@@ -33,7 +33,7 @@ A PS1-style low-poly 3D explainer hosted by a cartoon animal in a suit. The engi
 - Numbers are said as words; at most one number per step; the payoff number is made felt next to something the viewer knows.
 
 ## plan
-- Structure: 6 to 9 shots, one beat each, in this order:
+- Structure: 6 to 9 shots, one beat each, in this usual order (a story may merge or reorder beats):
   1. hook: the subject whole and closed in the place it really lives, the host in front of it waving. Lines: the promise with the count of steps ("[subject], in [N] parts.", N = the number of step shots exactly) or a question the steps answer. Header: the subject's name, no number.
   2. myth: the common wrong idea, knocked down (the host shrugs, then facepalms or crosses its arms). Lines: "[the wrong idea]? Nope." then the true one in a few words, without its number. Same set as the hook, camera "host" or "face". Header: "It doesn't [wrong idea]" (2 to 5 words), no number.
   3. step (3 to 5 of them, one shot each, in the real order the thing works): the subject in its studio set (or where it lives), the slice opening on the part's word, the ONE label on that inside part, the part glowing while it works, the host beside it pointing. Lines: the FIRST words of the shot are its number word and the part's name ("Two: the [part]."), never a link word before them; then what it does, with one concrete fact (a link word such as "so" or "which means" goes in this second sentence). Header: "k/N [the part's name]", where k counts the steps only (1 for the first step shot, N = the number of step shots).
@@ -43,7 +43,7 @@ A PS1-style low-poly 3D explainer hosted by a cartoon animal in a suit. The engi
 - Sets: 2 or 3: the outdoor yard (green grass, blue-violet to pink sky, fence, pines, house, bushes, hills) for the hook, myth and loop, or a room if the thing only lives indoors; and a studio for the steps (the subject alone, big). A thing that is two units in two places (inside and outside) may use both places instead of the studio.
 - Assets: the host FIRST (look3d), then the subject, and a second subject only if the real thing is two separate units. The subject is TALL so it fills a vertical frame: 1.4 to 2.2 m high (taller than the 1.3 m host), its width at most 1.3 times its height. A thing that is really wide and flat is shown in its upright version or form (the tall unit, the standing model, the cabinet), or scaled so its height reaches 1.4 m. Each subject's "parts" are the inside parts the steps label, in step order.
 - Each shot idea gives: the set; the subject's place (x, z, y if it hangs) and the host's place beside it; the camera per sentence; the host's pose AND expression for every sentence (all different within the shot); the slice word and the label part and text; the glowing part; the header text.
-- Lines: one narrator, a young, energetic man (liam on ElevenLabs, lucian on HeyGen, English_expressive_narrator on MiniMax), quick, about 2.6 words a second. Each line's tone: playful, surprised, deadpan or proud, varied.
+- Lines: one narrator (speaker "narrator"; a young, energetic man), quick, about 2.6 words a second. Each line's tone: playful, surprised, deadpan or proud, varied.
 - Music: feel Bouncy Bright Humorous, 80-95 bpm (the reference bed runs at 172 bpm, felt as 86 in half time); payoff_shot is the payoff shot. Sound effects: a pop when each step header and each label appears, a whoosh when a slice opens. Nothing else.
 
 ## assets

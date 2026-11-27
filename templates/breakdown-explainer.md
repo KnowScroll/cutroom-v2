@@ -17,7 +17,7 @@ Shows one real physical thing (an organ or body system, a machine, a device, a s
 - When a part is named: it brightens in the accent colour with a soft glow and pulses gently (scale 1.00 to 1.03), the other parts dim to about 60%, its leader line draws out (0.3 s), then its label pops in (0.25 s).
 - Function is shown as things moving along paths: small glowing dots travelling along curves (fluid, signals, current, air, substances being released), at a steady speed, the whole time the function is being explained.
 - A process step is one clear change from before to after (a cut line draws itself, a part lifts and fades away, a part slides into place, a flow stops or starts). Hold the after-state at least 1 s.
-- Something always moves softly: background particles drift, the subject breathes (scale plus or minus 1%) or flows keep running.
+- Motion shows something new (a flow, a lift, a slide), then holds. Soft ambient life (background particles, the subject breathing by plus or minus 1%) is optional and never replaces a change.
 
 ## plan
 - Structure (6 to 8 shots; adapt to the brief):
@@ -33,7 +33,7 @@ Shows one real physical thing (an organ or body system, a machine, a device, a s
 - The second asset is the ghosted context (the surroundings), so it can fade and scale on its own. A third asset only for a genuinely different object that needs craft (for example the main instrument when the procedure centres on it). Never draw the subject a second time as a separate diagram: show the procedure on the hero itself through its "stage" param, in the same view the viewer has already learned. Tools, flow dots, arrows, labels and step badges are drawn by the shots, not planned as assets.
 - In each shot idea, say which part is focused, which labels appear on which line, and which camera move (push in, pull out, hold) happens.
 - Facts: standard textbook knowledge only. Part names correct, relative positions correct (left and right, front and back, above and below, what is attached to what). For a part that connects or bridges others, say exactly which portion it joins (upper, middle or lower) and check it against how a standard labelled textbook diagram shows it; the hero asset is drawn from your description, so a wrong position there is a wrong drawing in every shot. Describe procedures at a patient-education level; no doses, no medical advice. Leave out anything uncertain.
-- Lines: one calm, clear narrator (bf_emma, bm_george or af_sarah). Short sentences, one idea per line. Name each part in the line where its label should appear, early in the line.
+- Lines: one calm, clear narrator (speaker "narrator"; a calm, clear voice). Short sentences, one idea per line. Name each part in the line where its label should appear, early in the line.
 - Music: feel Bright Uplifting Driving, 90-110 bpm: curious with a pulse, never a sleepy pad; payoff_shot is the outcome shot. Sound effects: a soft pop when a label appears, a whoosh on a big camera move. No booms, thunder or zaps.
 
 ## assets
