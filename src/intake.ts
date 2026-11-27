@@ -8,12 +8,14 @@ export const MIN_SECONDS = 30;
 export const MAX_SECONDS = 90;
 export const DEFAULT_SECONDS = 45;
 
+// a quote field M3 leaves null is an empty quote
+const Quote = z.preprocess((v) => (v === null ? '' : v), z.string());
 const ModelAnswer = Intake.extend({
   seconds: z.number().optional(),
   subject: z.string(),
   subject_kind: z.string(),
-  covers: z.string(),
-  excludes: z.string(),
+  covers: Quote,
+  excludes: Quote,
 });
 type ModelAnswer = z.infer<typeof ModelAnswer>;
 
@@ -77,7 +79,8 @@ const quoted = (t: string): string => plain(t).replace(/^["'\s]+|["'\s.]+$/g, ''
  */
 function scopeProblem(answer: ModelAnswer, about: string): string | null {
   if (answer.fit === 'none') return null;
-  if (quoted(answer.excludes) !== '') {
+  // "excludes": "none" is M3 saying nothing excludes the subject
+  if (!['', 'none', 'n/a'].includes(quoted(answer.excludes))) {
     return `the subject falls under the "Not for" of ${answer.template} ("${answer.excludes}"), so that template has no fit`;
   }
   const covers = quoted(answer.covers);

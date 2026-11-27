@@ -836,6 +836,43 @@ await test('shipped_failing counts a failing shot carried forward unchanged (the
   );
 });
 
+await test('an empty or null wrong_template or fact error is no verdict: no intake round, the patch still applies', async () => {
+  // M3 sends empty fields instead of leaving them out ("template_patch": [] in 16 of 18 real reviews)
+  for (const [wrongTemplate, factErrors] of [
+    ['', ['']],
+    ['  ', ['  ']],
+    [null, null],
+  ] as const) {
+    const { run, varDir, dir } = await job([
+      intake,
+      reply({
+        approve: false,
+        summary: 'Labels clip.',
+        scores: SCORES,
+        notes: NOTES,
+        template_patch: [LOOK_PATCH],
+        wrong_template: wrongTemplate,
+        fact_errors: factErrors,
+      }),
+      review(true),
+    ]);
+    const what = JSON.stringify(wrongTemplate);
+    assert.equal(run.status, 'done', run.error ?? '');
+    assert.deepEqual(
+      run.harness_calls.map((c) => c.step),
+      ['intake', 'review-1', 'review-2'],
+      what,
+    );
+    assert.equal(run.rounds[0]?.kind, 'template', what);
+    assert.equal(run.cuts[0]?.review?.wrong_template, undefined, what);
+    assert.deepEqual(run.cuts[0]?.review?.fact_errors, factErrors === null ? undefined : [], what);
+    const names = (await readEvents(varDir, run.id)).map((e) => e.event);
+    assert.ok(!names.includes('intake.again') && !names.includes('intake.not_again'), what);
+    assert.ok(!(await readFile(path.join(dir, 'report.md'), 'utf8')).includes('wrong template'));
+    assert.equal(run.approved, true, what);
+  }
+});
+
 await test('a wrong_template verdict re-runs intake once without that template, and the next cut starts over', async () => {
   const originals = path.join(root, 'templates-two');
   await mkdir(originals);

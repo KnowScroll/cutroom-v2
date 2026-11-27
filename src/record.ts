@@ -99,6 +99,10 @@ export const ReviewNotes = z.strictObject({
 });
 export type ReviewNotes = z.infer<typeof ReviewNotes>;
 
+// M3 sends an empty field instead of leaving it out ("template_patch": [] in 16 of 18 real reviews): null or blank
+// text means absent, never a verdict.
+const isBlank = (v: unknown): boolean => v === null || (typeof v === 'string' && v.trim() === '');
+
 export const Review = z.strictObject({
   approve: z.boolean(),
   summary: z.string(),
@@ -106,9 +110,12 @@ export const Review = z.strictObject({
   notes: ReviewNotes,
   template_patch: z.array(TemplatePatch).optional(),
   /** Claims the cut says or shows that are false (design §6.5: a cut with one ranks after every cut without). */
-  fact_errors: z.array(z.string()).optional(),
+  fact_errors: z.preprocess(
+    (v) => (Array.isArray(v) ? v.filter((x) => !isBlank(x)) : isBlank(v) ? undefined : v),
+    z.array(z.string()).optional(),
+  ),
   /** Why the template cannot show the brief's subject at all (design §6.1: re-runs intake once per job). */
-  wrong_template: z.string().optional(),
+  wrong_template: z.preprocess((v) => (isBlank(v) ? undefined : v), z.string().optional()),
 });
 export type Review = z.infer<typeof Review>;
 

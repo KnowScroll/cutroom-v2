@@ -301,6 +301,28 @@ await test('fit none with nothing quoted is taken as it is', async () => {
   assert.equal(result.intake.reason, 'no template draws planets');
 });
 
+await test('an "excludes" of none, blank or null is no exclusion; a null "covers" is an empty one', async () => {
+  for (const excludes of ['none', 'None.', '  ', null]) {
+    const { result, requests } = await run(
+      [answer({ ...venusInSpace, excludes })],
+      { request: VENUS },
+      await scopeTemplates(),
+    );
+    assert.ok(!(result instanceof Error));
+    assert.equal(requests.length, 1, String(excludes));
+    assert.equal(result.intake.fit, 'good', String(excludes));
+  }
+  const { result, requests } = await run(
+    [answer({ ...venusInSpace, covers: null }), answer({ ...venusInSpace, covers: null })],
+    { request: VENUS },
+    await scopeTemplates(),
+  );
+  assert.ok(!(result instanceof Error));
+  assert.equal(requests.length, 2);
+  assert.equal(result.intake.fit, 'none');
+  assert.match(result.intake.reason, /"covers" is empty/);
+});
+
 await test('an excluded template is left out of the list, the review says why, and naming it is an unknown template', async () => {
   const { result, requests } = await run(
     [answer(venusOnGlobe), answer(venusInSpace)],

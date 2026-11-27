@@ -138,7 +138,7 @@ sync templates -> intake (M3) -> cut 1 (engine) -> gates -> review (M3)
 One M3 call, thinking off. Input: the request, the optional `template` and `seconds`, and every working template's name and `## about`. Prompt adds cutroom's read-the-request questions (audience, goal, tone, subject kind). Output (zod-checked, one retry on bad JSON):
 `{ template: string, fit: "good" | "partial" | "none", reason: string, audience: string, goal: string, tone: string, seconds: number }`.
 A request that names a template uses it (fit is still judged). `brief.txt` = the request verbatim + three lines (audience, goal, tone); always passed with `--brief-file`.
-2026-11-27 (#54): the output adds `subject`, `subject_kind`, `covers` (the words of the chosen about that cover the subject, copied) and `excludes` (its "Not for" words the subject falls under). A fit other than `none` holds only if `covers` is found in the about and `excludes` is empty; otherwise the answer is sent back once with why, and a second miss becomes `fit: none` on that template (D17). The goal names the question, never a predicted answer.
+2026-11-27 (#54): the output adds `subject`, `subject_kind`, `covers` (the words of the chosen about that cover the subject, copied) and `excludes` (its "Not for" words the subject falls under). A fit other than `none` holds only if `covers` is found in the about and `excludes` is empty (blank, null or "none"); otherwise the answer is sent back once with why, and a second miss becomes `fit: none` on that template (D17). The goal names the question, never a predicted answer.
 
 ### 6.3 Gates
 
@@ -161,7 +161,7 @@ One M3 vision call per cut, separate from every maker call (it sees only the pac
 ```
 `notes` is exactly fastreel's director schema, so `--apply-notes` takes it unchanged. The prompt asks for a template patch only for a flaw the template's directions cause (it would come back on any topic); reel notes otherwise.
 
-2026-11-27 (#54): each shot's strip adds a frame at its cue word (the stage's `h.cue` timing from timeline.json) and one 0.8 s later, and a full-size frame per shot (at cue + 0.8 s, else 55%) is sent for small text; the fact sheet shows each `calc` (an opaque string) and the packet lists the claims the writer's last fact check flagged (work `script.json`). The prompt says the brief wins on facts and the template on style, adds identity and occlusion checks, and says captions are the engine's. The answer adds `fact_errors?: string[]` and `wrong_template?: string` (§6.1).
+2026-11-27 (#54): each shot's strip adds a frame at its cue word (the stage's `h.cue` timing from timeline.json) and one 0.8 s later, and a full-size frame per shot (at cue + 0.8 s, else 55%) is sent for small text; the fact sheet shows each `calc` (an opaque string) and the packet lists the claims the writer's last fact check flagged (work `script.json`). The prompt says the brief wins on facts and the template on style, adds identity and occlusion checks, and says captions are the engine's. The answer adds `fact_errors?: string[]` and `wrong_template?: string` (§6.1); a null or blank value (M3 sends empty fields rather than leaving them out) is absent, and so is a blank fact error.
 
 ### 6.5 Best cut
 
