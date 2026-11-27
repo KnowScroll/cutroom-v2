@@ -476,10 +476,12 @@ export function renderReport(run: RunRecord): string {
 
   if (run.intake !== null) {
     const i = run.intake;
+    // the model's sentences usually end in a period already
+    const bare = (t: string): string => t.replace(/\.$/, '');
     out.push(
       '## Intake',
       '',
-      `Template ${i.template}, fit ${i.fit} (${i.reason}). Audience: ${i.audience}. Goal: ${i.goal}. Tone: ${i.tone}. Target ${String(i.seconds)} s.`,
+      `Template ${i.template}, fit ${i.fit} (${bare(i.reason)}). Audience: ${bare(i.audience)}. Goal: ${bare(i.goal)}. Tone: ${bare(i.tone)}. Target ${String(i.seconds)} s.`,
       '',
     );
   }
