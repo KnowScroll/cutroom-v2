@@ -29,7 +29,7 @@ Voice refusals not counted as cuts (#18): 4 eleven-v4 HTTP 402 invocations; thei
 | # | date | issue | purpose | voice | cost USD | run folder |
 |---|---|---|---|---|---|---|
 | 1 | 2026-11-27 | #45 | `--until script` atom brief (code before review fixes) | none (script only) | 0.0205 | var/runs/q-t1-atom |
-| 2 | 2026-11-27 | #45 | `--until script` Moon brief on final PR #65 code (orchestrator) | none (script only) | (running) | var/runs/q-t1-moon |
+| 2 | 2026-11-27 | #45 | `--until script` Moon brief on final PR #65 code (orchestrator) | none (script only) | 0.0260 | var/runs/q-t1-moon |
 | 1 | 2026-11-27 | #2 | `--until script` import check | none | 0.0289 | var/runs/import-check |
 | 2 | 2026-11-27 | #2 | full reel `--rounds 0` (resumed from script) | heygen (4.66 st) | 0.0537 (folder total 0.0826) | var/runs/import-check |
 | 3 | 2026-11-27 | #9 | `--apply-notes --cut 2`, attempt 1 (shot-5 note rejected by validator; kept as reel-v2-attempt1) | heygen (4.72 st) | 0.0153 | var/runs/e2-check |
