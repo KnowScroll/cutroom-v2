@@ -87,7 +87,8 @@ QC0 items done directly: patched working copies reset (Windows globe-zoom-explai
 
 ### In flight
 
-(see below, updated per merge)
+- #44 T0 doc PR (sonnet, worktree), #45 T1 (opus), #48 T5 (opus, also answers H7), #54 T9 (opus). Started 2026-11-27.
+- Scope moves: line-note checks from #54 to #49 (engine applyNotes reuses the writer checks).
 
 ### Real cuts, phase Q (budget 80)
 
