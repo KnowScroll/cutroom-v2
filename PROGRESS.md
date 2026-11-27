@@ -39,6 +39,7 @@ Voice refusals not counted as cuts (#18): 4 eleven-v4 HTTP 402 invocations; thei
 | 9 | 2026-11-27 | #45 | `--until script` atom on 9875f2e: maths right (0.5 mm / 100 pm = 5 million) | none | 0.0438 | var/runs/q-t1-atom3 |
 | 10 | 2026-11-27 | #45 | `--until script` Venus on 9875f2e: premise inverted (reference lacks the 243-day spin: T2) | none | 0.0342 | var/runs/q-t1-venus |
 | 11 | 2026-11-27 | #50 | full cut on PR #66 (Moon): stopped at voice, heygen free HTTP 429 free-models-per-day | heygen (refused) | ~0.03 (script stage) | var/runs/q-t6-moon |
+| 12 | 2026-11-27 | #50 | cut on PR #66 from the old Moon script (cached voice, new plan/assets/shots): 4 first-attempt shot rejections, all real; no overlaps | heygen (cached) | 0.1114 | var/runs/q-t6-moon2 |
 | 1 | 2026-11-27 | #2 | `--until script` import check | none | 0.0289 | var/runs/import-check |
 | 2 | 2026-11-27 | #2 | full reel `--rounds 0` (resumed from script) | heygen (4.66 st) | 0.0537 (folder total 0.0826) | var/runs/import-check |
 | 3 | 2026-11-27 | #9 | `--apply-notes --cut 2`, attempt 1 (shot-5 note rejected by validator; kept as reel-v2-attempt1) | heygen (4.72 st) | 0.0153 | var/runs/e2-check |
