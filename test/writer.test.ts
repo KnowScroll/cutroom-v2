@@ -204,6 +204,62 @@ await test('rates, magnitude words and plain counts compute; a chain of 100s doe
   assert.match(chained[0] ?? '', /uses 100 more than once/);
 });
 
+await test('a calendar number a fact states keeps its unit; AU is a unit; number words stop at punctuation', () => {
+  const walk = (text: string, calc: string, more: Fact[]) =>
+    errorsOf({ ...sheet([]), facts: [...BASE, F4, ...more, derived('d1', text, calc)] });
+  const moon: Fact[] = [
+    { id: 'w1', text: 'The Moon is about 384,400 km from Earth', source: 'general' },
+    { id: 'w2', text: 'A person walks about 5 km/h', source: 'general' },
+    { id: 'w3', text: 'A hiker walks 12 hours a day', source: 'general' },
+  ];
+  assert.equal(
+    walk('Walking to the Moon takes about 8.8 years', '384400 km / (5 km/h) / 12', moon).length,
+    1,
+  );
+  assert.deepEqual(
+    walk('Walking to the Moon takes about 17.5 years', '384400 km / (5 km/h) / 12', moon),
+    [],
+  );
+  for (const [text, calc, facts] of [
+    ['A shift pays $180', '15 * 12', ['A worker earns $15 an hour', 'A shift lasts 12 hours']],
+    [
+      'The train gets there in 30 minutes',
+      '60 / 120',
+      ['The town is 60 km away', 'The train runs at 120 km/h'],
+    ],
+    [
+      'The equator moves at about 1,670 km/h',
+      '40075 / 24',
+      ['Earth is about 40,075 km around', 'Earth turns once every 24 hours'],
+    ],
+    [
+      'Neptune is about 30 AU from the Sun',
+      '4.5 billion km * 1',
+      ['Neptune is about 4.5 billion km from the Sun'],
+    ],
+  ] as const) {
+    const more = facts.map((f, i): Fact => ({
+      id: `w${String(i + 4)}`,
+      text: f,
+      source: 'general',
+    }));
+    assert.deepEqual(walk(text, calc, more), [], `${text} = ${calc}`);
+  }
+  const watched: Fact = {
+    id: 'w9',
+    text: 'In 1969 about 600 million people watched the landing',
+    source: 'general',
+  };
+  assert.deepEqual(
+    errorsOf({
+      ...sheet([watched]),
+      answer:
+        'In nineteen sixty-nine, six hundred million people watched; an atom is ten million times smaller.',
+    }),
+    [],
+  );
+});
+
 await test('the answer and the yardstick may say only numbers the sheet states', () => {
   const scaled = derived(
     'f6',
@@ -405,9 +461,9 @@ await test("the fact checker's input holds the brief and each derived fact's cal
   assert.ok(input.startsWith(`BRIEF\n${BRIEF}\n`), input.slice(0, 120));
   assert.match(
     input,
-    /f4: An atom is about 10 million times smaller than a grain of sand \[derived: 1 mm \/ 100 pm = 10 million\]/,
+    /f4: An atom is about 10 million times smaller than a grain of sand \[derived: 1 mm \/ 100 pm; the engine computed it, units converted, and it matches its text\]/,
   );
-  assert.match(input, /f6: .* \[derived: 1 m \* \(1 mm \/ 100 pm\) = 10000 km\]/);
+  assert.match(input, /f6: .* \[derived: 1 m \* \(1 mm \/ 100 pm\); the engine computed it/);
   assert.match(userMessage(calls, 'factcheck-2'), /^BRIEF\n/);
 });
 
@@ -453,6 +509,19 @@ await test('a fact-check fix with a number not on the sheet is not taken; a conf
     userMessage(calls, 'script-revise#1'),
     /the brief and the reference disagree/,
   );
+});
+
+await test('a conflict the first fact check reported stays in the last one, marked, where the harness reads it', async () => {
+  const first = PROBLEMS.problems,
+    second = { problems: first.filter((p) => p.kind !== 'conflict') };
+  const { story } = await runWriter({ ...reviewed({ shots: [] }), 'factcheck-2': second });
+  const last = story.review?.factcheck2?.problems ?? [];
+  const conflict = last.find((p) => p.shot === 1);
+  assert.match(
+    conflict?.problem ?? '',
+    /^a conflict between the brief and the reference, reported, not fixed: /,
+  );
+  assert.equal(last.length, first.length);
 });
 
 await test('a fix that changes nothing is not logged as a rewrite', async () => {

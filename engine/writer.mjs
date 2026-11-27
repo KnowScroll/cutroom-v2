@@ -53,8 +53,8 @@ const sameWord = (a, b) => a === b || (b.length >= 4 && (a.startsWith(b) || b.st
 const says = (text, phrase) => { const w = toks(text), p = toks(phrase); if (!p.length) return false; for (let i = 0; i + p.length <= w.length; i++) if (p.every((x, k) => sameWord(w[i + k], x))) return true; return false; };
 // ---------- numbers and units ----------
 // derived facts: plain factors any calculation may use. Decimal conversions (10, 1000, 1e6, 1e9) are gone: the unit table does them
-// (M3 wrote 1 mm = 1,000,000 pm as "1 * 1000000"). Beside units, a calendar factor the sheet does not state as a plain number
-// is the conversion the units already make, so it counts as 1: a right conversion still matches the text, a wrong one (the Moon
+// (M3 wrote 1 mm = 1,000,000 pm as "1 * 1000000"). Beside units, a calendar factor no fact states is the conversion the
+// units already make, so it counts as 1: a right conversion still matches the text, a wrong one (the Moon
 // walk's "/24 ... *24" mixing hours and days) does not
 const FREE = new Set([1, 2, 3, 4, 7, 12, 24, 52, 60, 100, 365, 3600]), CALENDAR = new Set([7, 12, 24, 52, 60, 365, 3600]);
 const MAG = { thousand: 1e3, million: 1e6, billion: 1e9, trillion: 1e12 };
@@ -68,7 +68,7 @@ for (const [sym, names, k, d] of [['m', 'metre meter', 1, LEN], ['g', 'gram', 1e
 }
 defUnit('min mins minute', 60, TIME); defUnit('h hr hrs hour', 3600, TIME); defUnit('d day', 86400, TIME); defUnit('wk week', 604800, TIME); defUnit('month', 2629800, TIME); defUnit('yr yrs year', 31557600, TIME);
 defUnit('t tonne', 1e3, MASS); defUnit('lb lbs pound', 0.45359237, MASS); defUnit('mi mile', 1609.344, LEN); defUnit('kms', 1e3, LEN); defUnit('ft foot feet', 0.3048, LEN); defUnit('inch', 0.0254, LEN);
-defUnit('au', 1.495978707e11, LEN); defUnit('ly light-year lightyear', 9.4607304725808e15, LEN); defUnit('l L litre liter', 1e-3, [3, 0, 0]); defUnit('ha hectare', 1e4, [2, 0, 0]);
+defUnit('au AU', 1.495978707e11, LEN); defUnit('ly light-year lightyear', 9.4607304725808e15, LEN); defUnit('l L litre liter', 1e-3, [3, 0, 0]); defUnit('ha hectare', 1e4, [2, 0, 0]);
 // "km", "km/h", "km2", "m^3", "picometres" -> [SI factor, dimension], or null
 const unitOf = tok => {
   let k = 1, d = Z;
@@ -122,6 +122,9 @@ function quantitiesIn(text) {
 // numbers in words: "ten thousand", "a million", "four point six billion", "nineteen eighty-seven", "nineteen oh five"
 const WN = Object.fromEntries([...ONES.map((w, i) => [w, i]), ...TENS.map((w, i) => [w, i * 10]).filter(([w]) => w)]);
 function wordNumbers(text) {
+  return String(text).split(/[,;:.!?]/).flatMap(wordRuns);
+}
+function wordRuns(text) {
   const w = toks(text), out = [];
   for (let i = 0; i < w.length; i++) {
     const a = w[i] === 'a' && (w[i + 1] === 'hundred' || MAG[w[i + 1]]);
@@ -197,12 +200,12 @@ const shownIn = (r, text) => {
   return tu ? `${fmtNum(r.v / (tu.v / tu.n))} ${tu.u}` : tw ? `${fmtNum(r.v * tw[0])} per ${tw[2]}` : `${fmtNum(r.v)} ${SI(r.d)}`;
 };
 // the quantities the non-derived facts state (what a calc may use), and how a bare number reads there: in the unit every fact
-// that states it gives it ("378000 / 5" is 378000 km / 5 km/h), or with its magnitude ("4.4 / 8" is 4.4 billion / 8 billion);
-// a plain factor stays bare
+// that states it gives it ("378000 / 5" is 378000 km / 5 km/h, "/ 12" is "12 hours a day"), or with its magnitude ("4.4 / 8"
+// is 4.4 billion / 8 billion); a plain factor stays bare
 const near = (a, b) => Math.abs(a - b) <= 1e-6 * Math.max(Math.abs(a), Math.abs(b));
 const sheetOf = facts => facts.filter(x => x.source !== 'derived').flatMap(x => quantitiesIn(x.text).map(q => ({ ...q, id: x.id })));
 const bareUnit = sheet => n => {
-  if (FREE.has(n)) return null;
+  if (FREE.has(n) && !CALENDAR.has(n)) return null;
   const same = sheet.filter(s => near(s.n, n));
   if (same.length) return same.every(s => s.d && near(s.k, same[0].k) && sameDim(s.d, same[0].d)) ? same[0] : null;
   const scaled = sheet.filter(s => s.mag && near(s.raw, n)), per = s => s.v / s.raw;
@@ -210,7 +213,7 @@ const bareUnit = sheet => n => {
 };
 const onSheet = (calc, sheet) => {
   const r = evalCalc(calc, bareUnit(sheet));
-  return r.qs.some(q => q.d.some(Boolean)) ? evalCalc(calc, bareUnit(sheet), n => CALENDAR.has(n) && !sheet.some(s => !s.d && near(s.n, n))) : r;
+  return r.qs.some(q => q.d.some(Boolean)) ? evalCalc(calc, bareUnit(sheet), n => CALENDAR.has(n) && !sheet.some(s => near(s.n, n))) : r;
 };
 // the problems of one derived fact; [] when it holds
 function calcErrors(x, sheet) {
@@ -236,8 +239,9 @@ function calcErrors(x, sheet) {
     : valuesIn(x.text).some(v => close(v, r.v));
   return ok ? [] : [`fact ${x.id}: "calc" ${x.calc} gives ${shownIn(r, x.text)}${readNote}, but its text says "${x.text}". One of calc or text is wrong: check the calc's factors and units first (every quantity with its unit, as the sheet states it), then the claim; never change a true claim to fit the arithmetic`];
 }
-// the shown result of a derived fact, for the fact checker and the fixer ("1 mm / 100 pm = 10 million")
-const calcShown = (x, sheet) => { try { return `${x.calc} = ${shownIn(onSheet(x.calc, sheet), x.text)}`; } catch { return String(x.calc); } };
+// a derived fact for the fact checker and the fixer: its calc, and that it holds (a second rounding of the result, "= 8.62 years"
+// beside a text of 8.63, set off a nitpick fix that split the narration from the tags)
+const calcShown = (x, sheet) => `${x.calc}; ${calcErrors(x, sheet).length ? 'the engine found it does not match its text' : 'the engine computed it, units converted, and it matches its text'}`;
 const calcList = f => { const facts = f?.facts || [], sheet = sheetOf(facts); return facts.map(x => `${x.id}: ${x.text}${x.source === 'derived' ? ` [derived: ${calcShown(x, sheet)}]` : ''}`).join('\n'); };
 // a soft problem: asked to be fixed, but an answer left with only soft problems is kept after the last try
 const soft = msg => Object.assign(new String(msg), { soft: true });
@@ -602,7 +606,7 @@ export function createWriter(E) {
   const factcheck = (step, o, sp, f) => json(step, `${E.prompt('factcheck')}${E.refBlock()}`, `BRIEF\n${brief}\n\nFACT SHEET (a derived fact shows the engine's arithmetic: its calc and result)\n${calcList(f)}\n\nSCRIPT\n${readAloud(o, sp)}\n\nReturn only the JSON object.`);
   // a conflict (the brief against the reference) is reported, never fixed: a fix would flip the brief's premise
   const toFix = fc => (fc?.problems || []).filter(p => p?.kind !== 'conflict');
-  const conflicts = (step, fc) => { const c = (fc?.problems || []).filter(p => p?.kind === 'conflict'); if (c.length) log(`${step}: ${c.length} conflict(s) reported, not fixed: ${c.map(p => `shot ${p.shot}: ${p.problem}`).join('; ')}`); };
+  const conflicts = (step, fc) => { const c = (fc?.problems || []).filter(p => p?.kind === 'conflict'); for (const p of c) if (!/^a conflict/.test(p.problem || '')) p.problem = `a conflict between the brief and the reference, reported, not fixed: ${p.problem || ''}`; if (c.length) log(`${step}: ${c.length} conflict(s) reported, not fixed: ${c.map(p => `shot ${p.shot}: ${p.problem}`).join('; ')}`); return c; };
   async function reviewScript(o, sp, f) {
     const [viewer, fc] = await Promise.all([json('viewer', E.prompt('viewer'), `${readAloud(o, sp)}\n\nReturn only the JSON object.`), factcheck('factcheck', o, sp, f)]);
     return { viewer, factcheck: fc };
@@ -638,7 +642,9 @@ export function createWriter(E) {
       if (revised) {
         const fc2 = await factcheck('factcheck-2', o, sp, f); review.factcheck2 = fc2;
         log(`fact check of the revision: ${fc2 ? `${fc2.problems?.length || 0} problems` : 'no answer'}`);
-        conflicts('fact check of the revision', fc2);
+        // the harness reads the last fact check (script.json review.factcheck2): the first one's conflicts stay in it
+        const seen = new Set(conflicts('fact check of the revision', fc2).map(p => `${p.shot}|${p.claim}`)), carry = (review.factcheck?.problems || []).filter(p => p?.kind === 'conflict' && !seen.has(`${p.shot}|${p.claim}`));
+        if (carry.length) review.factcheck2 = { ...(fc2 || {}), problems: [...(fc2?.problems || []), ...carry] };
         if (toFix(fc2).length) o = await fixClaims(o, sp, f, toFix(fc2));
       }
       story = { title: o.title, question: sp.question || f.question, answer: sp.answer || f.answer, callback: sp.callback, music: { ...(o.music || {}), payoff_shot: +sp.payoff_shot },

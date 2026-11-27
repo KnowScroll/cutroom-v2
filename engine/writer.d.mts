@@ -58,7 +58,15 @@ export interface Line {
   text: string;
   tone?: string;
 }
+export interface FactCheckProblem {
+  shot?: number | string;
+  kind?: string;
+  claim?: string;
+  problem?: string;
+  fix?: string;
+}
 export interface Story {
   shots: { lines: Line[] }[];
+  review?: { factcheck2?: { problems?: FactCheckProblem[] } | null };
 }
 export function createWriter(E: WriterEnv): { writeStory: () => Promise<Story> };
