@@ -14,13 +14,13 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 - [ ] Later, not blocking: look at #13's calibration table (posted: https://github.com/KnowScroll/cutroom-v2/issues/13#issuecomment-7206270682).
 - [x] #17: the user approved installing Node 22, FFmpeg and Chrome in WSL Ubuntu (2026-11-27).
 
-- [ ] Budget (decide before #18): 15 of 40 cuts used (~$1.2). Projection: CP3b ~4, CP4 ~4, CP5 5 jobs x up to 4 = 20 -> ~43, over 40. Cuts are cheap (~$0.04-0.15 each with the free voice). Orchestrator recommendation: raise the cap to 55 cuts. Until the user answers, work continues; the orchestrator stops before cut 40 if no answer.
+- [ ] Budget (decide before #18): 19 of 40 cuts used (~$1.6). Projection: CP3b ~4, CP4 ~4, CP5 5 jobs x up to 4 = 20 -> ~43, over 40. Cuts are cheap (~$0.04-0.15 each with the free voice). Orchestrator recommendation: raise the cap to 55 cuts. Until the user answers, work continues; the orchestrator stops before cut 40 if no answer.
 
 ## In flight
 
 | issue | agent / model | branch or worktree | started | note |
 |---|---|---|---|---|
-| #15 | implementer / sonnet | claude/15-http (worktree; rebasing onto main) | 2026-11-27 | CP3b: cleared for 1 real API job with a kill + restart, after the rebase |
+| #15 | implementer / sonnet | claude/15-http (worktree; pushed 6228a1f) | 2026-11-27 | CP3b job done; finishing evidence + PR |
 
 ## Real cuts (budget: 40 cuts with model calls, docs/plan.md)
 
@@ -43,6 +43,10 @@ Free re-renders (no model calls) not counted: #16 radio-lp-e4 resume (fonts-radi
 | 13 | 2026-11-27 | #13 | CP3a cut 2, notes round (selected) | heygen | 0.044 | same |
 | 14 | 2026-11-27 | #13 | CP3a cut 3, template round (patched var/templates/kurzgesagt.md, history 1) | heygen | 0.106 | same |
 | 15 | 2026-11-27 | #13 | CP3a cut 4, notes round (job harness total ~0.03) | heygen | 0.031 | same |
+| 16 | 2026-11-27 | #15 | CP3b API job "Venus day vs year" cut 1 (service killed in cut 1, restarted, resumed; incl. killed invocation) | heygen | 0.1258 | var/runs/20261127-013542-why-a-day-on-venus-is-longer-than-its-ye |
+| 17 | 2026-11-27 | #15 | CP3b cut 2, notes round | heygen | 0.0517 | same |
+| 18 | 2026-11-27 | #15 | CP3b cut 3, notes round | heygen | 0.0548 | same |
+| 19 | 2026-11-27 | #15 | CP3b cut 4 (selected; job total 0.4103 incl. harness) | heygen | 0.1418 | same |
 
 ## Next action
 
