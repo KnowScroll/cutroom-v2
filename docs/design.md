@@ -10,7 +10,7 @@ Motto: **Lightweight. Fast. Simple.**
 
 | id | decision |
 |---|---|
-| D1 | One engine: fastreel's (`KnowScroll/fastreel`, private), imported into this repo. Its creative steps, prompts, validators and render are not improved or redesigned. |
+| D1 | One engine: fastreel's (`KnowScroll/fastreel`, private), imported into this repo. Its creative steps, prompts, validators and render are improved only as D24 allows. |
 | D2 | From `KnowScroll/cutroom-test-skill` take only: the director rubric (hook, clarity, visual, pacing, audio, fit, 1-5), its JSON decision style, the rule that a measured gate FAIL is never approved, the mp4-level frame audit, and its "read the request" questions for intake. Not its HyperFrames build, style kits or agent skill. |
 | D3 | The harness is a custom TypeScript program (no pi, no agent framework). MiniMax-M3 is called only at fixed points with fixed prompts and schema-checked JSON answers; everything else is code. |
 | D4 | Templates: developers write originals in `templates/` with Claude Code (`studio/`, `/new-template`, `/fix-template`). The harness never writes there. It keeps working copies (read-write) and may patch them while fixing a reel (§5). |
@@ -18,7 +18,7 @@ Motto: **Lightweight. Fast. Simple.**
 | D6 | Both a CLI and an HTTP API; the API runs as its own service on a Linux VM. |
 | D7 | When the fix rounds run out without approval: return the best cut plus a report. Every run keeps complete logs and metadata (§7). |
 | D8 | Keys live in `.env` at the repo root only. Never printed, copied or committed. |
-| D9 | New code is strict TypeScript with lint, typecheck and tests. The engine stays JavaScript; it gets only the edits in §4.2. |
+| D9 | New code is strict TypeScript with lint, typecheck and tests. The engine stays JavaScript, in its existing style, with no lint or type rules; its edits are those in §4.2 and D24. |
 | D10 | VM OS is Linux. Open fonts are bundled and loaded by the stage; templates name the new fonts (§4.3). Dev machine and VM render with the same fonts. |
 | D11 | The repo `KnowScroll/cutroom-v2` stays public and imports everything, including `studio/refs` (user's explicit choice). `.env`, keys, reference `.mp4` files and run outputs are never committed. |
 | D12 | API output: job id, poll, download. Bearer token. Files on the VM's disk. |
@@ -33,19 +33,20 @@ Motto: **Lightweight. Fast. Simple.**
 | D21 | Voice is not locked to one model or provider (user, 2026-11-27): an ordered list of every engine voice model, with fallback (§6.7). Keys for OpenRouter and ElevenLabs are both optional; a job needs at least one voice that works. |
 | D22 | Deploying to the VM is out of scope for now (user, 2026-11-27). Linux is verified in WSL Ubuntu only; D6 and D10 still shape the code. |
 | D23 | Frame-gate calibration is decided by a fixed rule, not by the user (user, 2026-11-27): for each template and each frame gate, if more than half of that template's existing fastreel reels (every `reel.mp4` cut on disk) fail the gate at cutroom's threshold, the gate is `info` for that template (a `gate <name>: info` line in its `## checks`); otherwise the gate is `block` at cutroom's threshold. A template with no reel on disk gets cutroom's thresholds. The orchestrator applies it and posts the table for the user to look at later. |
+| D24 | (2026-11-27, user): reel-quality repairs are made in cutroom-v2: engine code, prompts, stage, templates and harness. fastreel is frozen as a read-only baseline. An engine change needs run evidence of the failure in its issue, keeps the §4.1 contract and checkpoints, and is verified by a test, a re-render or a real run. Amends D1, D9, §2 Out, §3 and §4.2. |
 
 ## 2. Scope
 
 In: request in, reel out. Intake, one engine, measured gates, an M3 review, up to 3 fix rounds, best cut, report, run record. CLI and HTTP service. Template working copies with sync and patching. A Linux run verified in WSL Ubuntu.
 
-Out: new templates or new styles (developer work in `studio/`); improving the engine's prompts, drawing, voice or music; a web UI; multiple workers; object storage; user accounts; deploying to the VM (D22).
+Out: new templates or new styles (developer work in `studio/`); improving the engine's prompts, drawing, voice or music except as D24 allows; a web UI; multiple workers; object storage; user accounts; deploying to the VM (D22).
 
 ## 3. Layout
 
 ```
 AGENTS.md  CLAUDE.md  HANDOFF.md  PROGRESS.md  README.md
 docs/design.md  docs/plan.md
-engine/        fastreel engine, JS (asset_reel.mjs + fastreel's engine/* + prompts/), package-local paths only
+engine/        fastreel engine, JS (asset_reel.mjs + fastreel's engine/* + prompts/), package-local paths only; edits per §4.2 and D24
 templates/     ORIGINAL templates: _base.md, <kind>.md, <kind>.log (developer-owned)
 studio/        developer-only: fastreel reference-lab (README, method-results, REA_VIDEO_HANDOFF, tools/, refs/,
                rea-video-patches/), briefs/; .claude/skills/new-template, fix-template point here
@@ -68,14 +69,14 @@ env: CUTROOM_TEMPLATE_DIR (var/templates), CUTROOM_ENV_FILE (repo .env), CUTROOM
 - Rerunning with the same `--out` resumes from checkpoints. Each checkpoint file is restored on its own (kit.js, asset_*.js and shot_*.js do not check what came before them), so rebuilding a step means deleting its checkpoint and every later one (§5.4). `--out` is always an absolute path under `$CUTROOM_VAR/runs/`.
 - The engine waits by itself when the MiniMax Token Plan quota runs out (error 2056), up to 24 h.
 
-### 4.2 Allowed engine edits (the only ones)
+### 4.2 Allowed engine edits (E1-E4, and D24 repairs)
 
 - E1 Paths: the engine lives in `engine/`; templates, keys and the var folder come from the env vars above (defaults: `<repo>/templates`, `<repo>/.env`, `<repo>/var`); the cache is `$CUTROOM_VAR/cache` and a run without `--out` goes to `$CUTROOM_VAR/runs/<slug>-<stamp>` (never `<repo>/reels/`). Replaces the hard-coded `C:/Users/XZNON/cutroom-v2/.env` and `FASTREEL_ENV_FILE`.
 - E2 `--cut <n>` names the output `<out>-v<n>`. `--apply-notes <file>` restores the checkpoints, applies a notes file exactly as fastreel's director round does today (same schema, same speaker mapping, same `h.cue` re-timing rule, `script: yes` ignores line notes), saves the redrawn assets and shots and the changed lines (the work folder's `plan.json`) back to the checkpoints, then renders cut n. The director-round body becomes one function used by both `--rounds` and `--apply-notes`; `--rounds` keeps working for developers.
 - E3 Fonts (§4.3): `@font-face` for the bundled fonts in the stage, and a wait for `document.fonts` before validation and render.
 - E4 Linux: anything else that breaks on Linux (found in M5), fixed minimally.
 
-Any other engine change is an architecture change: escalate.
+Any other engine change needs D24's conditions: run evidence of the failure in its issue, the §4.1 contract and checkpoints kept, and a test, a re-render or a real run to verify it. A change that breaks those is an architecture change: escalate.
 
 ### 4.3 Fonts
 

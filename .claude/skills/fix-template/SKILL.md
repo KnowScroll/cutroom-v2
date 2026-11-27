@@ -1,6 +1,6 @@
 ---
 name: fix-template
-description: Run fix rounds on an existing fastreel template (any of templates/*.md, old or new): MiniMax-M3 makes a reel with asset_reel.mjs, Claude Code reviews it, grades it against the template's reference reel and fixes the template, logging each epoch. Use when the user wants a template improved, a reel from a template reviewed, or runs /fix-template <kind> "<brief>".
+description: Run fix rounds on an existing cutroom-v2 template (any of templates/*.md, old or new): MiniMax-M3 makes a reel with asset_reel.mjs, Claude Code reviews it, grades it against the template's reference reel and fixes the template, logging each epoch. Use when the user wants a template improved, a reel from a template reviewed, or runs /fix-template <kind> "<brief>".
 ---
 
 # fix-template: make, review, grade, fix
@@ -22,4 +22,4 @@ One round:
 4. Fix: edit the template for each flaw (concrete px numbers, layouts, techniques, helper signatures; never topic words or examples M3 could copy). Append an epoch to `templates/<kind>.log`: the reel, its cost and length, what it got right, each flaw -> fix.
 5. Ask the user before going past 3 rounds. Report each reel's length, cost per phase (`var/runs/<slug>-eN-cost.txt`) and grade.
 
-Do not edit engine files (asset_reel.mjs, engine/*, templates/_base.md, README.md) or other templates without asking; describe the engine change instead. Do not commit unless asked.
+Do not edit other templates or `templates/_base.md` without asking. Engine files (`engine/*`) change only under design D24 (an issue with run evidence of the failure, the §4.1 contract and checkpoints kept, verified by a test, a re-render or a real run); otherwise describe the engine change instead. Do not commit unless asked.
