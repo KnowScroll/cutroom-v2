@@ -6,7 +6,7 @@ Status: being built. Design: [docs/design.md](docs/design.md). Plan: [docs/plan.
 
 ## Use
 
-Setup: `npm ci`, a `.env` at the repo root (keys; for `serve` also `CUTROOM_API_TOKEN`). Linux notes come with #17.
+Setup: `npm ci`, a `.env` at the repo root (keys; for `serve` also `CUTROOM_API_TOKEN`). On Linux see [Running on Linux](#running-on-linux).
 
 CLI (`node src/cli.ts <command>`):
 
@@ -33,3 +33,65 @@ curl http://127.0.0.1:8080/health
 ```
 
 Body: `request` 1-4000 characters; `template` (optional, a name in `var/templates`, else 400); `seconds` (optional, 30-90).
+
+## Running on Linux
+
+Verified on Ubuntu 22.04 in WSL. Deploying to a VM (service unit, hosting) is out of scope (design D22).
+
+### Packages
+
+| Package          | Minimum | Notes                                                                                                                                                  |
+| ---------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Node             | 22.18   | Runs the `.ts` files directly; no build step. Tested with 22.23.                                                                                       |
+| FFmpeg + ffprobe | 5.1     | The frame audit uses `-fps_mode`. Ubuntu 22.04's apt FFmpeg is 4.4 and fails with `Unrecognized option 'fps_mode'`; use a newer build. Tested with n8.1. |
+| Google Chrome    | stable  | Any current stable; tested with 158. The engine finds `/usr/bin/google-chrome`; set `CHROME_PATH` for another binary.                                  |
+
+Install as root:
+
+```sh
+apt-get update && apt-get install -y curl ca-certificates gnupg git xz-utils
+
+# Node 22 (latest 22.x tarball)
+V=$(curl -fsSL https://nodejs.org/dist/latest-v22.x/SHASUMS256.txt | grep -o 'node-v[0-9.]*-linux-x64.tar.xz' | head -1 | sed 's/node-//; s/-linux.*//')
+curl -fsSL https://nodejs.org/dist/$V/node-$V-linux-x64.tar.xz | tar -xJ -C /usr/local --strip-components=1
+
+# FFmpeg n8.1 (static build; the apt package is too old)
+curl -fsSL -o /tmp/ff.tar.xz https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n8.1-latest-linux64-gpl-8.1.tar.xz
+tar -xJf /tmp/ff.tar.xz -C /tmp && cp /tmp/ffmpeg-n8.1-*/bin/ffmpeg /tmp/ffmpeg-n8.1-*/bin/ffprobe /usr/local/bin/
+
+# Google Chrome stable
+curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list
+apt-get update && apt-get install -y google-chrome-stable
+```
+
+The fonts are in `fonts/` and the stage loads them itself; no system fonts are needed. `studio/` is not needed.
+
+### Set up and check
+
+Clone into the Linux filesystem (on WSL, not under `/mnt/c`):
+
+```sh
+git clone https://github.com/KnowScroll/cutroom-v2.git ~/cutroom-v2 && cd ~/cutroom-v2
+npm ci
+npm run check
+```
+
+### Environment
+
+Keys live in a `.env` file, at the repo root or wherever `CUTROOM_ENV_FILE` points (on WSL the Windows file works, as `/mnt/c/.../.env`). Never copy keys into the repo. Needed: `MINIMAX_API_KEY`. Optional: `OPENROUTER_API_KEY`, `ELEVENLABS_API_KEY`. For `serve`: `CUTROOM_API_TOKEN`. Other variables: `CUTROOM_VAR` (state folder, default `<repo>/var`), `CUTROOM_HOST` and `CUTROOM_PORT` (default `127.0.0.1:8080`), `CUTROOM_VOICE_MODELS`, `CHROME_PATH`.
+
+On WSL use a Linux `CUTROOM_VAR`: process ids differ between Windows and WSL, so the two must not share `var/engine.lock`.
+
+```sh
+export CUTROOM_ENV_FILE=/mnt/c/Users/<you>/cutroom-v2/.env   # or a .env at the repo root
+export CUTROOM_VAR=$HOME/cutroom-var
+```
+
+### Make a reel
+
+The commands and the HTTP API are under [Use](#use); on Linux they run the same way (`node src/cli.ts make "..."`, `node src/cli.ts serve`). A real job costs money and takes a while; one engine run at a time per machine (`$CUTROOM_VAR/engine.lock`).
+
+### Where runs live
+
+`$CUTROOM_VAR/runs/<id>/` holds one job: `run.json`, `report.md`, and per cut `reel-v<n>/reel.mp4` with the engine's `reel-work/` checkpoints. `$CUTROOM_VAR/runs/index.jsonl` has one line per finished job. Working template copies are in `$CUTROOM_VAR/templates/`, the engine's cache in `$CUTROOM_VAR/cache/`.

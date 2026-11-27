@@ -59,7 +59,8 @@ await test('loadConfig reads CUTROOM_ENV_FILE', () => {
   writeFileSync(file, `MINIMAX_API_KEY=${KEY}\nCUTROOM_PORT=8123\nCUTROOM_VAR=${dir}\n`);
   const saved = { ...process.env };
   try {
-    delete process.env['MINIMAX_API_KEY'];
+    // loadEnvFile never overrides, so a caller's own CUTROOM_VAR or CUTROOM_PORT would win over the file
+    for (const k of ['MINIMAX_API_KEY', 'CUTROOM_PORT', 'CUTROOM_VAR']) delete process.env[k];
     process.env['CUTROOM_ENV_FILE'] = file;
     const c = loadConfig();
     assert.equal(c.minimaxApiKey, KEY);
