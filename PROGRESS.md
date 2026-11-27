@@ -119,8 +119,8 @@ QC0 items done directly: patched working copies reset (Windows globe-zoom-explai
 - Merged also: #48 (PR #63, cced615; H7 holds: free re-render recipe on #48), #45 (PR #65, 5290aff; 9 script cuts to get the maths right).
 - Merged also: #50 (PR #66, e2681fd), #46 (PR #67, 172e613).
 - Merged also: #51 (PR #69, 3cfa79d), #52 (PR #71, 969ca15).
-- Merged also: #47 (PR #68, 204ece4).
-- Running: #53 T8, #56 T10b, #70 T3b (writer lane; then #49 T5b).
+- Merged also: #47 (PR #68, 204ece4), #59 (PR #72, cb21389; Windows var synced).
+- Running: #53 T8 (PR #73), #56 T10b, #70 T3b (PR #74; then #49 T5b). Then: #55 T10a, #57 T10c, QC3-QC5 (#60). Voice blocked until 00:00 UTC (free limit) unless credit is added.
 - Scope moves: line-note checks from #54 to #49 (engine applyNotes reuses the writer checks).
 
 ### Real cuts, phase Q (budget 80)
