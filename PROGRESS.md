@@ -21,6 +21,7 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 | issue | agent / model | branch or worktree | started | note |
 |---|---|---|---|---|
 | #15 | implementer / sonnet | claude/15-http (worktree; pushed 6228a1f) | 2026-11-27 | CP3b job done; finishing evidence + PR |
+| #17 | implementer / sonnet | claude/17-linux (worktree + WSL clone ~/cutroom-v2) | 2026-11-27 | WSL installs via wsl -u root; CP4 API job only after #15 merges; WSL var ~/cutroom-var |
 
 ## Real cuts (budget: 40 cuts with model calls, docs/plan.md)
 
@@ -50,4 +51,4 @@ Free re-renders (no model calls) not counted: #16 radio-lp-e4 resume (fonts-radi
 
 ## Next action
 
-#15 in flight (CP3b). Then #17 (CP4; WSL installs via `wsl -u root`, sudo needs a password), #18 (CP5).
+#15 finishing (CP3b), #17 in flight (CP4). Then #18 (CP5).
