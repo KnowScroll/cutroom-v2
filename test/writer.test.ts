@@ -833,10 +833,24 @@ await test('a draft over the word budget is cut to length by the fit step, not s
   assert.equal(hook.story.shots[1]?.lines[0]?.text, LINES[1]?.[0]);
   assert.ok(hook.logs.includes('script-fit: 98 -> 67 words (budget 60)'), hook.logs.join('\n'));
 
-  // a fit that takes no cut leaves the draft far over budget: the run stops instead of a reel that long
-  await assert.rejects(
-    runWriter({ ...passed(), script: script(long), 'script-fit': { shots: [] } }),
-    /no usable script: 98 words after the fit, for a budget of 60/,
+  // a fit that takes no cut leaves the draft far over budget: length never ends a run (QC1 Panama: 208 words for 96 stopped it);
+  // the shortest script is kept and the overrun logged
+  const stuck = await runWriter({ ...passed(), script: script(long), 'script-fit': { shots: [] } });
+  assert.equal(stuck.story.shots[0]?.lines[0]?.text, long[0]?.[0]);
+  assert.ok(
+    stuck.logs.includes(
+      'script-fit: WARNING: 98 words after the fit, 63% over the budget of 60; the reel will run long',
+    ),
+    stuck.logs.join('\n'),
+  );
+});
+
+await test('the spine is told how many shots the word budget carries', async () => {
+  // 60 words carry about 6 shots of 10 words, inside the default range of 5 to 9
+  const { calls } = await runWriter(passed());
+  assert.match(
+    userMessage(calls, 'spine#1'),
+    /Target length: 24 seconds: 6 shots, about 60 spoken words in all \(at least about 10 words a shot/,
   );
 });
 
@@ -1030,6 +1044,23 @@ await test('the payoff shot must say the answer, and a number past trillion can 
     tiny.logs.join('\n'),
   );
   assert.equal(tiny.story.shots[3]?.lines[0]?.text, vague);
+
+  // a missing answer is asked for, never the reason a run ends: after the last try the script is kept
+  const never = await payoffRun('A grain of sand holds about 1.25e20 atoms', 'atoms', {
+    script: 'Which means one grain holds an almost unimaginable number of atoms.',
+  });
+  assert.ok(
+    never.logs.some((l) =>
+      l.startsWith('script: kept the answer with only craft problems left: the payoff shot (4)'),
+    ),
+    never.logs.join('\n'),
+  );
+
+  // a date's day is said as an ordinal and a year as a year: neither is asked for (QC1 Norway demanded "twenty-six")
+  const date = await payoffRun('The union with Sweden ended on 26 October 1905', 'ended', {
+    script: 'Which means the union with Sweden ended on the twenty-sixth of October.',
+  });
+  assert.ok(!date.logs.some((l) => l.includes('must say the answer')), date.logs.join('\n'));
 });
 
 await test('time runs forward for BC years and "years ago" too', async () => {
@@ -1041,6 +1072,8 @@ await test('time runs forward for BC years and "years ago" too', async () => {
     ['', '753 BC', '509 BC', '264 BC', ''],
     ['', '252 million years ago', '201 million years ago', '145 million years ago', ''],
     ['', '264 BC', '1905', '1914', ''],
+    // QC1 Panama: context from an earlier time, marked as such, is no jump back
+    ['', '1903', 'background: 1886', '1904', ''],
   ]) {
     const { logs } = await runWriter({ ...passed(), 'spine#1': dated(...order) });
     assert.ok(

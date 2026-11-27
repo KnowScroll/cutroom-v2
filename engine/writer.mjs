@@ -78,7 +78,7 @@ const whenOf = when => {
 };
 // a number as the narrator says it: 1.25e20 -> "one hundred and twenty-five quintillion", 8.8 -> "eight point eight"; null when
 // that form does not read back as the value (1e-10 prints as digits; past the largest magnitude word, "five thousand nine
-// hundred and seventy sextillion" read as 9.7e23 for 5.97e24): such an answer is asked for, not demanded
+// hundred and seventy sextillion" read as 9.7e23 for 5.97e24): the message then shows its digits
 const sayNum = v => {
   const big = Object.entries(MAG).filter(([, m]) => m >= 1e6 && v >= m).at(-1), r = String(big ? +(v / big[1]).toPrecision(3) : v), m = r.match(/^(\d+)(?:\.(\d+))?$/), w = m && numWords(+m[1]);
   const s = w && `${w}${m[2] ? ` point ${[...m[2]].map(d => ONES[+d]).join(' ')}` : ''}${big ? ` ${big[0]}` : ''}`;
@@ -475,12 +475,12 @@ export function createWriter(E) {
       if (!(+s.hold >= 0 && +s.hold <= 2)) s.hold = Math.max(0, Math.min(2, +s.hold || 0));
       for (const id of s.facts || []) if (!ids.has(id)) Er.push(`shot ${i + 1} uses fact "${id}", which is not in the sheet`);
     });
-    // time runs forward (a history reel went 1905, 1814, 1905 and lost its viewer): a shot dated before an earlier one is a flashback
-    // the spine marks; the hook may tease the end and the last shot may look back
+    // time runs forward (a history reel went 1905, 1814, 1905 and lost its viewer): a shot dated before an earlier one is background
+    // or a flashback the spine marks; the hook may tease the end and the last shot may look back
     let top = null;
     sp.shots.forEach((s, i) => {
       const y = whenOf(s.when); if (!Number.isFinite(y) || !i || i === n - 1) return;
-      if (top && y < top.y && !/flashback/i.test(`${s.when} ${s.beat || ''}`)) Er.push(soft(`shot ${i + 1} ("when": "${s.when}") goes back in time after shot ${top.i + 1} ("${top.when}"): tell the events in the order they happened, or make it a flashback its line announces ("when": "flashback: ${s.when}")`));
+      if (top && y < top.y && !/flashback|background/i.test(`${s.when} ${s.beat || ''}`)) Er.push(soft(`shot ${i + 1} ("when": "${s.when}") goes back in time after shot ${top.i + 1} ("${top.when}"): tell the events in the order they happened, or mark it as context its line announces ("when": "background: ${s.when}" or "flashback: ${s.when}")`));
       else if (!top || y > top.y) top = { y, i, when: s.when };
     });
     const have = new Set(sp.shots.map(s => String(s.beat || '').toLowerCase()));
@@ -499,7 +499,10 @@ export function createWriter(E) {
     const saved = !redo && E.ckLoad('spine.json'); if (saved) { log('spine: restored from checkpoint'); return JSON.parse(saved); }
     const [smin, smax] = shotRange(), beats = beatsOf();
     const system = `${E.prompt('spine').replace('{{DEVICES}}', DEVICE_TEXT).replace('{{DEVICE_NAMES}}', Object.keys(DEVICES).join(', '))}\n\n${storyGuide()}${beats.length ? `\n\nBEATS: give every shot a "beat" from: ${beats.join(', ')}. Required: ${needBeats().join(', ') || 'none'}.` : ''}`;
-    const user = `Brief: ${briefFor(brief)}\nTarget length: ${seconds} seconds: ${smin === smax ? smin : `${Math.max(smin, 6)} to ${Math.min(smax, Math.max(smin, 8))}`} shots, about ${E.budget} spoken words in all.\n\nFACT SHEET\nQuestion: ${f.question}\nAnswer: ${f.answer}\nPayoff fact: ${f.payoff}\nYardstick: ${f.yardstick || '(none)'}\n${factList(f)}\n\nReturn only the JSON object.`;
+    // as many shots as the word budget carries at about 10 words a shot, within the template's range (14 fixed shots left 7 words
+    // a shot for a 96-word budget, and no fit could cut the draft that far)
+    const carry = Math.max(smin, Math.min(smax, Math.floor(E.budget / 10))), lo = Math.min(Math.max(smin, 6), carry), hi = Math.min(smax, Math.max(smin, 8), carry);
+    const user = `Brief: ${briefFor(brief)}\nTarget length: ${seconds} seconds: ${lo === hi ? lo : `${lo} to ${hi}`} shots, about ${E.budget} spoken words in all (at least about 10 words a shot: plan no more shots than the words can carry).\n\nFACT SHEET\nQuestion: ${f.question}\nAnswer: ${f.answer}\nPayoff fact: ${f.payoff}\nYardstick: ${f.yardstick || '(none)'}\n${factList(f)}\n\nReturn only the JSON object.`;
     const messages = [{ role: 'user', content: user }];
     if (redo) messages.push({ role: 'assistant', content: JSON.stringify(redo.sp) }, { role: 'user', content: `The scriptwriter wrote this script on your spine:\n\n${redo.script}\n\nA test viewer who knows nothing about the topic watched it and got lost:\n${JSON.stringify(redo.viewer, null, 1)}\n\nThe fact checker found: ${redo.fix.length ? JSON.stringify(redo.fix, null, 1) : 'nothing wrong'}.\n\nBuild the spine again so the viewer can follow the story from the question to the answer: reorder, merge, split, add or cut shots, and change their points, facts and links, as the story needs. Return the complete JSON.` });
     const step = redo ? 'spine-revise' : 'spine', sp = await ask(step, system, messages, o => spineErrors(o, f), redo ? 3 : 4);
@@ -549,15 +552,17 @@ export function createWriter(E) {
         Er.push(`shot 1's line "${first}" is not a hook: it has no number and is not a question. Open with a surprising real number (written as words) or a question that ends with "?"`);
       if (f && sp) {
         // the payoff's OWN numbers: those no other fact on the sheet holds (the payoff fact often restates the setup's number), by
-        // value: by digits "1.25e20" asked for "twenty" and every number under 10 (8.8 years) went unchecked. The answer must be
-        // said: a soft check let the atom script's payoff say "an almost unimaginable number"
+        // value: by digits "1.25e20" asked for "twenty" and every number under 10 (8.8 years) went unchecked. A date's day and a
+        // year are not asked for: a day is said as an ordinal the reader skips, so "26 October 1905" could never pass
         const pay = f.facts.find(x => x.id === f.payoff), other = f.facts.filter(x => x.id !== f.payoff).flatMap(x => valuesIn(x.text)), near5 = (a, b) => Math.abs(a - b) <= Math.abs(b) * 0.05;
-        const own = [...new Set(valuesIn(pay?.text || ''))].filter(v => v && !other.some(o => near5(v, o))), said = t => numbersSaid(t).map(n => n.v);
+        const dated = new Set([...datesIn(pay?.text || '').flatMap(d => [d.day, +d.year]), ...quantitiesIn(pay?.text || '').filter(q => !q.d && Number.isInteger(q.n) && q.n >= 1000 && q.n <= 2100).map(q => q.n)]);
+        const own = [...new Set(valuesIn(pay?.text || ''))].filter(v => v && !dated.has(v) && !other.some(o => near5(v, o))), said = t => numbersSaid(t).map(n => n.v);
         const hook = shots[0].lines.map(l => l.text).join(' '), ps = shots[+sp.payoff_shot - 1];
         for (const v of own.filter(v => v >= 10 || !Number.isInteger(v))) if (said(hook).some(x => near5(x, v))) Er.push(soft(`the hook says ${sayNum(v) || fmtNum(v)}, the answer's number: hold it back for the payoff shot (${sp.payoff_shot}) and open the question instead`));
-        // hard only when the number has a spoken form the trace reads back; otherwise asked for, and kept after the last try
+        // asked for while tries remain, never the reason a run ends (a hard check ended the Norway run); the hint is a spoken form
+        // the trace reads back
         const spoken = own.map(v => sayNum(v)).filter(Boolean);
-        if (own.length && ps && !ps.lines.some(l => said(l.text).some(x => own.some(v => near5(x, v))))) { const msg = `the payoff shot (${sp.payoff_shot}) must say the answer's own number in words (${(spoken.length ? spoken : own.map(fmtNum)).map(w => `"${w}"`).join(' or ')}, from ${pay.id}: ${pay.text}), plainly, never "an unimaginable number"`; Er.push(spoken.length ? msg : soft(msg)); }
+        if (own.length && ps && !ps.lines.some(l => said(l.text).some(x => own.some(v => near5(x, v))))) Er.push(soft(`the payoff shot (${sp.payoff_shot}) must say the answer's own number in words (${(spoken.length ? spoken : own.map(fmtNum)).map(w => `"${w}"`).join(' or ')}, from ${pay.id}: ${pay.text}), plainly, never "an unimaginable number"`));
         // every number said must be one the sheet states (nothing else checks a spoken number against the facts)
         shots.forEach((s, i) => s.lines.forEach(l => { const n = untraced(l.text, f.facts); if (n.length) Er.push(`shot ${i + 1}: "${l.text}" says ${quoted(n)}, which no fact on the sheet states: say the sheet's numbers (rounding is fine) or leave the number out`); }));
       }
@@ -645,8 +650,9 @@ export function createWriter(E) {
     if (hard(cur)) { log(`script-fit: the cut broke a check; keeping the ${total0}-word script`); cur = o; }
     const total1 = cur.shots.reduce((a, s) => a + countWords(s), 0), allowed = budgetFor(withHolds(cur), cur.cast);
     log(total1 === total0 ? `script-fit: no cut was taken; ${total0} words (budget ${allowed})` : `script-fit: ${total0} -> ${total1} words (budget ${allowed})`);
-    // the fit is the only cut: a script it leaves far over budget would run that much past the requested length
-    if (total1 > allowed * 1.3) throw new Error(`no usable script: ${total1} words after the fit, for a budget of ${allowed}`);
+    // length never ends a run (a template's fixed 14 shots left 208 words for 96, and stopping lost the whole cut): the shortest
+    // fitted script is kept, and the overrun is logged; the harness reports the length against the target
+    if (total1 > allowed * 1.3) log(`script-fit: WARNING: ${total1} words after the fit, ${Math.round((total1 / allowed - 1) * 100)}% over the budget of ${allowed}; the reel will run long`);
     return cur;
   }
   // note: what the script on a rebuilt spine must not repeat (the first draft's problems)
@@ -728,7 +734,7 @@ export function createWriter(E) {
         if (!sp2) {
           messages.push({ role: 'user', content: `A test viewer who knows nothing about the topic watched your script (without the fact sheet):\n${JSON.stringify(v || {}, null, 1)}\n\nThe question the reel should open: "${sp.question || f.question}". The answer it should give: "${sp.answer || f.answer}". The viewer should come away with: "${sp.takeaway || f.answer}"; if what they would remember is a detail that does not serve it, cut that detail or make it serve the answer.\n\nThe fact checker found: ${fix.length ? JSON.stringify(fix, null, 1) : 'nothing wrong'}.\n\nRewrite the script to fix: every fact problem (use its fix), every shot the viewer got lost in or found flat, and any gap between the viewer's question and answer and the intended ones. Keep the spine's shots and holds and about the word budget. Return the complete JSON.` });
           const o2 = await ask('script-revise', scriptSystem(), messages, x => scriptErrors(x, sp, f), 3);
-          if (o2) { try { o = await fitWords(o2, sp, f); revised = true; } catch (e) { log(`script-revise: ${e.message}; keeping the script from before the review`); } }
+          if (o2) { o = await fitWords(o2, sp, f); revised = true; }
           else log('script-revise: no revision passed the checks; keeping the script from before the review');
         }
       }

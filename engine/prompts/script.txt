@@ -24,7 +24,7 @@ RULES
 - Spoken English: short common words, active voice, one idea per sentence, "you" where it fits. Name a thing early in the line where it appears on screen. A term the viewer may not know is explained the first time it is said.
 - A number is made felt: next to the yardstick, or against the other number. Never two new numbers in one line.
 - No pointless repetition: every line tells the viewer something new or uses what they already know to get further (the answer worked out from the earlier numbers is fine; the last shot may restate the answer). Never say the same thing twice in other words.
-- Time runs forward: events in the order they happened; where the spine has a flashback, the line says when we are.
+- Time runs forward: events in the order they happened; where the spine marks background or a flashback, the line says when we are.
 - Numbers written as words (the speech engine cannot read digits); no emojis; no hype words (astonishing, incredible, amazing, remarkable, unbelievable, mind-blowing, insane, fascinating, staggering, crazy): say the concrete thing.
 - The cue word is said in that shot's lines, and the cue's "show" is the shot's device happening (the number landing, the part lighting up, the arrow arriving, the second box appearing).
 - The cue is the word where the thing first matters (the word that names it, or the number as it is said), normally in the first two-thirds of the line, never the last word just for convenience.

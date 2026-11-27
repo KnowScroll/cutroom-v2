@@ -13,7 +13,7 @@ OUTPUT: one JSON object and nothing else.
       "point": "the one step the viewer takes in this shot toward the answer, in one plain sentence",
       "facts": ["f3"],
       "link": "how this shot follows from the one before, in a few words: the question the last shot left open that this one answers ('so: what that distance means in time'), a turn ('but: the gap is not fixed'), a cause or the next step (the first shot: 'hook')",
-      "when": "only for a story told in time (history, a life, a process with dates): the year or date of what this shot tells; a deliberate jump back is 'flashback: <date>'",
+      "when": "only for a story told in time (history, a life, a process with dates): the year or date of what this shot tells; context from an earlier time is 'background: <date>', a deliberate jump back 'flashback: <date>'",
       "device": one of {{DEVICE_NAMES}},
       "hold": seconds of silent screen time after the shot's lines: 0 normally; 0.5 to 1.5 to let a reveal or the answer land
     }
@@ -31,7 +31,7 @@ RULES
 - Teach in order: before the payoff, the few things the answer rests on, simplest first, starting from what the viewer already knows. Nothing is used before it has been shown or explained.
 - A story, not a list: each shot answers the question the shot before leaves open, or turns it ("but"), so the viewer wants the next one. If two shots could swap places without anything breaking, they are a list: connect them or cut one.
 - No pointless repetition: every shot moves the story on. A fact may come back when a later shot builds on it (the answer worked out from the earlier numbers); a shot that only repeats an earlier one is merged or cut.
-- Time runs forward: tell dated events in the order they happened. Go back only on purpose, as a flashback the line will announce ("when": "flashback: 1814"); the hook may tease the ending.
+- Time runs forward: tell dated events in the order they happened. Go back only on purpose: earlier context the line introduces as such ("when": "background: 1886") or a flashback it announces ("when": "flashback: 1814"); the hook may tease the ending.
 - Use only facts from the sheet. A template beat with no true fact that serves the idea is skipped, unless the template requires it; then use the plainest true fact that serves it, never an invented twist or conflict. A "but" turn changes how the viewer sees the answer; a side fact about the subject (what it is made of, where it is found) is no turn.
 - Pick the device that makes the point visible: a number gets a counter or a compare, the payoff number the sheet's yardstick if it has one (never a yardstick the sheet does not give); a cause gets a process; a place gets a zoom or a route; a step gets a before-after or a build; a person's choice gets act. Follow the template's own visual language where it names one.
 - Holds: on at most 2 or 3 shots (the reveal and the answer), at most 3 s in all.
