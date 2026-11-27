@@ -11,6 +11,7 @@ OUTPUT: one JSON object and nothing else:
 }
 
 RULES
+- When a character's description lists its poses ("Poses: name (look), ..."), those are its poses: keep their names and looks as the description gives them (never rename or merge them), and list only the ones the shots use.
 - 3 to 6 poses per character (aim for 4 or 5), listed MOST-USED FIRST: the first is the character's main pose (usually standing), the next two are the most used after it. Every shot that shows a character uses at least one of its poses. Acting mostly comes from expression, eyes and mouth changes and from moving the character, so add a second pose for a shot only when the body really changes (sits up, stands up, reaches, lies down).
 - Merge: if two shots need nearly the same body, they share one pose.
 - No furniture inside poses: desks, tables, chairs, sofas and doorways belong to the room (the background) or the shot. A sitting pose is the body sitting (bent knees, seat height at the bottom of the box) and the shot puts the seat under it. The ONE exception is below.
