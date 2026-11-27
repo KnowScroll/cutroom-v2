@@ -14,7 +14,7 @@ import { report } from './cost_report.mjs';
 import { pathToFileURL } from 'node:url';
 import { HERE, VAR, TEMPLATE_DIR, SR, log, sha1, clamp, slugify, stamp, run, pool, withRetry, loadKeys, decodeMono, trimSilence, renderVideo, addSfx, writeWavStereo, extractJson, extractCode, launchStage, BANNED } from './lib.mjs';
 import { voiceModel, normVoice, voiceGuide, speak, voiceCacheKey, voiceRate, recordRate, voiceCheck, wordTimes, MUSIC_FEELS, pickMusic, mixReel } from './audio.mjs';
-import { createWriter, words, numWords, DEVICES } from './writer.mjs';
+import { createWriter, words, numWords, DEVICES, numbersNotInSource, requestOf } from './writer.mjs';
 import { findPhotos, snapQuote } from './photos.mjs';
 
 const MODEL = 'MiniMax-M3', PRICE = { in: 0.30, cached: 0.06, out: 1.20 };
@@ -516,16 +516,9 @@ const fitValidate = (page, a, plan) => async c => {
   a.w = spec.w; a.h = spec.h; return cur;
 };
 
-// numbers on screen that the reference and the brief never state (digits compared without separators; one-digit numbers, and years
-// or days that the reference mentions in words or digits, pass)
-function numbersNotIn(texts) {
-  const src = `${REF || ''} ${brief}`, plain = src.replace(/(\d),(\d)/g, '$1$2'), have = new Set((plain.match(/\d+(?:\.\d+)?/g) || []).map(n => n.replace(/^0+(?=\d)/, '')));
-  const out = new Set();
-  for (const t of texts) for (const m of String(t).replace(/(\d),(\d)/g, '$1$2').matchAll(/\d+(?:\.\d+)?/g)) { const n = m[0].replace(/^0+(?=\d)/, ''); if (n.length >= 2 && !have.has(n)) out.add(m[0]); }
-  const low = src.toLowerCase(); // "1 TRILLION", "4.5 billion": the magnitude must be stated too
-  for (const t of texts) for (const m of String(t).matchAll(/(\d+(?:\.\d+)?)\s*(thousand|million|billion|trillion)/gi)) if (!low.includes(`${m[1]} ${m[2].toLowerCase()}`)) out.add(m[0]);
-  return [...out];
-}
+// numbers on screen or in a fact that the reference and the brief never state (engine/writer.mjs numbersNotInSource: digits without
+// separators, a magnitude by value so "1 million" matches "a million", a full date as one unit; one-digit numbers alone pass)
+function numbersNotIn(texts) { return numbersNotInSource(`${REF || ''} ${requestOf(brief)}`, texts); } // the intake's Goal lines are no source
 // ---------- poses: after the storyboard, M3 lists only the body poses each character's shots need ----------
 async function planPoses(plan) {
   const saved = ckLoad('poses.json'); if (saved) { log('poses: restored from checkpoint'); return JSON.parse(saved); }
