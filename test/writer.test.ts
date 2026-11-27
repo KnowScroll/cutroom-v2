@@ -112,6 +112,42 @@ await test('scientific notation is read in calc and text', () => {
     assert.deepEqual(errorsOf(sheet([derived('f6', text, calc)])), [], `${text} = ${calc}`);
 });
 
+await test('rates, magnitude words and plain counts compute; a chain of plain factors does not', () => {
+  const facts: Fact[] = [
+    { id: 'p1', text: 'A gold bar costs $750,000', source: 'general' },
+    { id: 'p2', text: 'A gold bar weighs 12.4 kg', source: 'general' },
+    { id: 'p3', text: 'The country has 5.5 million people', source: 'general' },
+    { id: 'p4', text: 'The country covers 385,207 km2', source: 'general' },
+    { id: 'p5', text: 'The project cost $690 million over 13 years', source: 'general' },
+    { id: 'p6', text: 'About 4.4 billion people use the internet', source: 'general' },
+    { id: 'p7', text: 'The world has about 8 billion people', source: 'general' },
+    { id: 'p8', text: 'Since 1905 the country has been independent', source: 'general' },
+    { id: 'p9', text: 'In 2024 it held an election', source: 'general' },
+  ];
+  const rates = (calc: string, text: string) => sheet([...facts, derived('d1', text, calc)]);
+  for (const [calc, text] of [
+    ['750000 / 12.4', 'At that price gold costs $60,500 per kg'],
+    ['750000 / 12.4 kg', 'At that price gold costs $60,500 per kg'],
+    ['5500000 / 385207 km2', 'The country has about 14 people per km2'],
+    ['5.5 / 385207', 'The country has about 14 people per km2'],
+    ['690000000 / (13 yr)', 'That is about $53 million a year'],
+    ['4.4 billion / 8 billion * 100', 'About 55% of people use the internet'],
+    ['4.4 / 8 * 100', 'About 55% of people use the internet'],
+    ['2024 - 1905', 'The country has been independent for 119 years'],
+  ] as const)
+    assert.deepEqual(errorsOf(rates(calc, text)), [], `${text} = ${calc}`);
+
+  assert.deepEqual(
+    errorsOf(
+      sheet([], { answer: 'By the twenty-first century an atom is 10 million times smaller.' }),
+    ),
+    [],
+    'an ordinal is not a count',
+  );
+  const chained = errorsFor(sheet([derived('f3', '1 mm = 1,000,000 pm', '100 * 100 * 100')]), 'f3');
+  assert.match(chained[0] ?? '', /no number the sheet states; 100 more than once/);
+});
+
 await test('the answer and the yardstick may say only numbers the sheet states', () => {
   const scaled = derived(
     'f6',
@@ -158,6 +194,8 @@ await test('reference numbers: a magnitude matches in words or digits; a full da
   assert.deepEqual(numbersNotInSource(src, ['On June 7, 1905 the union ended']), []);
   assert.deepEqual(numbersNotInSource(src, ['On 6 June 1905 the vote passed']), ['6 June 1905']);
   assert.deepEqual(numbersNotInSource(src, ['On 7 June 1814 the union began']), ['7 June 1814']);
+  const cost = 'It cost 1,500 million dollars. Up to 30 people died.';
+  assert.deepEqual(numbersNotInSource(cost, ['$1,500 million', 'Up to 30 may have died']), []);
 });
 
 // ---------- the writer with a fake model ----------

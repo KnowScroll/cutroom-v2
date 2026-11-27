@@ -65,7 +65,7 @@ for (const [sym, names, k, d] of [['m', 'metre meter', 1, LEN], ['g', 'gram', 1e
   for (const [p, f] of Object.entries({ p: 1e-12, n: 1e-9, µ: 1e-6, μ: 1e-6, m: 1e-3, c: 1e-2, k: 1e3 })) defUnit(p + sym, f * k, d);
   for (const [p, f] of Object.entries({ pico: 1e-12, nano: 1e-9, micro: 1e-6, milli: 1e-3, centi: 1e-2, kilo: 1e3, mega: 1e6, giga: 1e9 })) defUnit(names.split(' ').map(n => p + n).join(' '), f * k, d);
 }
-defUnit('min minute', 60, TIME); defUnit('h hr hour', 3600, TIME); defUnit('d day', 86400, TIME); defUnit('wk week', 604800, TIME); defUnit('month', 2629800, TIME); defUnit('yr year', 31557600, TIME);
+defUnit('min mins minute', 60, TIME); defUnit('h hr hrs hour', 3600, TIME); defUnit('d day', 86400, TIME); defUnit('wk week', 604800, TIME); defUnit('month', 2629800, TIME); defUnit('yr yrs year', 31557600, TIME);
 defUnit('t tonne', 1e3, MASS); defUnit('lb pound', 0.45359237, MASS); defUnit('mi mile', 1609.344, LEN); defUnit('ft foot feet', 0.3048, LEN); defUnit('inch', 0.0254, LEN);
 defUnit('au', 1.495978707e11, LEN); defUnit('ly light-year lightyear', 9.4607304725808e15, LEN); defUnit('l L litre liter', 1e-3, [3, 0, 0]); defUnit('ha hectare', 1e4, [2, 0, 0]);
 // "km", "km/h", "km2", "m^3", "picometres" -> [SI factor, dimension], or null
@@ -73,7 +73,7 @@ const unitOf = tok => {
   let k = 1, d = Z;
   for (const [i, part] of String(tok).split('/').entries()) {
     const m = part.match(/^([A-Za-zµμ][A-Za-zµμ-]*?)\^?(-?\d)?$/); if (!m) return null;
-    const n = m[1], low = n.toLowerCase(), u = UNITS[n] || (n.length > 2 && (UNITS[low] || UNITS[low.replace(/s$/, '')] || UNITS[low.replace(/es$/, '')]));
+    const n = m[1], low = n.toLowerCase(), u = UNITS[n] || (n.length > 2 && UNITS[[low, low.replace(/s$/, ''), low.replace(/es$/, '')].find(b => b.length > 2 && UNITS[b])]); // "has" is no hectare
     if (!u) return null;
     const e = (m[2] ? +m[2] : 1) * (i ? -1 : 1); k *= u[0] ** e; d = d.map((x, j) => x + u[1][j] * e);
   }
@@ -82,32 +82,39 @@ const unitOf = tok => {
 const sameDim = (a, b) => a.every((x, j) => x === b[j]);
 const DIM_NAMES = { '1,0,0': 'a length', '0,1,0': 'a mass', '0,0,1': 'a time', '2,0,0': 'an area', '3,0,0': 'a volume', '1,0,-1': 'a speed', '0,0,0': 'a plain number' };
 const dimName = d => DIM_NAMES[d.join(',')] || SI(d);
-const SI = d => d.map((e, j) => e ? ['m', 'kg', 's'][j] + (e === 1 ? '' : `^${e}`) : '').filter(Boolean).join(' ');
+const SI = d => { const part = sg => d.map((e, j) => sg * e > 0 ? ['m', 'kg', 's'][j] + (sg * e === 1 ? '' : `^${sg * e}`) : '').filter(Boolean).join(' '), num = part(1), den = part(-1); return den ? (num ? `${num}/${den}` : `per ${den}`) : num; };
 const SUP = '⁻⁰¹²³⁴⁵⁶⁷⁸⁹';
 const normNum = s => String(s).replace(/[⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, m => '^' + [...m].map(c => SUP.indexOf(c) ? SUP.indexOf(c) - 1 : '-').join('')).replace(/(\d),(?=\d{3}\b)/g, '$1');
 // a number in digits: "1000", "4.6 billion", "1e-10", "1.5 × 10^7", "10^7"
-const NUM = /(?<![\w.^])(\d+(?:\.\d+)?)(?:[eE]([+-]?\d+)|\s*[×x*]\s*10\^([+-]?\d+)|\^([+-]?\d+))?(?:\s+(thousand|million|billion|trillion)\b)?/gi;
+const NUM = /(?<![\w.^])(\d+(?:\.\d+)?)(?!\d|(?:st|nd|rd|th)\b)(?:[eE]([+-]?\d+)|\s*[×x*]\s*10\^([+-]?\d+)|\^([+-]?\d+))?(?:\s+(thousand|million|billion|trillion)\b)?/gi;
 const numVal = m => (m[4] != null ? (+m[1]) ** +m[4] : +m[1] * 10 ** +(m[2] ?? m[3] ?? 0)) * (MAG[(m[5] || '').toLowerCase()] || 1);
-// the unit right after a number, or after one other word ("243 Earth days"); a glued single letter is none ("1990s", "5m")
-function unitAfter(rest) {
-  const glued = /^[A-Za-zµμ]/.test(rest), raw = rest.replace(/^-/, ' ').trim().split(/\s+/).slice(0, 5), w = raw.map(x => x.replace(/[.,;:!?)"'”’]+$/, ''));
+// the unit right after a number, or after one other word ("243 Earth days"), with a rate ("km/h", "per kg", "people per km2",
+// "a year"); after money only a rate ("$60,500 per kg"); a glued single letter is none ("1990s", "5m")
+function unitAfter(rest, money) {
+  const glued = /^[A-Za-zµμ]/.test(rest), raw = rest.replace(/^-/, ' ').trim().split(/\s+/).slice(0, 6), w = raw.map(x => x.replace(/[.,;:!?)"'”’]+$/, ''));
+  const rate = j => /^(per|an?|each|every)$/i.test(w[j] || '') && unitOf(w[j + 1] || '');
   for (let i = 0; i < 2 && i < w.length; i++) {
+    if (i && (/^\d/.test(w[0]) || /[.;:!?]$/.test(raw[0]))) break;
+    const per = rate(i);
+    if (per) return { u: w.slice(i, i + 2).join(' '), k: 1 / per[0], d: per[1].map(x => -x) };
+    if (money) continue;
     let j = i, pow = 1;
     if (/^(square|sq|cubic)$/i.test(w[j])) { pow = /^cubic$/i.test(w[j]) ? 3 : 2; j++; }
-    let u = w[j] && (!glued || i || w[j].length > 1) && unitOf(w[j]);
-    if (!u) { if (/^\d/.test(w[i]) || /[.;:!?]$/.test(raw[i])) break; continue; }
+    let u = w[j] && (i ? w[j].length > 2 : !glued || w[j].length > 1) && unitOf(w[j]); // after a skipped word only a unit's name
+    if (!u) continue;
     u = [u[0] ** pow, u[1].map(x => x * pow)];
-    const per = /^(per|an?)$/i.test(w[j + 1] || '') && unitOf(w[j + 2] || '');
-    return { u: w.slice(i, per ? j + 3 : j + 1).join(' '), k: per ? u[0] / per[0] : u[0], d: per ? u[1].map((x, k) => x - per[1][k]) : u[1] };
+    const by = rate(j + 1);
+    return { u: w.slice(i, by ? j + 3 : j + 1).join(' '), k: by ? u[0] / by[0] : u[0], d: by ? u[1].map((x, k) => x - by[1][k]) : u[1] };
   }
   return null;
 }
-// the quantities a text states in digits: {n: the number, v: in SI units, d: dimension (null for a plain number), u: the unit as written}
+// the quantities a text states in digits: {n: the number, v: in SI units, d: dimension (null for a plain number), u: the unit as
+// written, raw and mag: the digits and the magnitude word of "4.4 billion"}
 function quantitiesIn(text) {
   const s = normNum(text), out = [];
   for (const m of s.matchAll(NUM)) {
-    const n = numVal(m), u = /[$€£¥]\s*$/.test(s.slice(0, m.index)) ? null : unitAfter(s.slice(m.index + m[0].length)); // money has no unit
-    out.push(u ? { n, v: n * u.k, k: u.k, d: u.d, u: u.u } : { n, v: n, k: 1, d: null, u: '' });
+    const n = numVal(m), u = unitAfter(s.slice(m.index + m[0].length), /[$€£¥]\s*$/.test(s.slice(0, m.index))), mag = m[2] || m[3] || m[4] ? '' : (m[5] || '').toLowerCase();
+    out.push({ n, raw: +m[1], mag, ...(u ? { v: n * u.k, k: u.k, d: u.d, u: u.u } : { v: n, k: 1, d: null, u: '' }) });
   }
   return out;
 }
@@ -129,8 +136,8 @@ function wordNumbers(text) {
       else if (x === 'oh' && cur >= 10 && cur < 100 && WN[w[j + 1]] < 10) cur = cur * 100 + WN[w[++j]];
       else if (!(x === 'and' && WN[w[j + 1]] != null && (cur >= 100 || total))) break;
     }
-    // a fraction, an ordinal or a decade is no count ("one ten-millionth", "twenty-fifth", "nineteen fifties"): not checked
-    if (!/^(\w+ths?|halves|half|thirds?|quarters?|(twent|thirt|fort|fift|sixt|sevent|eight|ninet)ies)$/.test(w[j] || ''))
+    // a fraction, an ordinal or a decade is no count ("one ten-millionth", "twenty-first", "nineteen fifties"): not checked
+    if (!/^(\w*(fif|six|seven|eigh|nin|ten|eleven|twelf|teen|tie|hundred|thousand|million|billion|trillion)ths?|fourths?|first|second|thirds?|halves|half|quarters?|(twent|thirt|fort|fift|sixt|sevent|eight|ninet)ies)$/.test(w[j] || ''))
       out.push({ s: w.slice(i, j).join(' '), v: total + cur, one: j === i + 1 && WN[w[i]] < 10 });
     i = j - 1;
   }
@@ -165,10 +172,11 @@ function evalCalc(calc, unitOfBare = () => null) {
     const t = T[p++] || {};
     if (t.op === '(') { const a = expr(); if (!take(')')) throw 'a "(" is not closed'; return a; }
     if (t.n == null) throw t.u ? `the unit "${t.u}" needs a number before it (write a rate as one unit: km/h)` : 'a number is missing';
-    let k = 1, d = Z, u = '', read = false;
+    let k = 1, d = Z, u = '', read = false, n = t.n;
+    while (T[p]?.u && MAG[T[p].u.toLowerCase()]) n *= MAG[T[p++].u.toLowerCase()];
     if (T[p]?.u) { u = T[p++].u; const x = unitOf(u); if (!x) throw `"${u}" is not a unit the engine knows (m, km, mm, µm, nm, pm, g, kg, t, s, min, h, d, wk, yr, km/h, m/s, mi, ft, lb, au, ly, km2, m3, L)`; [k, d] = x; }
-    else { const s = unitOfBare(t.n); if (s) { ({ k, d, u } = s); read = true; } }
-    const q = { n: t.n, u, v: t.n * k, d, read }; qs.push(q); return { v: q.v, d };
+    else { const s = unitOfBare(n); if (s) { ({ k, d, u } = s); read = true; } }
+    const q = { n, u, v: n * k, d, read }; qs.push(q); return { v: q.v, d };
   };
   const r = expr(); if (p < T.length) throw `"${T[p].op || T[p].u || T[p].n}" is out of place`;
   return { ...r, qs, ops: T.some(t => t.op && t.op !== '(' && t.op !== ')') };
@@ -180,11 +188,18 @@ const shownIn = (r, text) => {
   const off = q => Math.abs(Math.log(Math.abs(q.v / r.v) || 1e-300)), tu = quantitiesIn(text).filter(q => q.d && sameDim(q.d, r.d)).sort((a, b) => off(a) - off(b))[0];
   return tu ? `${fmtNum(r.v / (tu.v / tu.n))} ${tu.u}` : `${fmtNum(r.v)} ${SI(r.d)}`;
 };
-// the quantities the non-derived facts state (what a calc may use), and the unit a bare number has there: the one every fact
-// that states the number gives it (a plain factor stays bare), so "378000 / 5" reads as 378000 km / 5 km/h
+// the quantities the non-derived facts state (what a calc may use), and how a bare number reads there: in the unit every fact
+// that states it gives it ("378000 / 5" is 378000 km / 5 km/h), or with its magnitude ("4.4 / 8" is 4.4 billion / 8 billion);
+// a plain factor stays bare
 const near = (a, b) => Math.abs(a - b) <= 1e-6 * Math.max(Math.abs(a), Math.abs(b));
 const sheetOf = facts => facts.filter(x => x.source !== 'derived').flatMap(x => quantitiesIn(x.text).map(q => ({ ...q, id: x.id })));
-const bareUnit = sheet => n => { if (FREE.has(n)) return null; const same = sheet.filter(s => near(s.n, n)); return same.length && same.every(s => s.d && near(s.k, same[0].k) && sameDim(s.d, same[0].d)) ? same[0] : null; };
+const bareUnit = sheet => n => {
+  if (FREE.has(n)) return null;
+  const same = sheet.filter(s => near(s.n, n));
+  if (same.length) return same.every(s => s.d && near(s.k, same[0].k) && sameDim(s.d, same[0].d)) ? same[0] : null;
+  const scaled = sheet.filter(s => s.mag && near(s.raw, n)), per = s => s.v / s.raw;
+  return scaled.length && scaled.every(s => near(per(s), per(scaled[0])) && sameDim(s.d || Z, scaled[0].d || Z)) ? { k: per(scaled[0]), d: scaled[0].d || Z, u: `${scaled[0].mag} ${scaled[0].u}`.trim() } : null;
+};
 // the problems of one derived fact; [] when it holds
 function calcErrors(x, sheet) {
   let r; try { r = evalCalc(x.calc ?? '', bareUnit(sheet)); } catch (e) { return [`fact ${x.id} is derived: its "calc" ${JSON.stringify(String(x.calc ?? ''))} does not compute (${e}). Give the arithmetic on the sheet's numbers, each quantity with its unit, for example "1 mm / 100 pm" or "41 / 10000"`]; }
@@ -201,6 +216,9 @@ function calcErrors(x, sheet) {
     if (!same.length) odd.add(`${q.n}, which no other fact on the sheet states`);
     else if (same.every(s => s.d)) odd.add(`${q.n} without its unit (the sheet states ${quoted([...new Set(same.map(s => `${q.n} ${s.u}`))])}: write the one you mean)`);
   }
+  // a calc rests on the sheet, and a plain factor is not chained ("100 * 100 * 100" passed 1 mm = 1,000,000 pm)
+  if (!odd.size && !r.qs.some(q => q.read || q.u || (!FREE.has(q.n) && sheet.some(s => near(s.n, q.n))))) odd.add('no number the sheet states');
+  for (const n of new Set(r.qs.filter(q => !q.u && !q.read && q.n !== 1 && FREE.has(q.n) && !(units && CALENDAR.has(q.n))).map(q => q.n))) if (r.qs.filter(q => !q.u && q.n === n).length > 1) odd.add(`${n} more than once (a chain of factors is a hand conversion)`);
   if (odd.size) return [`fact ${x.id}: "calc" ${x.calc} uses ${[...odd].join('; ')}${readNote}. Use only the sheet's own numbers, each with its unit as the sheet states it; the engine converts units itself and states the result in the text's unit, so never write a conversion factor such as 24, 1000 or 1000000`];
   const tq = quantitiesIn(x.text), close = (a, b) => Math.abs(a - b) <= Math.abs(b) * 0.03 + 1e-300; // relative only: an absolute margin let 0.00004 pass for 0.00017
   const ok = r.d.some(Boolean) ? tq.some(q => q.d && sameDim(q.d, r.d) && close(q.v, r.v)) : valuesIn(x.text).some(v => close(v, r.v));
@@ -302,12 +320,12 @@ export function factErrors(f, E) {
 // value ("1 million" = "a million" = "1,000,000"), a full date as one unit ("6 June 1905"); one-digit numbers alone pass
 const MON = 'jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?';
 const DATE = new RegExp(`\\b(?:(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?(${MON})|(${MON})\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?)\\b(?:,?\\s+(\\d{3,4})\\b)?`, 'gi');
-const datesIn = text => [...String(text).matchAll(DATE)].map(m => ({ s: m[0], day: +(m[1] || m[4]), mon: (m[2] || m[3]).slice(0, 3).toLowerCase(), year: m[5] || '' })).filter(d => d.day >= 1 && d.day <= 31);
+const datesIn = text => [...String(text).matchAll(DATE)].map(m => ({ s: m[0], day: +(m[1] || m[4]), name: m[2] || m[3], mon: (m[2] || m[3]).slice(0, 3).toLowerCase(), year: m[5] || '' })).filter(d => d.day >= 1 && d.day <= 31 && !/^may$/.test(d.name)); // "30 may have died"
 export function numbersNotInSource(src, texts) {
   const plain = src.replace(/(\d),(\d)/g, '$1$2'), have = new Set((plain.match(/\d+(?:\.\d+)?/g) || []).map(n => n.replace(/^0+(?=\d)/, ''))), vals = valuesIn(src);
   const stated = v => vals.some(x => Math.abs(x - v) <= Math.abs(v) * 1e-9), out = new Set();
   for (const t of texts) for (const m of String(t).replace(/(\d),(\d)/g, '$1$2').matchAll(/\d+(?:\.\d+)?/g)) { const n = m[0].replace(/^0+(?=\d)/, ''); if (n.length >= 2 && !have.has(n) && !stated(+n)) out.add(m[0]); }
-  for (const t of texts) for (const m of String(t).matchAll(/(\d+(?:\.\d+)?)\s*(thousand|million|billion|trillion)/gi)) if (!stated(+m[1] * MAG[m[2].toLowerCase()])) out.add(m[0]); // "1 TRILLION": the magnitude too
+  for (const t of texts) for (const m of String(t).replace(/(\d),(\d)/g, '$1$2').matchAll(/(\d+(?:\.\d+)?)\s*(thousand|million|billion|trillion)/gi)) if (!stated(+m[1] * MAG[m[2].toLowerCase()])) out.add(m[0]); // "1 TRILLION": the magnitude too
   const srcDates = datesIn(src);
   for (const t of texts) for (const d of datesIn(t)) if (!srcDates.some(s => s.day === d.day && s.mon === d.mon && (!d.year || s.year === d.year))) out.add(d.s);
   return [...out];
