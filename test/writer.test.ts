@@ -57,7 +57,7 @@ const derived = (id: string, text: string, calc: string): Fact => ({
 await test('the atom sheet: a hand-made conversion factor is rejected, a calc with units computes the ratio', () => {
   const wrong = sheet([derived('f3', '1 mm = 1,000,000 pm', '1 * 1000000')]);
   const [f3] = errorsFor(wrong, 'f3');
-  assert.match(f3 ?? '', /uses 1000000, which no other fact on the sheet states/);
+  assert.match(f3 ?? '', /1000000, which no other fact on the sheet states/);
   assert.deepEqual(errorsFor(wrong, 'f4'), [], '1 mm / 100 pm computes 1e7, which f4 states');
 
   const unitsWrongText = errorsFor(
@@ -243,7 +243,7 @@ await test('a calendar number is literal; AU is a unit; number words stop at pun
     ],
     [
       'Neptune is about 30 AU from the Sun',
-      '4.5 billion km * 1',
+      '4.5 billion km',
       ['Neptune is about 4.5 billion km from the Sun'],
     ],
     [
@@ -300,6 +300,87 @@ await test('derived facts build on each other in any order; a failing one feeds 
   assert.match(
     unstated[0] ?? '',
     /to state hours as years, write the hours quantity and put years in the text/,
+  );
+});
+
+await test('a conversion is one quantity; a unit ratio must be true; a bare 1 or a non-percent 100 is no factor', () => {
+  const hours = derived('c1', 'Walking non-stop takes about 75,600 hours', '378000 km / (5 km/h)');
+  const on = (text: string, calc: string) =>
+    errorsFor(
+      { ...sheet([]), facts: [...sheet([]).facts, hours, derived('c9', text, calc)] },
+      'c9',
+    );
+  assert.deepEqual(on('That is about 8.6 years', '75600 h'), []);
+  assert.deepEqual(on('That is about 8.6 years', '75600 h / (8760 h/yr)'), []);
+  assert.equal(
+    on('1 mm = 1,000,000 pm', '1 mm').length,
+    1,
+    'every quantity of the kind must agree',
+  );
+  assert.match(
+    on('1 mm = 1,000,000 pm', '1 mm * (1000000 pm/mm)')[0] ?? '',
+    /not the true conversion \(that is 1 billion pm\/mm\)/,
+  );
+  assert.match(
+    on('A grain of sand is about 1 million atoms wide', '1 million / 1')[0] ?? '',
+    /a bare 1/,
+  );
+  assert.match(on('An atom is about 1 pm wide', '100 pm / 100')[0] ?? '', /100 without its unit/);
+});
+
+await test('a reference fact quotes its sentence; the quote must name the same thing and numbers', () => {
+  const ref =
+    'A human hair is about a million carbon atoms wide. An atom is about 100 picometers across.';
+  const withRef = {
+    brief: BRIEF,
+    hasRef: () => true,
+    numbersNotIn: (texts: string[]) => numbersNotInSource(ref, texts),
+    refBlock: () => `\n\nREFERENCE\n${ref}`,
+  };
+  const fact = (id: string, text: string, quote?: string): Fact => ({
+    id,
+    text,
+    source: 'reference',
+    ...(quote === undefined ? {} : { quote }),
+  });
+  const quoteOf = (x: Fact) =>
+    factErrors(
+      {
+        ...sheet([]),
+        facts: [
+          ...sheet([]).facts.filter((y) => y.id !== 'f2'),
+          fact('f2', 'An atom is about 100 pm across', 'An atom is about 100 picometers across.'),
+          x,
+        ],
+      },
+      withRef,
+    )
+      .map((e) => e.toString())
+      .filter((e) => e.startsWith(`fact ${x.id}`));
+  assert.deepEqual(
+    quoteOf(
+      fact(
+        'q1',
+        'A human hair is about 1 million carbon atoms wide',
+        'A human hair is about a million carbon atoms wide.',
+      ),
+    ),
+    [],
+  );
+  assert.match(
+    quoteOf(
+      fact(
+        'q1',
+        'A grain of sand is about 1 million carbon atoms wide',
+        'A human hair is about a million carbon atoms wide.',
+      ),
+    )[0] ?? '',
+    /names grain, sand that its quote/,
+  );
+  assert.match(quoteOf(fact('q1', 'An atom is about 100 pm across'))[0] ?? '', /give "quote"/);
+  assert.match(
+    quoteOf(fact('q1', 'An atom is about 100 pm across', 'An atom is 100 pm wide.'))[0] ?? '',
+    /not in the REFERENCE word for word/,
   );
 });
 
@@ -415,7 +496,12 @@ const VIEWER = {
   question: 'q',
   answer: 'a',
 };
-const PROBLEMS = {
+const checked = <T extends object>(o: T) => ({
+  facts: SHEET.facts.map((x) => ({ id: x.id, verdict: 'ok' })),
+  lines: LINES.map((_, i) => ({ shot: i + 1, verdict: 'ok' })),
+  ...o,
+});
+const PROBLEMS = checked({
   problems: [
     {
       shot: 5,
@@ -439,12 +525,13 @@ const PROBLEMS = {
       fix: '',
     },
   ],
-};
+});
 const fixOf = (shot: number, text: string) => ({ shot, lines: [{ who: 'narrator', text }] });
 
 interface Call {
   step: string;
   messages: Message[];
+  efforts?: string[] | undefined;
 }
 async function runWriter(
   answers: Record<string, unknown>,
@@ -456,8 +543,8 @@ async function runWriter(
     brief,
     seconds: 24,
     budget: 60,
-    m3: (step, _system, messages) => {
-      calls.push({ step, messages: messages.map((m) => ({ ...m })) });
+    m3: (step, _system, messages, _max, efforts) => {
+      calls.push({ step, messages: messages.map((m) => ({ ...m })), efforts });
       const answer = answers[step] ?? answers[step.replace(/#\d+$/, '')];
       if (answer === undefined) throw new Error(`no fake answer for ${step}`);
       return Promise.resolve(JSON.stringify(answer));
@@ -557,7 +644,7 @@ await test('a fact-check fix with a number not on the sheet is not taken; a conf
 
 await test('a conflict the first fact check reported stays in the last one, marked, where the harness reads it', async () => {
   const first = PROBLEMS.problems,
-    second = { problems: first.filter((p) => p.kind !== 'conflict') };
+    second = checked({ problems: first.filter((p) => p.kind !== 'conflict') });
   const { story } = await runWriter({ ...reviewed({ shots: [] }), 'factcheck-2': second });
   const last = story.review?.factcheck2?.problems ?? [];
   const conflict = last.find((p) => p.shot === 1);
@@ -586,7 +673,7 @@ await test("the brief's Audience, Goal and Tone lines reach the model as the int
 });
 
 await test('a conflict the checker says a sheet fact settles is fixed toward the sheet', async () => {
-  const settled = {
+  const settled = checked({
     problems: [
       {
         shot: 5,
@@ -597,7 +684,7 @@ await test('a conflict the checker says a sheet fact settles is fixed toward the
         settled_by: ['f6'],
       },
     ],
-  };
+  });
   const { calls, logs } = await runWriter({
     ...reviewed({ shots: [] }),
     factcheck: settled,
@@ -609,6 +696,27 @@ await test('a conflict the checker says a sheet fact settles is fixed toward the
   );
   assert.ok(!logs.some((l) => l.includes('conflict(s) reported, not fixed')), logs.join('\n'));
   assert.match(userMessage(calls, 'script-fix'), /"shot": 5/);
+});
+
+await test('the fact checker thinks, gives a verdict on every fact and shot, and is asked again for the ones it left out', async () => {
+  const again = checked({ problems: [] });
+  again.facts = again.facts.map((v) =>
+    v.id === 'f2' ? { id: 'f2', verdict: 'it says this of the wrong thing' } : v,
+  );
+  const { calls, logs } = await runWriter({
+    ...reviewed({ shots: [] }),
+    factcheck: { problems: [] },
+    'factcheck-again': again,
+  });
+  assert.deepEqual(calls.find((c) => c.step === 'factcheck')?.efforts, ['low', 'off']);
+  assert.ok(
+    logs.some(
+      (l) => l.startsWith('factcheck: no verdict for f1, f2,') && l.endsWith('; asked once more'),
+    ),
+    logs.join('\n'),
+  );
+  assert.match(userMessage(calls, 'script-revise#1'), /f2: An atom is about 100 pm across/);
+  assert.match(userMessage(calls, 'script-revise#1'), /it says this of the wrong thing/);
 });
 
 await test('a fix that changes nothing is not logged as a rewrite', async () => {
@@ -630,7 +738,7 @@ await test('a script line with a number not on the sheet is sent back', async ()
     'script#1': script(wrong),
     script: script(LINES),
     viewer: VIEWER,
-    factcheck: { problems: [] },
+    factcheck: checked({ problems: [] }),
   });
   assert.match(
     userMessage(calls, 'script#2'),

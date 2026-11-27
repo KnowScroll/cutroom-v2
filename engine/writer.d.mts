@@ -5,6 +5,7 @@ export interface Fact {
   text: string;
   source: 'reference' | 'brief' | 'general' | 'derived';
   calc?: string;
+  quote?: string;
 }
 export interface FactSheet {
   facts: Fact[];
@@ -22,7 +23,12 @@ export interface Problem {
 }
 export function factErrors(
   f: FactSheet,
-  E: { brief: string; hasRef: () => boolean; numbersNotIn: (texts: string[]) => string[] },
+  E: {
+    brief: string;
+    hasRef: () => boolean;
+    numbersNotIn: (texts: string[]) => string[];
+    refBlock?: () => string;
+  },
 ): Problem[];
 export function numbersNotInSource(src: string, texts: string[]): string[];
 
@@ -34,7 +40,13 @@ export interface WriterEnv {
   brief: string;
   seconds: number;
   budget: number;
-  m3: (step: string, system: string, messages: Message[], maxTokens: number) => Promise<string>;
+  m3: (
+    step: string,
+    system: string,
+    messages: Message[],
+    maxTokens: number,
+    efforts?: string[],
+  ) => Promise<string>;
   prompt: (name: string) => string;
   guide: (...sections: string[]) => string;
   checks: () => Record<string, string>;

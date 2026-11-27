@@ -54,7 +54,7 @@ const says = (text, phrase) => { const w = toks(text), p = toks(phrase); if (!p.
 // ---------- numbers and units ----------
 // derived facts: the plain factors a calc may use without a fact stating them. A bare number is taken literally; units count
 // only where the calc writes them, and the unit table converts them (M3 wrote 1 mm = 1,000,000 pm as "1 * 1000000")
-const FREE = new Set([1, 2, 3, 4, 100]);
+const FREE = new Set([2, 3, 4]); // and 100 for a percent; a bare 1 changes nothing ("1 million / 1" passed a false fact)
 const MAG = { thousand: 1e3, million: 1e6, billion: 1e9, trillion: 1e12 };
 // each unit's SI factor and dimension [length, mass, time]; SI prefixes and plurals are read too ("km", "picometres", "mg", "hours")
 const UNITS = {}, LEN = [1, 0, 0], MASS = [0, 1, 0], TIME = [0, 0, 1], Z = [0, 0, 0];
@@ -212,24 +212,28 @@ function sheetsFor(facts) {
 // the problems of one derived fact; [] when it holds
 function calcErrors(x, sheet) {
   let r; try { r = evalCalc(x.calc ?? ''); } catch (e) { return [`fact ${x.id} is derived: its "calc" ${JSON.stringify(String(x.calc ?? ''))} does not compute (${e}). Give the arithmetic on the sheet's numbers, each quantity with its unit, for example "1 mm / 100 pm" or "41 / 10000"`]; }
-  if (!r.ops) return [`fact ${x.id}: "calc" ${x.calc} has no arithmetic; compute it from the sheet's quantities (a conversion is "1 mm / 1 pm")`];
+  const conversion = !r.ops && r.qs.length === 1 && !!r.qs[0].u; // "75600 h" for "8.6 years": every such quantity in the text must agree
+  if (!r.ops && !conversion) return [`fact ${x.id}: "calc" ${x.calc} has no arithmetic; compute it from the sheet's quantities (a conversion is one quantity with its unit, "75600 h")`];
   if (!Number.isFinite(r.v)) return [`fact ${x.id}: "calc" ${x.calc} does not compute`];
   // a bare number is one the sheet states (its digits, or its value with the magnitude word) or a plain factor (100 once: a chain
   // of 100s passed 1 mm = 1,000,000 pm); a quantity with a unit is one the sheet states, or 1 of a unit (a conversion)
   // beside quantities with units, a bare number every fact states with a unit must carry it ("/ 12" for "12 hours a day")
-  const odd = new Set(), units = r.qs.some(q => q.u);
+  // a unit-ratio constant (8760 h/yr, 1000 m/km: its dimensions cancel) need not be stated: it must be the true conversion
+  const odd = new Set(), units = r.qs.some(q => q.u), percent = /%|\bper ?cent\b/i.test(x.text);
   for (const q of r.qs) {
     const same = q.u ? [] : sheet.filter(s => near(s.n, q.n) || near(s.raw, q.n));
-    if (q.u) { if (q.n !== 1 && !sheet.some(s => s.d && sameDim(s.d, q.d) && near(s.v, q.v))) odd.add(`${q.n} ${q.u}, which no other fact on the sheet states`); }
-    else if (FREE.has(q.n)) continue;
+    if (q.u) { if (q.n !== 1 && !sheet.some(s => s.d && sameDim(s.d, q.d) && near(s.v, q.v))) odd.add(!q.d.some(Boolean) && q.v ? (Math.abs(q.v - 1) > 0.01 ? `${q.n} ${q.u}, which is not the true conversion (that is ${fmtNum(q.n / q.v)} ${q.u})` : '') : `${q.n} ${q.u}, which no other fact on the sheet states`); }
+    else if (q.n === 1) odd.add('a bare 1, which changes nothing');
+    else if (FREE.has(q.n) || (q.n === 100 && percent)) continue;
     else if (!same.length) odd.add(`${q.n}, which no other fact on the sheet states`);
     else if (units && same.every(s => s.u)) odd.add(`${q.n} without its unit (the sheet states "${q.n} ${same[0].u}"; write it with its unit)`);
   }
-  if (r.qs.filter(q => !q.u && q.n === 100).length > 1) odd.add('100 more than once');
+  odd.delete(''); if (r.qs.filter(q => !q.u && q.n === 100).length > 1) odd.add('100 more than once');
   if (!odd.size && !r.qs.some(q => q.u || sheet.some(s => near(s.n, q.n) || near(s.raw, q.n)))) odd.add('no number the sheet states');
   if (odd.size) return [`fact ${x.id}: "calc" ${x.calc} uses ${[...odd].join('; ')}. Check the calc's factors and units: write each quantity with its unit, as a fact on the sheet states it (e.g. "75600 h", "378000 km / (5 km/h)"); the engine converts units itself and states the result in the text's unit: to state hours as years, write the hours quantity and put years in the text; no calendar factors needed`];
   const tq = quantitiesIn(x.text), close = (a, b) => Math.abs(a - b) <= Math.abs(b) * 0.05 + 1e-300; // relative only (an absolute margin let 0.00004 pass for 0.00017); 5% as for spoken numbers
-  const ok = r.d.some(Boolean) ? tq.some(q => q.d && sameDim(q.d, r.d) && close(q.v, r.v)) || (perTime(r.d) && timeUnitsIn(x.text).some(u => tq.some(q => !q.d && close(q.n, r.v * u[0]))))
+  const ok = conversion ? tq.some(q => q.d && sameDim(q.d, r.d)) && tq.every(q => !q.d || !sameDim(q.d, r.d) || close(q.v, r.v))
+    : r.d.some(Boolean) ? tq.some(q => q.d && sameDim(q.d, r.d) && close(q.v, r.v)) || (perTime(r.d) && timeUnitsIn(x.text).some(u => tq.some(q => !q.d && close(q.n, r.v * u[0]))))
     : valuesIn(x.text).some(v => close(v, r.v));
   // past the operand check the calc is exact arithmetic on the sheet's own quantities, so its value is the side to trust (a neutral
   // "one of them is wrong" let M3 keep a wrong "2.4 million years" against a right calc four times)
@@ -239,7 +243,7 @@ function calcErrors(x, sheet) {
 // a derived fact for the fact checker and the fixer: its calc, and that it holds (a second rounding of the result, "= 8.62 years"
 // beside a text of 8.63, set off a nitpick fix that split the narration from the tags)
 const calcShown = (x, sheet) => `${x.calc}; ${calcErrors(x, sheet).length ? 'the engine found it does not match its text' : 'the engine computed it, units converted, and it matches its text'}`;
-const calcList = f => { const facts = f?.facts || [], sheetFor = sheetsFor(facts); return facts.map(x => `${x.id}: ${x.text}${x.source === 'derived' ? ` [derived: ${calcShown(x, sheetFor(x))}]` : ''}`).join('\n'); };
+const calcList = f => { const facts = f?.facts || [], sheetFor = sheetsFor(facts); return facts.map(x => `${x.id}: ${x.text}${x.source === 'derived' ? ` [derived: ${calcShown(x, sheetFor(x))}]` : x.source === 'reference' && x.quote ? ` [quote: "${x.quote}"]` : ''}`).join('\n'); };
 // a soft problem: asked to be fixed, but an answer left with only soft problems is kept after the last try
 const soft = msg => Object.assign(new String(msg), { soft: true });
 const digitNums = s => (String(s).replace(/(\d),(\d)/g, '$1$2').match(/\d+(?:\.\d+)?/g) || []).map(Number);
@@ -330,6 +334,7 @@ export function factErrors(f, E) {
   if (E.hasRef()) for (const x of f.facts.filter(x => x.source === 'reference')) {
     const nums = E.numbersNotIn([x.text]);
     if (nums.length) bad(x, `fact ${x.id} ("${x.text}") says ${quoted(nums)}, which the REFERENCE never states: use the reference's own number, or drop the fact`);
+    for (const e of quoteErrors(x, E.refBlock?.() || '')) bad(x, e);
   }
   // the answer and the yardstick are free text the spine and script build on: their numbers must be facts that hold
   // (a yardstick said "10,000 km" beside a sheet whose ratio made it 10 km; an answer said "19 years" beside a 2,442-day payoff)
@@ -337,6 +342,21 @@ export function factErrors(f, E) {
   if (ans.length) Er.push(`the answer ("${f.answer}") says ${quoted(ans)}, which no fact on the sheet states: give the answer with the payoff fact's own number`);
   if (yd.length) Er.push(Object.assign(soft(`the yardstick ("${f.yardstick}") says ${quoted(yd)}, which no fact on the sheet states: build it only from the sheet's numbers (a scaled number is a derived fact first, with its calc), or leave it empty`), { drop: 'yardstick' }));
   return Er;
+}
+
+// a reference fact's "quote": one sentence of the reference, verbatim, holding the fact's numbers and most of its content words
+// (a sheet said "a grain of sand is about 1 million carbon atoms wide" from a sentence about a human hair)
+const plainText = t => ` ${String(t).toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9]+/g, ' ').trim()} `;
+function quoteErrors(x, ref) {
+  const q = String(x.quote || '');
+  if (!q.trim()) return [`fact ${x.id} is from the reference: give "quote", the one sentence of the REFERENCE that states it, word for word`];
+  if (!plainText(ref).includes(plainText(q))) return [`fact ${x.id}: its quote "${q}" is not in the REFERENCE word for word; copy the sentence exactly`];
+  const qv = valuesIn(q), nums = numbersSaid(x.text).filter(n => !n.one && !qv.some(v => near(v, n.v))).map(n => n.s);
+  const qw = toks(q), content = [...new Set(toks(x.text).filter(w => w.length >= 4 && !STOP.has(w) && !NUM_WORD.has(w) && !/\d/.test(w)))], missing = content.filter(w => !qw.some(v => sameWord(v, w) || sameWord(w, v)));
+  return [
+    ...(nums.length ? [`fact ${x.id} says ${quoted(nums)}, which its quote "${q}" does not state`] : []),
+    ...(missing.length * 3 > content.length ? [`fact ${x.id} names ${missing.join(', ')} that its quote "${q}" does not mention: state only what the quoted sentence says, about the thing it names`] : []),
+  ];
 }
 
 // numbers in `texts` that `src` (the reference and the brief) never states: digits compared without separators, a magnitude by
@@ -607,10 +627,19 @@ export function createWriter(E) {
 
   // ---------- review: a blind test viewer and a fact check, then one revision ----------
   const readAloud = (o, sp) => o.shots.map((s, i) => `SHOT ${i + 1}${s.see ? `\nOn screen: ${s.see}` : ''}\n${s.lines.map(l => `${l.who === 'narrator' ? 'Narrator' : l.who}: ${l.gap_before >= 0.4 ? '(pause) ' : ''}${l.text}`).join('\n')}`).join('\n\n'); // holds are not shown: the test viewer judged a silent hold "flat" and set off a revision
-  const json = async (step, system, user) => { for (let a = 1; a <= 2; a++) { const t = await E.m3(`${step}${a > 1 ? `#${a}` : ''}`, system, [{ role: 'user', content: user }], 16000); try { return E.extractJson(t); } catch { } } return null; };
+  const json = async (step, system, user, efforts) => { for (let a = 1; a <= 2; a++) { const t = await E.m3(`${step}${a > 1 ? `#${a}` : ''}`, system, [{ role: 'user', content: user }], efforts ? 32000 : 16000, ...(efforts ? [efforts] : [])); try { return E.extractJson(t); } catch { } } return null; };
   // the fact checker sees the brief (it flipped a brief's true premise it could not find in the reference) and each derived fact's
   // calc (it took a sheet ratio with a wrong unit factor as true and "corrected" a right line to match it)
-  const factcheck = (step, o, sp, f) => json(step, `${E.prompt('factcheck')}${E.refBlock()}`, `BRIEF\n${briefFor(brief)}\n\nFACT SHEET (a derived fact shows the engine's arithmetic: its calc and result)\n${calcList(f)}\n\nSCRIPT\n${readAloud(o, sp)}\n\nReturn only the JSON object.`);
+  // it thinks (low effort, off if thinking eats the budget) and gives a verdict on every fact and shot: a 6-token "no problems"
+  // passed a false sheet; a fact it finds wrong joins the problems the harness reads
+  async function factcheck(step, o, sp, f) {
+    const system = `${E.prompt('factcheck')}${E.refBlock()}`, user = `BRIEF\n${briefFor(brief)}\n\nFACT SHEET (a derived fact shows the engine's arithmetic, a reference fact its quote)\n${calcList(f)}\n\nSCRIPT\n${readAloud(o, sp)}\n\nReturn only the JSON object.`;
+    const missing = r => { const ids = new Set((r?.facts || []).map(v => v?.id)), shots = new Set((r?.lines || []).map(v => +v?.shot)); return [...f.facts.filter(x => !ids.has(x.id)).map(x => x.id), ...o.shots.map((_, i) => i + 1).filter(n => !shots.has(n)).map(n => `shot ${n}`)]; };
+    let r = await json(step, system, user, ['low', 'off']), gap = r ? missing(r) : [];
+    if (gap.length) { log(`${step}: no verdict for ${gap.join(', ')}; asked once more`); r = (await json(`${step}-again`, system, `${user}\n\nGive a verdict for every fact id and every shot; the last answer left out ${gap.join(', ')}.`, ['low', 'off'])) || r; }
+    if (r) for (const v of r.facts || []) { const x = f.facts.find(y => y.id === v?.id); if (x && v.verdict && !/^ok\b/i.test(String(v.verdict))) (r.problems ||= []).push({ shot: 'sheet', kind: 'wrong', claim: `${x.id}: ${x.text}`, problem: String(v.verdict), fix: '' }); }
+    return r;
+  }
   // a conflict (the brief against the reference) is reported, never fixed: a fix would flip the brief's premise. One the checker
   // says a sheet fact settles ("settled_by") is no conflict: the line is wrong and is fixed toward the sheet
   const settle = (step, fc, f) => { for (const p of fc?.problems || []) { const ids = [].concat(p?.settled_by || []).filter(id => f.facts.some(x => x.id === id)); if (p?.kind === 'conflict' && ids.length) { p.kind = 'wrong'; p.fix ||= `say it the way the fact sheet does (${ids.join(', ')})`; log(`${step}: shot ${p.shot}'s conflict is settled by ${ids.join(', ')}; fixed toward the sheet`); } } };
