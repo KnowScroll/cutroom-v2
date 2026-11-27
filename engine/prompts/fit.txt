@@ -6,5 +6,6 @@ OUTPUT: one JSON object and nothing else.
 
 RULES
 - Count the words of every line you return; the shot's total must be at most its target. Hyphenated number words count as one word each ("twenty-two" is one).
-- Keep every fact and number, the link word ("but", "so", "because", "which means"), and every word listed under "keep" (the cue word the picture lands on). Cut filler, adjectives, repeated subjects and restated ideas; merge two lines into one when that saves words.
+- Keep what the story needs: the numbers that answer its question, every word listed under "keep" (the cue word the picture lands on), and the words that tie a line to the one before (what it follows from, what it turns or works out): they make it a story, not filler.
+- Cut first a detail that does not serve what the story is for, then adjectives, repeated subjects and restated ideas; merge two lines into one when that saves words.
 - Keep the same speakers and their order. Numbers stay written as words. No new claims.

@@ -4,6 +4,11 @@ import {
   createWriter,
   factErrors,
   numbersNotInSource,
+  padding,
+  rateMoved,
+  repeatErrors,
+  shotTimes,
+  silenceOf,
   type Fact,
   type FactSheet,
   type Message,
@@ -503,6 +508,8 @@ const spineShot = (facts: string[], device: string, link?: string) => ({
   ...(link ? { link } : {}),
 });
 const SPINE = {
+  idea: 'How much smaller than a grain of sand an atom is',
+  takeaway: 'An atom is about ten million times smaller than a grain of sand',
   payoff_shot: 4,
   shots: [
     spineShot(['f1'], 'statement'),
@@ -763,6 +770,172 @@ await test('the fact checker thinks, gives a verdict on every fact and shot, and
   );
   assert.match(userMessage(calls, 'script-revise#1'), /f2: An atom is about 100 pm across/);
   assert.match(userMessage(calls, 'script-revise#1'), /it says this of the wrong thing/);
+});
+
+// ---------- story freedom (#47) ----------
+const passed = () => ({ ...reviewed({ shots: [] }), factcheck: checked({ problems: [] }) });
+const steps = (calls: Call[], step: string): number => calls.filter((c) => c.step === step).length;
+
+await test('a draft over the word budget is cut to length by the fit step, not sent back', async () => {
+  // 98 words against a budget of 60: the old hard cap (1.3x) rejected it on every try and ended the run
+  const long: [string, string][] = [
+    [
+      'Picture a single grain of sand resting on your fingertip right now. How much smaller than a grain of sand is an atom?',
+      'sand',
+    ],
+    [
+      'But an atom, the tiny building block of everything around you, is only one hundred picometres across.',
+      'picometres',
+    ],
+    [
+      'So one millimetre, about the width of that grain, holds a billion picometres laid end to end.',
+      'billion',
+    ],
+    [
+      'Which means an atom is ten million times smaller than the sand, a gap that is very hard to picture.',
+      'million',
+    ],
+    [
+      'So if an atom were one metre wide, the sand would be ten thousand kilometres wide, bigger than a whole country.',
+      'kilometres',
+    ],
+  ];
+  const { story, calls, logs } = await runWriter({
+    ...passed(),
+    script: script(long),
+    'script-fit': { shots: LINES.map(([text], i) => fixOf(i + 1, text)) },
+  });
+  assert.equal(steps(calls, 'script#1'), 1);
+  assert.equal(steps(calls, 'script#2'), 0, 'the overrun is not sent back to the scriptwriter');
+  assert.ok(!logs.some((l) => l.startsWith('script rejected')), logs.join('\n'));
+  assert.ok(logs.includes('script-fit: 98 -> 55 words (budget 60)'), logs.join('\n'));
+  assert.deepEqual(
+    story.shots.map((s) => s.lines[0]?.text),
+    LINES.map(([text]) => text),
+  );
+  const asked = JSON.parse(
+    userMessage(calls, 'script-fit#1').replace(/\n\nReturn only the JSON object\.$/, ''),
+  ) as { shots: { shot: number; target_words: number }[] };
+  const targets = asked.shots.map((s) => s.target_words);
+  assert.deepEqual(targets, [14, 10, 10, 12, 12], 'every shot gives words in proportion');
+  assert.ok(targets.reduce((a, b) => a + b, 0) <= 60, 'the targets fit the budget');
+});
+
+await test('the spine says what the story is for, may bring a fact back, and runs forward in time outside a flashback', async () => {
+  const noIdea = { ...SPINE, idea: '' };
+  const reuse = {
+    ...SPINE,
+    shots: SPINE.shots.map((s, i) => (i === 2 ? { ...s, facts: ['f2', 'f3'] } : s)),
+  };
+  const dated = (when: string) => ({
+    ...reuse,
+    shots: reuse.shots.map((s, i) => ({ ...s, when: ['', '1905', when, '1905', ''][i] ?? '' })),
+  });
+  const { calls, logs } = await runWriter({
+    ...passed(),
+    'spine#1': noIdea,
+    'spine#2': dated('1814'),
+    'spine#3': dated('flashback: 1814'),
+  });
+  const rejected = logs.filter((l) => l.startsWith('spine rejected'));
+  assert.equal(rejected.length, 2, rejected.join('\n'));
+  assert.match(rejected[0] ?? '', /^spine rejected: first say what the story is for/);
+  assert.match(
+    rejected[1] ?? '',
+    /^spine rejected: shot 3 \("when": "1814"\) goes back in time after shot 2 \("1905"\)/,
+  );
+  assert.ok(!logs.some((l) => /one fact, one shot/.test(l)), 'f2 in shots 2 and 3 is no problem');
+  assert.equal(steps(calls, 'spine#3'), 1);
+  assert.equal(steps(calls, 'spine#4'), 0, 'the flashback passes');
+  assert.match(userMessage(calls, 'script#1'), /WHAT THE STORY IS FOR: How much smaller/);
+});
+
+await test('a viewer lost in the story gets a new spine and a script written on it; a flat shot only gets a revision', async () => {
+  const lost = { ...VIEWER, lost: [{ shot: 3, why: 'it jumps back in time without saying so' }] };
+  const rebuilt = {
+    ...SPINE,
+    shots: SPINE.shots.map((s, i) => ({ ...s, point: `the rebuilt point ${String(i + 1)}` })),
+  };
+  const { story, calls, logs } = await runWriter({
+    ...passed(),
+    viewer: lost,
+    'spine-revise': rebuilt,
+  });
+  assert.match(userMessage(calls, 'spine-revise#1'), /it jumps back in time without saying so/);
+  assert.equal(steps(calls, 'script#1'), 2, 'the script is written again on the new spine');
+  assert.equal(steps(calls, 'script-revise#1'), 0);
+  assert.equal(steps(calls, 'factcheck-2'), 1, 'the new script is fact-checked');
+  assert.equal(story.shots[0]?.point, 'the rebuilt point 1');
+  assert.equal(story.review?.spine_rebuilt, true);
+  assert.ok(logs.includes('spine-revise: the script was written again on the new spine'));
+
+  const flat = { ...VIEWER, flat: [{ shot: 2, why: 'adds nothing' }] };
+  const second = await runWriter({ ...passed(), viewer: flat });
+  assert.equal(steps(second.calls, 'spine-revise#1'), 0);
+  assert.equal(steps(second.calls, 'script-revise#1'), 1);
+});
+
+await test('a line that says nothing new is flagged softly; building on a number and restating the answer at the close pass', () => {
+  const shot = (text: string) => ({ lines: [{ who: 'narrator', text }] });
+  const errors = repeatErrors([
+    shot('How long would it take to walk to the Moon?'),
+    shot('You walk about five kilometres an hour.'),
+    shot('The Moon is about three hundred eighty thousand kilometres away.'),
+    // the old rule flagged "five kilometres an hour" here: a callback that works out something new
+    shot('At five kilometres an hour, that gap takes about nine years of walking.'),
+    shot('The Moon is about three hundred eighty thousand kilometres from you.'),
+    shot('So walking to the Moon takes about nine years.'),
+  ]);
+  assert.equal(errors.length, 1, errors.join('\n'));
+  assert.equal(errors[0]?.soft, true);
+  assert.match(String(errors[0]), /^shot 5: "The Moon is about three hundred eighty thousand/);
+});
+
+await test('lead and tail are set per template, and by default a cut no longer leaves 0.95 s of silence', () => {
+  const shots = [
+    { lines: [{}, { gap_before: 0.5 }] },
+    { lines: [{}], hold: 1 },
+    { lines: [{}] },
+    { lines: [{}] },
+  ];
+  const secs = [[2, 1.5], [3], [2.5], [2]];
+  const timesWith = (pad: ReturnType<typeof padding>) =>
+    shots.map((s, i) => shotTimes(s, secs[i] ?? [], pad, i === shots.length - 1));
+  // the silence across the cut after shot i: its tail after the last line, its hold, then the next shot's lead
+  const gapAfter = (t: ReturnType<typeof timesWith>, i: number): number =>
+    (t[i]?.dur ?? 0) - (t[i]?.lines.at(-1)?.end ?? 0) + (t[i + 1]?.lines[0]?.start ?? 0);
+  const near = (a: number, b: number) => Math.abs(a - b) < 1e-9;
+
+  const byDefault = timesWith(padding({}));
+  assert.ok(near(gapAfter(byDefault, 0), 0.5), String(gapAfter(byDefault, 0)));
+  assert.ok(near(gapAfter(byDefault, 2), 0.5));
+  assert.ok(near(gapAfter(byDefault, 1), 1.5), 'a silent hold stays where the spine put it');
+  assert.ok(near(byDefault[0]?.lines[1]?.start ?? 0, 0.15 + 2 + 0.5), 'gap_before sets the pause');
+  assert.ok(
+    near((byDefault[3]?.dur ?? 0) - (byDefault[3]?.lines[0]?.end ?? 0), 1),
+    'the last picture holds a second',
+  );
+
+  const set = timesWith(padding({ lead: '0.3', tail: '0.6', shots: '7-8' }));
+  assert.ok(near(gapAfter(set, 0), 0.9));
+  assert.ok(near(set[0]?.lines[0]?.start ?? 0, 0.3));
+  assert.deepEqual(padding({ lead: 'soon' }), padding({}), 'a bad value keeps the default');
+
+  // the word budget counts the same silence the timeline leaves
+  for (const pad of [padding({}), padding({ lead: '0.3', tail: '0.6' })]) {
+    const t = timesWith(pad);
+    const total = t.reduce((a, x) => a + x.dur, 0);
+    const speech = secs.flat().reduce((a, b) => a + b, 0);
+    assert.ok(near(silenceOf(shots, pad), total - speech));
+  }
+});
+
+await test('a script keeps the speaking rate it was written for, and only a voice switch that moves it rewrites it', async () => {
+  const { story } = await runWriter(passed());
+  assert.equal(story.wps, 2.5);
+  assert.equal(rateMoved({ wps: 2.18 }, 2.9), true, 'eleven-v4 to heygen');
+  assert.equal(rateMoved({ wps: 2.9 }, 3.1), false, 'another heygen voice');
+  assert.equal(rateMoved({}, 2.9), false, 'an older checkpoint without a rate is kept');
 });
 
 await test('a fix that changes nothing is not logged as a rewrite', async () => {

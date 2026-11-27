@@ -80,7 +80,37 @@ export interface FactCheckProblem {
   fix?: string;
 }
 export interface Story {
-  shots: { lines: Line[] }[];
-  review?: { factcheck2?: { problems?: FactCheckProblem[] } | null };
+  idea?: string;
+  takeaway?: string;
+  wps?: number;
+  shots: { point?: string; lines: Line[] }[];
+  review?: {
+    factcheck2?: { problems?: FactCheckProblem[] } | null;
+    revised?: boolean;
+    spine_rebuilt?: boolean;
+  };
 }
 export function createWriter(E: WriterEnv): { writeStory: () => Promise<Story> };
+
+// a shot's picture around its speech: seconds before its first line, after its last, between two lines, and the last shot's tail
+export interface Pad {
+  lead: number;
+  tail: number;
+  breath: number;
+  end: number;
+}
+export const PAD: Pad;
+export function padding(checks?: Record<string, string>): Pad;
+export interface TimedShot {
+  lines?: { gap_before?: number | null }[];
+  hold?: number;
+}
+export function shotTimes(
+  s: TimedShot,
+  secs: number[],
+  pad: Pad,
+  last: boolean,
+): { lines: { start: number; end: number }[]; dur: number };
+export function silenceOf(shots: TimedShot[], pad: Pad): number;
+export function rateMoved(story: { wps?: number } | null | undefined, wps: number): boolean;
+export function repeatErrors(shots: { lines?: Line[] }[]): Problem[];

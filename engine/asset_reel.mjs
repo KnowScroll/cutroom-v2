@@ -14,7 +14,7 @@ import { report } from './cost_report.mjs';
 import { pathToFileURL } from 'node:url';
 import { HERE, VAR, TEMPLATE_DIR, SR, log, sha1, clamp, slugify, stamp, run, pool, withRetry, loadKeys, decodeMono, trimSilence, renderVideo, addSfx, writeWavStereo, extractJson, extractCode, launchStage, BANNED } from './lib.mjs';
 import { voiceModel, normVoice, voiceGuide, speak, voiceCacheKey, voiceRate, recordRate, voiceCheck, wordTimes, MUSIC_FEELS, pickMusic, mixReel } from './audio.mjs';
-import { createWriter, words, numWords, DEVICES, numbersNotInSource, requestOf } from './writer.mjs';
+import { createWriter, words, numWords, DEVICES, numbersNotInSource, requestOf, padding, shotTimes, silenceOf, rateMoved } from './writer.mjs';
 import { findPhotos, snapQuote } from './photos.mjs';
 import { fetchArticles, fetchPassages } from './reference.mjs';
 
@@ -29,14 +29,16 @@ const seconds = +(flag('--seconds') || 45), rounds = +(flag('--rounds') || 1), E
 // --cut <n> names the output <out>-v<n>; --apply-notes <file> restores the checkpoints, applies a director-notes file (applyNotes) and renders that cut
 const CUT = +(flag('--cut') || 1), NOTES_FILE = flag('--apply-notes');
 // 'off' = thinking disabled: about 4x faster. MiniMax barely honours effort levels (low still thinks thousands of tokens).
-// speech budget: Kokoro narrators measured at 2.5 to 2.9 words/s (5 cuts; 2.1 made every reel 10 s short); each shot adds 0.95 s of lead-in and tail, each extra line 0.22 s
+// speech budget: Kokoro narrators measured at 2.5 to 2.9 words/s (5 cuts; 2.1 made every reel 10 s short); each shot adds its lead and tail (writer.mjs PAD), each extra line 0.22 s
 // voice engine (engine/audio.mjs): eleven-v4 by default (cutroom's bake-off), kokoro for the cheapest; music: library (CC BY, fitted), lyria or synth
 const VM = flag('--voice-model') || 'eleven-v4', MUSIC_SOURCE = flag('--music-source') || 'library'; voiceModel(VM);
 // spoken words per second of the narrator's voice: measured on past reels (cache/voice/rates.json), else the table in engine/audio.mjs; the budget follows it
 const wpsOf = p => voiceRate(VM, normVoice(VM, p?.cast?.narrator?.voice, true)), WPS = wpsOf(null);
-// a shot's time beside its words: 0.95 s lead-in and tail, the pause before each extra line (0.22 s, or its gap_before), its silent hold
-const padOf = shots => shots.reduce((a, s) => a + 0.95 + clamp(+s.hold || 0, 0, 2) + (s.lines || []).reduce((b, l, i) => b + (i ? (l.gap_before ?? 0.22) : (+l.gap_before || 0)), 0), 0);
-const budget = Math.floor((seconds - padOf(Array(7).fill({}))) * WPS); // first guess, assuming 7 one-line shots
+// a shot's time beside its words: its lead and tail (the template's checks may set them: "lead: 0.3"), the pause before each extra
+// line (0.22 s, or its gap_before), its silent hold; the timeline uses the same times (writer.mjs shotTimes)
+const pads = () => padding(TPL ? checks() : {});
+const padOf = shots => silenceOf(shots, pads());
+const budgetGuess = () => Math.floor((seconds - padOf(Array(7).fill({}))) * WPS); // first guess, assuming 7 one-line shots
 const base = path.resolve(flag('--out') || path.join(VAR, 'runs', `${slugify(brief)}-${stamp()}`));
 const T0 = performance.now(), calls = [], KEY = loadKeys();
 const SFX = ['pop', 'whoosh', 'boom', 'knock', 'splash', 'thunder', 'zap'];
@@ -313,7 +315,7 @@ function planLpErrors(p) {
   }
   return E;
 }
-const writer = () => createWriter({ brief, seconds, budget, m3, prompt, guide, checks, range, list, ckSave, ckLoad, log, extractJson, refBlock, hasRef: () => !!REF, addArticles, numbersNotIn,
+const writer = () => createWriter({ brief, seconds, budget: budgetGuess(), m3, prompt, guide, checks, range, list, ckSave, ckLoad, log, extractJson, refBlock, hasRef: () => !!REF, addArticles, numbersNotIn,
   voiceGuide: voiceGuide(VM), feels: MUSIC_FEELS, wpsOf, padOf });
 // the production plan: style, assets, backgrounds and a storyboard for each shot of the finished script, merged with it
 async function productionPlan(story) {
@@ -418,15 +420,14 @@ async function voiceAll(plan) {
   }
 }
 function timeline(plan) {
-  let t = 0;
-  const shots = plan.shots.map(s => {
-    let lt = 0.35;
+  let t = 0; const pad = pads();
+  const shots = plan.shots.map((s, k) => {
+    const st = shotTimes(s, s.lines.map(l => l._clip.dur), pad, k === plan.shots.length - 1);
     const lines = s.lines.map((l, i) => {
-      lt += i ? (l.gap_before ?? 0.22) : (+l.gap_before || 0);
-      const c = l._clip, o = { who: l.who, text: l.text, start: +lt.toFixed(3), end: +(lt + c.dur).toFixed(3), env: c.env, ...(c.words ? { words: c.words.map(([w, a, b]) => ({ w, start: +(lt + a).toFixed(3), end: +(lt + b).toFixed(3) })) } : {}) };
-      lt += c.dur; return o;
+      const c = l._clip, lt = st.lines[i].start;
+      return { who: l.who, text: l.text, start: +lt.toFixed(3), end: +(lt + c.dur).toFixed(3), env: c.env, ...(c.words ? { words: c.words.map(([w, a, b]) => ({ w, start: +(lt + a).toFixed(3), end: +(lt + b).toFixed(3) })) } : {}) };
     });
-    const o = { start: +t.toFixed(3), dur: +(lt + 0.6 + clamp(+s.hold || 0, 0, 2)).toFixed(3), lines, code: s.code, background: s.background, ...(s.cue?.word ? { cue: s.cue.word } : {}) }; t += o.dur; return o;
+    const o = { start: +t.toFixed(3), dur: +st.dur.toFixed(3), lines, code: s.code, background: s.background, ...(s.cue?.word ? { cue: s.cue.word } : {}) }; t += o.dur; return o;
   });
   return { W: 1080, H: 1920, fps: 30, total: +t.toFixed(3), pixel: +checks()['pixel grid'] || 0, captions: checks().captions || '', kit: plan.kit, assets: plan.assets.map(a => ({ id: a.id, w: a.w, h: a.h, code: a.code, poses: a.poses ? a.poses.map(p => p.name) : null })), shots, ...(D3MODE() ? { d3: d3Data(plan) } : {}), ...(PHOTOMODE() ? { photos: photoData(plan), quotes: plan.quotes || [] } : {}) };
 }
@@ -727,13 +728,21 @@ async function applyNotes(plan, stage, notes, dir) {
 }
 
 async function main() {
-  log(`asset_reel (MiniMax-M3, effort ${EFFORT}): "${brief.replace(/\s+/g, " ").slice(0, 140)}${brief.length > 140 ? "..." : ""}", ${seconds}s, word budget about ${budget}, ${rounds} director rounds`);
+  log(`asset_reel (MiniMax-M3, effort ${EFFORT}): "${brief.replace(/\s+/g, " ").slice(0, 140)}${brief.length > 140 ? "..." : ""}", ${seconds}s, ${rounds} director rounds`);
   const stage = await launchStage(STAGE + '?cpu'); // validation browser: CPU canvas (see stage_asset.html)
   let plan;
   try {
+    // a voice switch (the harness reruns the cut with the next voice when one is refused) leaves a script written to another speaking
+    // rate: write it again from the spine, and drop what was built on it
+    const savedScript = !NOTES_FILE && ckLoad('script.json'), oldScript = savedScript && JSON.parse(savedScript);
+    if (oldScript && rateMoved(oldScript, wpsOf(oldScript))) {
+      const keep = new Set(['reference.txt', 'facts.json', 'spine.json', 'calls.json']);
+      for (const f of fs.readdirSync(WORK)) if (!keep.has(f)) fs.rmSync(path.join(WORK, f), { recursive: true, force: true });
+      log(`voice: ${voiceModel(VM).id} speaks about ${wpsOf(oldScript)} words/s, the script was written for ${oldScript.wps}; writing the script and the plan again from the spine`);
+    }
     const savedPlan = ckLoad('plan.json');
     useTemplate((savedPlan && !flag('--template') && JSON.parse(savedPlan).template) || await pickTemplate());
-    log(`template: ${TPL.name}`);
+    log(`template: ${TPL.name}, word budget about ${budgetGuess()}`);
     REF = checks().reference === 'off' ? '' : await getReference(); // a script brings its own content: no fact lookup
     let vp = null;
     if (savedPlan) { plan = JSON.parse(savedPlan); log('plan: restored from checkpoint'); }
