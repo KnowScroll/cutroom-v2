@@ -32,6 +32,7 @@ Voice refusals not counted as cuts (#18): 4 eleven-v4 HTTP 402 invocations; thei
 | 2 | 2026-11-27 | #45 | `--until script` Moon brief on final PR #65 code (orchestrator) | none (script only) | 0.0260 | var/runs/q-t1-moon |
 | 3 | 2026-11-27 | #45 | `--until script` Moon re-run on 92a8982 (orchestrator): false "longer than most lives" kept as a brief conflict | none (script only) | 0.0205 | var/runs/q-t1-moon2 |
 | 4 | 2026-11-27 | #45 | `--until script` Moon on 78e0f34 (orchestrator): failed, no usable fact sheet (M3 kept a wrong payoff number against the neutral message) | none | ~0.008 (tokens; no cost file) | var/runs/q-t1-moon3 |
+| 5 | 2026-11-27 | #45 | `--until script` Moon on 2775dc2 (orchestrator): failed, no usable fact sheet (derived facts cannot chain; bare unit in a rate rejected). The atom re-run resumed the old q-t1-atom checkpoints: 0 calls, not counted | none | ~0.0075 (tokens) | var/runs/q-t1-moon4 |
 | 1 | 2026-11-27 | #2 | `--until script` import check | none | 0.0289 | var/runs/import-check |
 | 2 | 2026-11-27 | #2 | full reel `--rounds 0` (resumed from script) | heygen (4.66 st) | 0.0537 (folder total 0.0826) | var/runs/import-check |
 | 3 | 2026-11-27 | #9 | `--apply-notes --cut 2`, attempt 1 (shot-5 note rejected by validator; kept as reel-v2-attempt1) | heygen (4.72 st) | 0.0153 | var/runs/e2-check |
