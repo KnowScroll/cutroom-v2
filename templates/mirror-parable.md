@@ -46,7 +46,7 @@ A calm second-person explainer on a dark stage, built on one idea: a small every
 - Canvas helpers, exactly as the engine defines them: h.rng(seed) returns a FUNCTION (const r = h.rng(7); then r(), r(), r() give numbers from 0 to 1); never use h.rng(seed) itself as a number. h.rr(x, y, w, hgt, r) and h.poly([[x, y], ...]) take NO ctx argument and only build a path: call ctx.fill() or ctx.stroke() after them. h.asset('id', x, y, scale, params) takes NO ctx either.
 
 ## motion
-- Calm, but every line changes something: each shot has a change on every line and its main change on the cue word. Nothing sits still for more than 2 s (a slow push in of 1.0 to 1.05 over the shot, the figure's small acting, glowing parts pulsing, the pool breathing).
+- Calm: a line that says something happens changes something, with the shot's main change on the cue word, then it holds. A slow push in of 1.0 to 1.05, the figure's small acting, glowing parts pulsing and the pool breathing are optional ambient life.
 - Things arrive with easeOut over 0.4 to 0.7 s and settle; chips pop in on their word (scale 0.6 to 1, easeBack, 0.25 s) and stay to the end of the shot.
 - Anything that is the SAME in two shots (the small case in the hook, the split and the return) is drawn with the same numbers: same position, same size, same timing.
 - Columns rise from the plate over 0.8 s (easeOut); their number pops in whole when the column stops (never a counter ticking through in-between values: the engine rejects any number on screen the reference does not state).
@@ -63,7 +63,7 @@ A calm second-person explainer on a dark stage, built on one idea: a small every
 - The brief's subject is named by its exact term in the compare shot at the latest.
 
 ## plan
-- Structure: exactly 8 shots, one per beat, in this order:
+- Structure: 8 shots by default, one per beat, in this usual order (merge or add a shot when the story needs it):
   1. hook: the small case (colour 0 in the hook, closer and compare; colour 1 only in the return). Line shape: "You [do an everyday thing with the small version]." then "[What it surprisingly does, 2 to 5 words]." Screen: the small asset on the plinth in the pool, the figure beside it doing the action; the surprising thing happens on the cue word.
   2. closer: the part that matters. Line shape: "[Look closer / notice]: [the part that matters, in plain words]." then a short punch line. Screen: the hook's layout pushed in to 1.15x on the small asset's key part, the small asset still at colour 0; its hidden part shows as a dashed outline; one WORD chip naming that part.
   3. compare: small and big side by side. Line shape: "[The big subject by its exact name] does the same thing." then "[A short why question]?" Screen: the split: the small case left, the real thing right, identical layout, TAG chips naming them (words the line says), the same key part glowing in both.
@@ -101,9 +101,9 @@ A calm second-person explainer on a dark stage, built on one idea: a small every
 - The return shot's last 0.5 s matches the hook's first frame (the same plinth, small asset, figure and positions).
 
 ## checks
-shots: 8-8
+shots: 6-9
 beats: hook, closer, compare, real, first, second, reveal, return
-required beats: hook, closer, compare, real, first, second, reveal, return
+required beats: hook, second, return
 subject size: off
 labels: from narration
 captions: phrases

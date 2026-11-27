@@ -16,7 +16,7 @@ A short character-driven story in a cartoon comic-book look: one main character 
 - Every line has one clear acting beat on the character: a sigh drops the shoulders, irritation squeezes the eyebrows and tightens the mouth, worry darts the eyes, relief lifts the chest and opens the eyes. The expression change lands on the line where it is said.
 - Camera: open each new place on a wide view of the room (the character and the setting), then punch in toward the face for reactions (scale 1.3 to 1.6 around the face, 0.4 s easeOut), and pull back out for the next action.
 - Time passing is shown, not told: clock hands spin, the window goes from moon to sunrise, the light colour shifts.
-- The world keeps moving softly: curtains sway, steam rises from mugs, screens flicker, a ceiling fan turns, a cat's tail flicks.
+- The world may move softly when a shot is calm: curtains sway, steam rises from mugs, screens flicker, a ceiling fan turns, a cat's tail flicks.
 
 ## plan
 - Structure (7 or 8 shots; adapt to the brief). Give every shot one beat name:
@@ -30,7 +30,7 @@ A short character-driven story in a cartoon comic-book look: one main character 
   8. help: what really helps, from the reference (the recommended first treatment, habits that help, when to see a doctor), shown as the character doing it.
   9. outcome: a hopeful ending on the character (a better night or morning) and one memorable takeaway.
 - Every required beat gets a shot: hook, what, causes, help and outcome (the reel must end on the character doing better, never on a list of advice). Merge others into day, and night into causes, when the budget is tight.
-- Keep every shot to one line of about 12 to 16 words: a long line makes a long shot where nothing happens.
+- A shot holds as many lines as its beat needs, about 12 to 16 words a line as a guide: a long line makes a long shot where nothing happens.
 - One main character the whole way through, with a name that fits the brief's place and culture. The narrator carries the facts. The main character also speaks 2 or 3 short lines of their own (a tired mumble, a snap at someone, a hopeful last line) and one other person speaks 1 line; different voices for each.
 - Assets: the main character FIRST, kind "character". Params "pose" (the pose list is made after this plan, from what your shots need: so in every shot idea, describe the body pose you want on each line, for example "sits up in bed rubbing her eyes", "slumped at the desk holding a mug"), "expression" (tired, irritated, anxious, neutral, happy, relieved), "eyes" (number 0 to 1, how open), "mouth" (number 0 to 1, for speech) and "facing" (left or right). Second: one supporting person, kind "character", who plays every other person in the story, with a "role" param that changes their outfit colour and hair (for example partner, coworker, friend) plus the same pose, expression, eyes, mouth and facing params. A third asset only for a set piece that also appears WITHOUT the characters; when a character lies or sits in it, that is one of the character's poses, which draws the set piece too. Rooms are backgrounds, drawn by the kit; small props are drawn by the shots.
 - Backgrounds: 3 to 5 named real places (each with its time of day), described in detail in the style: the layout, the 8 or more objects, where the light comes from, what moves.
@@ -52,7 +52,7 @@ A short character-driven story in a cartoon comic-book look: one main character 
 
 ## shots
 - Start every shot with the place: kit.bg for its background, filling the frame. Characters stand on the floor line: feet around y 1300 to 1420, never floating in the air. A standing main character fills 45 to 75% of the frame height in a wide view; in a punch-in the face can fill most of the frame.
-- The character is always acting, with a new acting beat about every 3 seconds: a new expression, pose, facing or held item, or a move across the room (a sigh and slump, rubbing the eyes, checking the phone, sitting up, turning to someone, walking to the window). Plan the beats by time: for example lt 0 to 1.5 tired and slumped, 1.5 to 3 sits up, 3 to 4.5 anxious looking at the clock. Pass mouth: h.mouth('<cast id>') and call h.anchor('<cast id>', x, yAboveHead) every frame a speaker is on screen.
+- The character acts when a line gives something to act, about every 3 seconds as a guide: a new expression, pose, facing or held item, or a move across the room (a sigh and slump, rubbing the eyes, checking the phone, sitting up, turning to someone, walking to the window). Plan the beats by time: for example lt 0 to 1.5 tired and slumped, 1.5 to 3 sits up, 3 to 4.5 anxious looking at the clock. Pass mouth: h.mouth('<cast id>') and call h.anchor('<cast id>', x, yAboveHead) every frame a speaker is on screen.
 - In bed: use the character's in-bed pose (it draws the bed, the character and the blanket in the right order); never a separate bed plus a lying character.
 - Props are held in the hands at chest height or rest on furniture. Never draw a prop, note, keyboard or label over any face.
 - Characters keep their true relative size: two characters at the same distance from the camera get the same h.asset scale (the pose sheet drew them at one shared scale, so their heights already compare correctly). Only someone further back is smaller.

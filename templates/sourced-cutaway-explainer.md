@@ -32,8 +32,8 @@ A calm, sourced documentary explainer of how a real thing is made, extracted or 
 - One continuous documentary camera: the reel feels like a single take. Each shot starts where the last one ended and moves the camera once: a slow pan down from the surface into the ground, a push in on a part (scale up 1.5 to 4x around the part over 1.5 to 2.5 s, easeInOut), a pull out to the whole, or a slide along a pipe. Do the camera with ctx.translate / ctx.scale inside the picture band (clip to it with ctx.rect(0, 520, 1080, 940); ctx.clip() inside a save / restore).
 - Things build themselves as they are named: a pipe or well grows down (its end moves at a steady speed with a bright tip), a crack spreads in short jagged steps, a layer fades in, a label's leader line draws itself in 0.3 s and then its text appears.
 - Flow is always visible: whatever moves (water, steam, heat, fluid, electricity) is dashes or small dots travelling along its path at a steady speed, in the amber accent (hot) or slate blue (cold), never a static arrow alone.
-- Slow and calm: no bounces, no overshoot, no shakes, no flashes. Arrivals easeOut over 0.4 to 0.7 s, camera moves easeInOut over 1.5 to 2.5 s. Something always moves: flow dots, the camera's slow drift, steam rising.
-- A visible change every 2 to 3 s inside each shot (the reference changes picture about 27 times a minute): the camera move, then a label, then the photo or quote, then the flow starting or the number landing, each on its own word. A shot never holds one still composition for more than 3 s.
+- Slow and calm: no bounces, no overshoot, no shakes, no flashes. Arrivals easeOut over 0.4 to 0.7 s, camera moves easeInOut over 1.5 to 2.5 s. Motion shows something new (a flow starting, the camera moving to a part), then holds; flow dots and steam are optional ambient life.
+- A visible change every 2 to 3 s inside each shot (the reference changes picture about 27 times a minute): the camera move, then a label, then the photo or quote, then the flow starting or the number landing, each on its own word. This is the usual pace, not a rule: a shot may hold a composition while its line explains.
 - Evidence arrives on its word: a photo rises in on the cue word that names its thing; a quote drops in at the start of the line it backs; the underline draws while that line is said.
 
 ## story
@@ -46,7 +46,7 @@ A calm, sourced documentary explainer of how a real thing is made, extracted or 
 - Name the place: when the reference names a real site or region, the reel uses it ("Imagine driving through [real place]").
 
 ## plan
-- Structure: 10 to 12 SHORT shots (the reference changes picture every 2 to 3 s; each shot is one line of 6 to 12 words, 3 to 5 s), in this order of beats:
+- Structure: 10 to 12 SHORT shots (the reference changes picture every 2 to 3 s; each shot usually one line of 6 to 12 words, 3 to 5 s), in this usual order of beats:
   1. hook: the familiar picture, corrected. On screen: background "surface", the familiar thing drawn at the surface, and a real photo of it pinned beside it.
   2. truth: what is really there, and where: the camera pans down from the surface into the layers ("surface" sliding up into "section"), the place marked with a soft amber glow and its UPPERCASE label.
   3. question: "So how do you [get it / turn it into what we use]?" On screen: the whole cut-away, the shaft position marked by a dashed line, nothing built yet.
@@ -78,7 +78,7 @@ A calm, sourced documentary explainer of how a real thing is made, extracted or 
   - Labels: left side (x 60 to 520) or beside their part, never over the photo or quote.
   - Small print: call h.note(['<1 or 2 honesty notes>'], 'Wikipedia: <article>') as the LAST thing every frame, where <article> is the title of the REFERENCE article the shot's fact comes from (listed in the request), never a description. Notes are true descriptions of the picture: 'Cut-away view, illustration', 'Not to scale', 'Depths illustrative', 'Time compressed', 'Flow shown in amber'.
 - Continuity: kit.bg keeps the same layers, the shaft asset stands at the same x (about 420) and the surface line at y 760 whenever the surface is in view, from shot to shot, so the camera moves through one place. A step shot starts from the picture the shot before ended on and adds one thing.
-- Every frame moves: flow dots, a slow camera drift (scale 1.00 to 1.04 over the shot), steam or heat shimmer rising, a pipe growing.
+- Motion shows something new: a pipe growing, flow starting, a slow camera move (scale 1.00 to 1.04 over the shot) to the next part, then holds; flow dots and steam are optional ambient life.
 - Text: labels 40 px bold uppercase; one big number 96 to 120 px. Measure text with ctx.measureText and keep it inside x 60 to 1020.
 
 ## checks
