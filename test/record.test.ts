@@ -268,3 +268,23 @@ await test('index.jsonl gets exactly one line per finished job', async () => {
     });
   });
 });
+
+await test('report.md intake line has one period when the model ends its sentences with one', () => {
+  const run = sampleRun('20261127-102030-sky');
+  assert.ok(run.intake !== null);
+  const text = renderReport({
+    ...run,
+    intake: {
+      ...run.intake,
+      reason: 'no template fits.',
+      audience: 'curious adults in Sweden.',
+      goal: 'explain Rayleigh scattering.',
+      tone: 'warm.',
+    },
+  });
+  assert.match(
+    text,
+    /Audience: curious adults in Sweden\. Goal: explain Rayleigh scattering\. Tone: warm\. Target/,
+  );
+  assert.doesNotMatch(text, /\.\./);
+});
