@@ -16,6 +16,7 @@
 //   FAKE_ENGINE_LOW_PITCH=<keys>    these --voice-model keys measure 3.1 st (below the voice_pitch gate)
 //   FAKE_ENGINE_KEEP_CODE=<ids>     noted shots (numbers) and assets (ids) whose redraw fails its checks: old code stays
 //   FAKE_ENGINE_WORK_ASSETS=<ids>   the asset ids of the work plan.json (default sun)
+//   FAKE_ENGINE_FLAT_FRAMES=<cuts>  a reel of one flat colour (fails frame gates); otherwise a moving picture that passes
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -191,13 +192,18 @@ if (inCut('FAKE_ENGINE_FAILING_SHOT')) {
 }
 
 fs.mkdirSync(dir, { recursive: true });
+// a moving Mandelbrot zoom passes every frame gate at cutroom's thresholds; a flat colour fails frame0, blank, balance,
+// flat and alive
+const picture = inCut('FAKE_ENGINE_FLAT_FRAMES')
+  ? 'color=c=0x204060:s=1080x1920:r=30'
+  : 'mandelbrot=s=270x480:r=30,scale=1080:1920';
 const mp4 = spawnSync(
   'ffmpeg',
   [
     ...['-y', '-loglevel', 'error'],
-    ...['-f', 'lavfi', '-i', 'color=c=0x204060:s=1080x1920:r=30:d=1'],
+    ...['-f', 'lavfi', '-i', picture],
     ...['-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=44100:d=1'],
-    ...['-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-c:a', 'aac'],
+    ...['-t', '1', '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-c:a', 'aac'],
     ...['-shortest', path.join(dir, 'reel.mp4')],
   ],
   { encoding: 'utf8' },

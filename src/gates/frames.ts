@@ -4,6 +4,7 @@
 // satisfies noUncheckedIndexedAccess.
 import { spawn } from 'node:child_process';
 import type { Gate } from '../record.ts';
+import { sectionsOf } from '../templates.ts';
 
 // The caption band the picture is judged without, y from its top edge to its bottom edge.
 export type CaptionBand = { top: number; bottom: number };
@@ -356,34 +357,157 @@ export async function measureFrames(video: string, band: CaptionBand): Promise<F
   };
 }
 
-// The seven frame gates at cutroom's thresholds, all info until calibrated (design 6.3). Balance and
-// flat are judged exact and shown at 2 decimals, as frame_audit.py does.
-export function frameGates(m: FrameMeasures): Gate[] {
-  const band = Math.max(m.staticBand.top.seconds, m.staticBand.bottom.seconds);
-  const { longestGapS, stillShare } = m.alive;
-  const gates: Omit<Gate, 'mode'>[] = [
-    {
-      name: 'same_view',
-      value: m.longestSameViewS,
-      threshold: '<= 14 s',
-      pass: m.longestSameViewS <= 14,
-    },
-    { name: 'frame0', value: m.frame0Detail, threshold: '>= 0.05', pass: m.frame0Detail >= 0.05 },
-    { name: 'blank', value: m.blankAt.length, threshold: 'none', pass: m.blankAt.length === 0 },
-    {
-      name: 'balance',
-      value: { lower_half: round(m.lowerHalfShare, 2), centre: round(m.centreOfMass, 2) },
-      threshold: 'lower half >= 0.33, centre 0.42-0.62',
-      pass: m.lowerHalfShare >= 0.33 && m.centreOfMass >= 0.42 && m.centreOfMass <= 0.62,
-    },
-    { name: 'flat', value: round(m.flatShare, 2), threshold: '<= 0.60', pass: m.flatShare <= 0.6 },
-    { name: 'static_band', value: band, threshold: '<= 14 s', pass: band <= 14 },
-    {
-      name: 'alive',
-      value: { gap_s: longestGapS, still: stillShare },
-      threshold: 'gap <= 3 s, still <= 0.20',
-      pass: longestGapS <= 3 && stillShare <= 0.2,
-    },
-  ];
-  return gates.map((g) => ({ ...g, mode: 'info' }));
+export const FRAME_GATES = [
+  'same_view',
+  'frame0',
+  'blank',
+  'balance',
+  'flat',
+  'static_band',
+  'alive',
+] as const;
+export type FrameGateName = (typeof FRAME_GATES)[number];
+
+/** A developer's `gate <name>: off | info | <threshold>` line (design 6.3). */
+export type GateSetting =
+  { mode: 'off' } | { mode: 'info' } | { mode: 'block'; limits: readonly number[] };
+/** A frame gate without a setting is block at cutroom's threshold. */
+export type GateSettings = Partial<Record<FrameGateName, GateSetting>>;
+
+// Cutroom's thresholds (frame_audit.py v1.7), in the order each gate's threshold shows them. A
+// threshold line gives the same numbers in the same order: `gate alive: gap <= 5 s, still <= 0.4`.
+const LIMITS: Record<FrameGateName, readonly number[]> = {
+  same_view: [14],
+  frame0: [0.05],
+  blank: [0],
+  balance: [0.33, 0.42, 0.62],
+  flat: [0.6],
+  static_band: [14],
+  alive: [3, 0.2],
+};
+
+const isFrameGate = (name: string): name is FrameGateName =>
+  (FRAME_GATES as readonly string[]).includes(name);
+
+// 0.6 shows as 0.60, as frame_audit.py prints it; a finer limit shows in full.
+const two = (x: number): string => (Number(x.toFixed(2)) === x ? x.toFixed(2) : String(x));
+
+function threshold(name: FrameGateName, l: readonly number[]): string {
+  const [a = NaN, b = NaN, c = NaN] = l;
+  switch (name) {
+    case 'same_view':
+    case 'static_band':
+      return `<= ${String(a)} s`;
+    case 'frame0':
+      return `>= ${String(a)}`;
+    case 'blank':
+      return a === 0 ? 'none' : `<= ${String(a)}`;
+    case 'balance':
+      return `lower half >= ${String(a)}, centre ${String(b)}-${String(c)}`;
+    case 'flat':
+      return `<= ${two(a)}`;
+    case 'alive':
+      return `gap <= ${String(a)} s, still <= ${two(b)}`;
+  }
+}
+
+// Balance and flat are judged exact and shown at 2 decimals, as frame_audit.py does.
+function judge(name: FrameGateName, m: FrameMeasures, l: readonly number[]): Omit<Gate, 'mode'> {
+  const [a = NaN, b = NaN, c = NaN] = l;
+  const t = threshold(name, l);
+  switch (name) {
+    case 'same_view':
+      return { name, value: m.longestSameViewS, threshold: t, pass: m.longestSameViewS <= a };
+    case 'frame0':
+      return { name, value: m.frame0Detail, threshold: t, pass: m.frame0Detail >= a };
+    case 'blank':
+      return { name, value: m.blankAt.length, threshold: t, pass: m.blankAt.length <= a };
+    case 'balance':
+      return {
+        name,
+        value: { lower_half: round(m.lowerHalfShare, 2), centre: round(m.centreOfMass, 2) },
+        threshold: t,
+        pass: m.lowerHalfShare >= a && m.centreOfMass >= b && m.centreOfMass <= c,
+      };
+    case 'flat':
+      return { name, value: round(m.flatShare, 2), threshold: t, pass: m.flatShare <= a };
+    case 'static_band': {
+      const band = Math.max(m.staticBand.top.seconds, m.staticBand.bottom.seconds);
+      return { name, value: band, threshold: t, pass: band <= a };
+    }
+    case 'alive':
+      return {
+        name,
+        value: { gap_s: m.alive.longestGapS, still: m.alive.stillShare },
+        threshold: t,
+        pass: m.alive.longestGapS <= a && m.alive.stillShare <= b,
+      };
+  }
+}
+
+const GATE_LINE = /^\s*-?\s*gate\s+(\S+?)\s*:\s*(.*?)\s*$/i;
+
+/**
+ * The `gate <name>: off | info | <threshold>` lines of a template's `## checks` text. A threshold is
+ * the gate's numbers in the order of its threshold (block). A malformed line, a gate that is not a
+ * frame gate, or a second line for one gate is an error: a developer's line is never dropped.
+ */
+export function gateSettings(checks: string): GateSettings {
+  const out: GateSettings = {};
+  for (const line of checks.split(/\r?\n/)) {
+    if (!/^\s*-?\s*gate\s/i.test(line)) continue;
+    const m = GATE_LINE.exec(line);
+    const bad = (why: string) => new Error(`template check "${line.trim()}": ${why}`);
+    if (m === null) throw bad('not "gate <name>: off | info | <threshold>"');
+    const name = m[1] ?? '';
+    const value = (m[2] ?? '').toLowerCase();
+    if (!isFrameGate(name)) throw bad(`no frame gate "${name}" (${FRAME_GATES.join(', ')})`);
+    if (out[name] !== undefined) throw bad(`a second line for gate ${name}`);
+    if (value === 'off' || value === 'info') {
+      out[name] = { mode: value };
+      continue;
+    }
+    const limits = (value.match(/\d*\.?\d+/g) ?? []).map(Number);
+    const want = LIMITS[name].length;
+    if (limits.length !== want) {
+      throw bad(
+        `gate ${name} takes off, info or ${String(want)} number(s) in the order of "${threshold(name, LIMITS[name])}"`,
+      );
+    }
+    out[name] = { mode: 'block', limits };
+  }
+  return out;
+}
+
+export interface FrameSetup {
+  /** The template's `captions:` check, '' when it has none. */
+  captions: string;
+  band: CaptionBand;
+  settings: GateSettings;
+}
+
+// The engine's checks() (asset_reel.mjs): a `key: value` line of `## checks`; the last line of a key wins.
+const CHECK_LINE = /^\s*-?\s*([a-z ]+?)\s*:\s*(.+?)\s*$/i;
+
+/** How a template's frame gates run: the caption band of its `captions:` check and its gate lines. */
+export function frameSetup(template: string): FrameSetup {
+  const checks = sectionsOf(template).get('checks') ?? '';
+  let captions = '';
+  for (const line of checks.split(/\r?\n/)) {
+    const m = CHECK_LINE.exec(line);
+    if (m?.[1]?.toLowerCase() === 'captions') captions = m[2] ?? '';
+  }
+  return { captions, band: captionBand(captions), settings: gateSettings(checks) };
+}
+
+/**
+ * The seven frame gates (design 6.3): block at cutroom's thresholds, except where a gate line sets the
+ * gate off (left out), info, or another threshold.
+ */
+export function frameGates(m: FrameMeasures, settings: GateSettings = {}): Gate[] {
+  return FRAME_GATES.flatMap((name): Gate[] => {
+    const s = settings[name] ?? { mode: 'block', limits: LIMITS[name] };
+    if (s.mode === 'off') return [];
+    return [{ ...judge(name, m, s.mode === 'block' ? s.limits : LIMITS[name]), mode: s.mode }];
+  });
 }

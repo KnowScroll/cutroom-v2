@@ -171,7 +171,14 @@ await test('approve on cut 1 gives 1 cut: job.json done, run.json, report.md, br
   assert.equal(cut.engine_cost['plan']?.usd, 0.001);
   assert.match(cut.credits, /Voice: synthetic/);
   assert.ok(cut.engine_rejections.some((r) => r.includes('kit attempt 1')));
-  assert.equal(cut.gates.length, 5);
+  // the 5 basic gates, then the 7 frame gates, all block for a template without gate lines
+  assert.deepEqual(
+    cut.gates.map((g) => g.name),
+    [
+      ...['format', 'shipped_failing', 'voice_pitch', 'music_fit', 'voice_over_music'],
+      ...['same_view', 'frame0', 'blank', 'balance', 'flat', 'static_band', 'alive'],
+    ],
+  );
   assert.ok(
     cut.gates.every((g) => g.pass && g.mode === 'block'),
     JSON.stringify(cut.gates),
@@ -201,6 +208,7 @@ await test('approve on cut 1 gives 1 cut: job.json done, run.json, report.md, br
     'sync.copied',
     'sync.copied',
     'intake.done',
+    'gates.setup',
     'engine.start',
     'engine.end',
     'gates.done',
@@ -360,6 +368,102 @@ await test('a re-asked review that approves again with no fixes stops the loop',
   assert.equal(line.approved, false);
   assert.equal(line.blocking_fails, 1);
   assert.match(await readFile(path.join(dir, 'report.md'), 'utf8'), /not approved/);
+});
+
+const FLAT_FAILS = ['frame0', 'blank', 'balance', 'flat', 'alive'];
+const failing = (gates: readonly { name: string; pass: boolean; mode: string }[]) =>
+  gates.filter((g) => !g.pass).map((g) => `${g.name} ${g.mode}`);
+
+await test('a blocking frame FAIL prevents approval: the review is re-asked and the loop goes on', async () => {
+  const { run } = await job([intake, review(true), answer({ notes: NOTES }), review(true)], {
+    FAKE_ENGINE_FLAT_FRAMES: '1',
+  });
+  // cut 1 is one flat colour: its frame gates FAIL at cutroom's thresholds, all block
+  assert.deepEqual(
+    failing(run.cuts[0]?.gates ?? []),
+    FLAT_FAILS.map((n) => `${n} block`),
+  );
+  assert.deepEqual(
+    run.harness_calls.map((c) => c.step),
+    ['intake', 'review-1', 'review-1', 'review-2'],
+  );
+  assert.equal(run.cuts[0]?.review?.approve, false);
+  assert.equal(run.rounds[0]?.kind, 'notes');
+  assert.deepEqual(failing(run.cuts[1]?.gates ?? []), []);
+  assert.equal(run.selected?.cut, 2);
+  assert.equal(run.approved, true);
+});
+
+await test('a blocking frame FAIL with an approving review is never approved', async () => {
+  const { run, dir } = await job([intake, review(true)], { FAKE_ENGINE_FLAT_FRAMES: '1' });
+  assert.equal(run.cuts.length, 1);
+  assert.equal(run.cuts[0]?.review?.approve, true);
+  assert.equal(run.approved, false);
+  assert.match(run.selected?.why ?? '', /5 blocking gate FAIL\(s\), .*review approve overruled/);
+  assert.match(await readFile(path.join(dir, 'report.md'), 'utf8'), /FAIL frame0 \[block\]/);
+});
+
+await test("a template's gate lines set the frame gates (off, info, threshold) and its captions the band", async () => {
+  const originals = path.join(root, 'templates-gates');
+  await mkdir(originals);
+  await writeFile(path.join(originals, '_base.md'), '# base\n\n## story\nBASE STORY\n');
+  const checks = [
+    'captions: select',
+    'gate blank: off',
+    'gate flat: info',
+    '- gate alive: info',
+    'gate frame0: >= 0',
+    'gate balance: lower half >= 0, centre 0-1',
+  ];
+  await writeFile(path.join(originals, 'alpha.md'), `${ALPHA}\n## checks\n${checks.join('\n')}\n`);
+  const { run, varDir } = await job(
+    [intake, review(true)],
+    { FAKE_ENGINE_FLAT_FRAMES: '1' },
+    'heygen',
+    {
+      originals,
+    },
+  );
+  const gates = run.cuts[0]?.gates ?? [];
+  const by = (n: string) => gates.find((g) => g.name === n);
+  assert.equal(by('blank'), undefined);
+  assert.deepEqual(failing(gates), ['flat info', 'alive info']);
+  assert.deepEqual(by('frame0'), {
+    name: 'frame0',
+    value: 0,
+    threshold: '>= 0',
+    pass: true,
+    mode: 'block',
+  });
+  assert.equal(by('balance')?.threshold, 'lower half >= 0, centre 0-1');
+  assert.equal(by('same_view')?.mode, 'block');
+  assert.equal(by('same_view')?.threshold, '<= 14 s');
+  // only info gates FAIL, so the approve stands
+  assert.equal(run.approved, true);
+  const setup = (await readEvents(varDir, run.id)).find((e) => e.event === 'gates.setup');
+  assert.deepEqual(setup?.data, {
+    captions: 'select',
+    band: { top: 300, bottom: 430 },
+    settings: {
+      blank: { mode: 'off' },
+      flat: { mode: 'info' },
+      alive: { mode: 'info' },
+      frame0: { mode: 'block', limits: [0] },
+      balance: { mode: 'block', limits: [0, 0, 1] },
+    },
+  });
+});
+
+await test('a bad gate line fails the job before the engine runs', async () => {
+  const originals = path.join(root, 'templates-bad-gate');
+  await mkdir(originals);
+  await writeFile(path.join(originals, '_base.md'), '# base\n\n## story\nBASE STORY\n');
+  await writeFile(path.join(originals, 'alpha.md'), `${ALPHA}\n## checks\ngate format: info\n`);
+  const { run, dir } = await job([intake], {}, 'heygen', { originals });
+  assert.equal(run.status, 'failed');
+  assert.match(run.error ?? '', /"gate format: info": no frame gate "format"/);
+  assert.equal(run.cuts.length, 0);
+  assert.ok(!existsSync(path.join(dir, 'reel-work')));
 });
 
 await test('synth music (no fit verdict) fails the music_fit gate, not the job', async () => {
