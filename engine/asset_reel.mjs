@@ -337,13 +337,15 @@ async function make(label, system, firstUser, validate, craftAsk, prevCode = nul
     messages.push({ role: 'assistant', content: text || '(empty)' }, { role: 'user', content: `The validator rejected it:\n- ${res.errors.join('\n- ')}\nReturn the complete corrected code.` });
   }
   if (!code && !prevCode && lastRunnable) log(`${label}: no attempt passed every check; using the last one that runs (it failed: ${lastRunnable.errors.slice(0, 2).join('; ').slice(0, 200)})`);
-  if (!code && prevCode) { // a redraw that never passed ships failing, said in the line the harness's shipped_failing gate counts (27 of 164 redraws kept the old code silently, findings §P)
-    // the old code is checked against the step as it is now (its lines may have changed): kept while it still passes, else the last attempt that runs replaces it
+  if (!code && prevCode) { // a redraw that never passed is never silent (27 of 164 redraws kept the old code unannounced, findings §P)
+    // the old code is checked against the step as it is now (its lines may have changed): kept while it still passes (the note is
+    // not applied: a rejection the review reads), else it ships failing in the line the shipped_failing gate counts, replaced by the
+    // last attempt that runs if there is one
     const bad = bannedIn(prevCode), old = bad ? { ok: false, errors: [`uses the forbidden browser global "${bad}" in code`] } : await validate(prevCode);
-    const errs = es => es.slice(0, 2).join('; ').replace(/\s+/g, ' ').slice(0, 200), keep = old.ok || !lastRunnable, tried = errs((lastRunnable || res).errors);
-    const why = old.ok ? `the note is not applied: no redraw passed (${tried}); the previous code still passes and is kept` : keep ? `the previous code is kept and fails now: ${errs(old.errors)}` : `${tried}; the previous code fails too: ${errs(old.errors)}`;
-    log(`${label}: no attempt passed every check; using the last one that runs (it failed: ${why})`);
-    return { code: keep ? prevCode : lastRunnable.code, preview: null, crafted: false };
+    const errs = es => es.slice(0, 2).join('; ').replace(/\s+/g, ' ').slice(0, 200), tried = errs((lastRunnable || res).errors);
+    if (old.ok) { log(`${label} rejected: no redraw passed every check (${tried}), so the note is not applied; the previous code still passes and is kept`); return { code: prevCode, preview: null, crafted: false }; }
+    log(`${label}: no attempt passed every check; using the last one that runs (it failed: ${lastRunnable ? `${tried}; the previous code fails too: ${errs(old.errors)}` : `the previous code is kept and fails now: ${errs(old.errors)}`})`);
+    return { code: lastRunnable ? lastRunnable.code : prevCode, preview: null, crafted: false };
   }
   if (!code) return { code: lastRunnable?.code || null, preview: null, crafted: false };
   if (craftAsk && res.preview && !label.endsWith('-rev')) { // craft pass: the model looks at its own render and improves it (not on director revisions: the director's notes are that review)

@@ -308,7 +308,7 @@ const WorkPlan = z.object({
 });
 
 await test(
-  'an --apply-notes round rejects a line with an untraced number, catches kept code whose cue word left its line, and flags failed redraws as shipped failing',
+  'an --apply-notes round rejects a line with an untraced number, catches kept code whose cue word left its line, and never keeps a failed redraw silently',
   { timeout: 300_000 },
   async () => {
     const s = await setup();
@@ -346,24 +346,21 @@ await test(
         'three attempts each for shot 2 and shot 4, none for shot 3',
       );
 
-      // both failed redraws print the line the shipped_failing gate counts. Shot 2's old code fails against its new line, so the
-      // last redraw that runs replaces it; shot 4's old code still passes and stays, without the note
+      // shot 2's old code fails against its new line: its failed redraw ships failing, in the line the shipped_failing gate
+      // counts, and the last redraw that runs replaces the stale code. Shot 4's old code still passes: it stays, and the note
+      // that could not be applied is a rejection the next review reads, not a step shipped failing (design §6.3)
       const { failingSteps, rejections } = parseLog(log);
-      const byStep = new Map(failingSteps.map((f) => [f.step, f.reason]));
-      assert.deepEqual([...byStep.keys()].sort(), ['shot2-rev', 'shot4-rev']);
-      const overlap = 'text "WALK" overlaps text "LONG"';
-      assert.ok(
-        byStep.get('shot2-rev')?.startsWith(overlap),
-        `shot2-rev: ${String(byStep.get('shot2-rev'))}`,
+      assert.deepEqual(
+        failingSteps.map((f) => f.step),
+        ['shot2-rev'],
       );
-      assert.match(
-        byStep.get('shot2-rev') ?? '',
-        /; the previous code fails too: .*this shot's lines never say "paper"/,
+      const reason = failingSteps[0]?.reason ?? '';
+      assert.ok(reason.startsWith('text "WALK" overlaps text "LONG"'), reason);
+      assert.match(reason, /; the previous code fails too: .*this shot's lines never say "paper"/);
+      has(
+        /shot4-rev rejected: no redraw passed every check \(text "WALK" overlaps text "LONG" at lt=[\d.]+s: .*\), so the note is not applied; the previous code still passes and is kept$/,
       );
-      assert.match(
-        byStep.get('shot4-rev') ?? '',
-        /^the note is not applied: no redraw passed \(text "WALK" overlaps text "LONG" at lt=[\d.]+s: .*\); the previous code still passes and is kept$/,
-      );
+      assert.ok(rejections.some((r) => r.startsWith('shot4-rev rejected:')));
       assert.ok(rejections.some((r) => r.startsWith('director lines for shot 1 rejected:')));
       assert.ok(rejections.some((r) => r.startsWith('shot2 kept code rejected:')));
       const shotFile = (k: number) => readFile(path.join(s.work, `shot_${String(k)}.js`), 'utf8');
