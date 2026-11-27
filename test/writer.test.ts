@@ -81,17 +81,12 @@ await test("the Moon's mixed-units calc is rejected; the same walk with units co
     'm4',
   );
   assert.equal(mixed.length, 1);
-  assert.match(mixed[0] ?? '', /gives 3120\.5 days/);
-  assert.match(
-    mixed[0] ?? '',
-    /reads 378000 as 378000 km, 5 as 5 km\/h, 29\.5 as 29\.5 days, as the sheet states them, 24 as the unit conversion the units already make/,
-  );
+  assert.match(mixed[0] ?? '', /uses 24, which no other fact on the sheet states/);
+  assert.match(mixed[0] ?? '', /Write each quantity with its unit/);
 
   for (const [text, calc] of [
     ['Walking to the Moon non-stop takes about 75,600 hours', '378000 km / (5 km/h)'],
     ['Walking to the Moon non-stop takes about 8.6 years', '378000 km / (5 km/h)'],
-    ['Walking to the Moon non-stop takes about 3,150 days', '378000 / 5'],
-    ['Walking to the Moon non-stop takes about 3,150 days', '378000 / 5 / 24'],
     ['The Moon is about 30 Earths away', '378000 / 12742'],
   ] as const)
     assert.deepEqual(errorsOf(sheet([derived('m4', text, calc)])), [], `${text} = ${calc}`);
@@ -118,12 +113,11 @@ await test("the Moon's mixed-units calc is rejected; the same walk with units co
     ['It takes 2,442 days longer than a lunar month', '75600/24 - 29.5*24'],
     ['It takes 1.8 million days', '75600 * 24'],
   ] as const)
-    assert.match(timeOnly(text, calc)[0] ?? '', /24 as the unit conversion/, `${text} = ${calc}`);
-  assert.deepEqual(timeOnly('A lunar month is about 708 hours', '29.5 * 24'), []);
-  assert.deepEqual(
-    timeOnly('It takes about 3,120 days longer than a lunar month', '75600 - 29.5'),
-    [],
-  );
+    assert.match(
+      timeOnly(text, calc)[0] ?? '',
+      /uses 24, which no other fact/,
+      `${text} = ${calc}`,
+    );
   assert.deepEqual(timeOnly('A lunar month is about 708 hours', '29.5 d / 1 h'), []);
 });
 
@@ -136,29 +130,25 @@ await test('scientific notation is read in calc and text', () => {
     assert.deepEqual(errorsOf(sheet([derived('f6', text, calc)])), [], `${text} = ${calc}`);
 });
 
-await test('rates, magnitude words and plain counts compute; a chain of 100s does not', () => {
+await test('bare numbers are literal: rates, magnitudes and counts compute; a chain of 100s does not', () => {
   const facts: Fact[] = [
-    { id: 'p1', text: 'A gold bar costs $750,000', source: 'general' },
-    { id: 'p2', text: 'A gold bar weighs 12.4 kg', source: 'general' },
-    { id: 'p3', text: 'The country has 5.5 million people', source: 'general' },
-    { id: 'p4', text: 'The country covers 385,207 km2', source: 'general' },
-    { id: 'p5', text: 'The project cost $690 million over 13 years', source: 'general' },
-    { id: 'p6', text: 'About 4.4 billion people use the internet', source: 'general' },
-    { id: 'p7', text: 'The world has about 8 billion people', source: 'general' },
-    { id: 'p8', text: 'Since 1905 the country has been independent', source: 'general' },
-    { id: 'p9', text: 'In 2024 it held an election', source: 'general' },
-    { id: 'p10', text: 'People blink about 100,000 times a day', source: 'general' },
-    {
-      id: 'p11',
-      text: 'A search engine handles about 99,000 searches every second',
-      source: 'general',
-    },
-    { id: 'p12', text: 'The band has 4 members and released 12 albums', source: 'general' },
-    { id: 'p13', text: 'Monaco has about 26,000 people per square kilometre', source: 'general' },
-    { id: 'p14', text: 'Monaco covers 2.08 km2', source: 'general' },
-    { id: 'p15', text: 'The contract pays $53 million a year for 13 years', source: 'general' },
-    { id: 'p16', text: 'People live about 80 years', source: 'general' },
-  ];
+    'A gold bar costs $750,000',
+    'A gold bar weighs 12.4 kg',
+    'The country has 5.5 million people',
+    'The country covers 385,207 km2',
+    'The project cost $690 million over 13 years',
+    'About 4.4 billion people use the internet',
+    'The world has about 8 billion people',
+    'Since 1905 the country has been independent',
+    'In 2024 it held an election',
+    'The band has 4 members and released 12 albums',
+    'Monaco has about 26,000 people per square kilometre',
+    'Monaco covers 2.08 km2',
+    'The contract pays $53 million a year for 13 years',
+    'A year has 365 days and a day has 24 hours',
+    'The world has about 7 billion phones',
+    'The club has 70 members',
+  ].map((text, i) => ({ id: `p${String(i + 1)}`, text, source: 'general' }));
   const rates = (calc: string, text: string): FactSheet => ({
     ...sheet([]),
     facts: [...BASE, F4, ...facts, derived('d1', text, calc)],
@@ -167,22 +157,16 @@ await test('rates, magnitude words and plain counts compute; a chain of 100s doe
     ['750000 / 12.4', 'At that price gold costs $60,500 per kg'],
     ['750000 / 12.4 kg', 'At that price gold costs $60,500 per kg'],
     ['5500000 / 385207 km2', 'The country has about 14 people per km2'],
-    ['5.5 / 385207', 'The country has about 14 people per km2'],
     ['690000000 / (13 yr)', 'That is about $53 million a year'],
+    ['690000000 / (13 yr)', 'That is about $145,000 daily'],
     ['4.4 billion / 8 billion * 100', 'About 55% of people use the internet'],
     ['4.4 / 8 * 100', 'About 55% of people use the internet'],
     ['2024 - 1905', 'The country has been independent for 119 years'],
-    ['100000 * 365', 'That is about 36.5 million blinks a year'],
-    ['99000 * 60 * 60 * 24', 'That is about 8.6 billion searches a day'],
     ['12 / 4', 'That is 3 albums per member'],
     ['26000 * 2.08', 'Monaco has about 54,000 people'],
     ['53000000 * 13', 'The contract is worth about $690 million'],
-    ['53000000 / 365', 'That is about $145,000 a day'],
-    ['53000000 / 365', 'That is about $145,000 daily'],
-    ['100000 * 365', 'In a year a person blinks about 36.5 million times'],
-    ['100000 * 365', 'A person blinks about 36.5 million times annually'],
-    ['100000 * 80', 'A person blinks about 2.9 billion times in a life'],
-    ['100000 * 365 * 80', 'A person blinks about 2.9 billion times in a life'],
+    ['365 * 24', 'A year has 8,760 hours'],
+    ['70 / 7', 'That is 10 members for each phone'],
   ] as const)
     assert.deepEqual(errorsOf(rates(calc, text)), [], `${text} = ${calc}`);
 
@@ -193,38 +177,36 @@ await test('rates, magnitude words and plain counts compute; a chain of 100s doe
     [],
     'an ordinal is not a count',
   );
-  // a calendar factor the wrong way round
-  for (const [calc, text] of [
-    ['100000 * 24', 'That is 2.4 million blinks an hour'],
-    ['100000 / 365', 'That is 274 blinks a year'],
-    ['53000000 * 365', 'That is $19 billion a day'],
-  ] as const)
-    assert.equal(errorsOf(rates(calc, text)).length, 1, `${text} = ${calc}`);
   const chained = errorsFor(sheet([derived('f3', '1 mm = 1,000,000 pm', '100 * 100 * 100')]), 'f3');
   assert.match(chained[0] ?? '', /uses 100 more than once/);
 });
 
-await test('a calendar number a fact states keeps its unit; AU is a unit; number words stop at punctuation', () => {
-  const walk = (text: string, calc: string, more: Fact[]) =>
-    errorsOf({ ...sheet([]), facts: [...BASE, F4, ...more, derived('d1', text, calc)] });
-  const moon: Fact[] = [
-    { id: 'w1', text: 'The Moon is about 384,400 km from Earth', source: 'general' },
-    { id: 'w2', text: 'A person walks about 5 km/h', source: 'general' },
-    { id: 'w3', text: 'A hiker walks 12 hours a day', source: 'general' },
+await test('a calendar number is literal; AU is a unit; number words stop at punctuation, not inside a number', () => {
+  const walk = (text: string, calc: string, more: string[]) =>
+    errorsOf({
+      ...sheet([]),
+      facts: [
+        ...BASE,
+        F4,
+        ...more.map((t, i): Fact => ({ id: `w${String(i)}`, text: t, source: 'general' })),
+        derived('d1', text, calc),
+      ],
+    });
+  const moon = [
+    'The Moon is about 384,400 km from Earth',
+    'A person walks about 5 km/h',
+    'A hiker walks 12 hours a day',
   ];
+  assert.deepEqual(walk('Walking to the Moon takes about 6,407 days', '384400 / 5 / 12', moon), []);
   assert.equal(
-    walk('Walking to the Moon takes about 8.8 years', '384400 km / (5 km/h) / 12', moon).length,
+    walk('Walking to the Moon takes about 8.8 years', '384400 / 5 / 12', moon).length,
     1,
   );
-  assert.deepEqual(
-    walk('Walking to the Moon takes about 17.5 years', '384400 km / (5 km/h) / 12', moon),
-    [],
-  );
-  for (const [text, calc, facts] of [
+  for (const [text, calc, more] of [
     ['A shift pays $180', '15 * 12', ['A worker earns $15 an hour', 'A shift lasts 12 hours']],
     [
       'The train gets there in 30 minutes',
-      '60 / 120',
+      '60 km / (120 km/h)',
       ['The town is 60 km away', 'The train runs at 120 km/h'],
     ],
     [
@@ -237,25 +219,25 @@ await test('a calendar number a fact states keeps its unit; AU is a unit; number
       '4.5 billion km * 1',
       ['Neptune is about 4.5 billion km from the Sun'],
     ],
-  ] as const) {
-    const more = facts.map((f, i): Fact => ({
-      id: `w${String(i + 4)}`,
-      text: f,
-      source: 'general',
-    }));
-    assert.deepEqual(walk(text, calc, more), [], `${text} = ${calc}`);
-  }
-  const watched: Fact = {
-    id: 'w9',
-    text: 'In 1969 about 600 million people watched the landing',
-    source: 'general',
-  };
+    [
+      'Sunlight takes about 4 hours to reach Neptune',
+      '30 AU / (300000 km/s)',
+      ['Neptune is about 30 AU from the Sun', 'Light travels 300,000 km/s'],
+    ],
+  ] as const)
+    assert.deepEqual(walk(text, calc, [...more]), [], `${text} = ${calc}`);
+
+  const said = (answer: string, fact: string) =>
+    errorsOf({ ...sheet([{ id: 'w9', text: fact, source: 'general' }]), answer });
   assert.deepEqual(
-    errorsOf({
-      ...sheet([watched]),
-      answer:
-        'In nineteen sixty-nine, six hundred million people watched; an atom is ten million times smaller.',
-    }),
+    said(
+      'In nineteen sixty-nine, six hundred million people watched.',
+      'In 1969 about 600 million people watched the landing',
+    ),
+    [],
+  );
+  assert.deepEqual(
+    said('It takes two thousand, four hundred and forty-two days.', 'The walk takes 2,442 days'),
     [],
   );
 });
