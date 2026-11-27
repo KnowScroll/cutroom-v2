@@ -73,6 +73,14 @@ Voice refusals not counted as cuts (#18): 4 eleven-v4 HTTP 402 invocations; thei
 | 42 | 2026-11-27 | #18 | CP5 job 5 cut 3, notes | heygen-paid | 0.0417 | same |
 | 43 | 2026-11-27 | #18 | CP5 job 5 cut 4, notes (job total 0.2664 incl. harness 0.0370) | heygen-paid | 0.0425 | same |
 
+## Next phase: reel quality (from 2026-11-27)
+
+Investigation done (read-only): HANDOFF.md, docs/reel-quality-brief.md (the user's brief), docs/reel-quality-findings.md; evidence in var/investigation-2026-11-27/ (gitignored). User decisions 2026-11-27:
+- D24: repairs in cutroom-v2, fastreel frozen. T0 records it in design §1.
+- Budget: 80 cuts for this phase, counted in a new table that T0 adds.
+
+Open user item: voice credit. The free heygen tier ends 2026-11-30, OpenRouter credit was low, and eleven-v4 returned 402 in CP5.
+
 ## Next action
 
-None: the build is complete. Open user items above (voice credits before 2026-11-30, #13 calibration table) and the follow-ups in the #18 report are not part of this plan.
+The build is complete. Next: a new session starts from HANDOFF.md (reel-quality repair, tasks T0-T11).
