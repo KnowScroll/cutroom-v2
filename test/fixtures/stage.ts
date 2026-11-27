@@ -35,7 +35,8 @@ export async function openStage(): Promise<Stage> {
 }
 
 // A plain kit: a dark gradient with drifting stars, a pill panel, a title, and kurzgesagt's kit.body recipe
-// (templates/kurzgesagt.md): the body's disc is the clip and its whole square is filled inside it.
+// (templates/kurzgesagt.md): the body's disc is the clip and its whole square is filled inside it. kit.tag draws a name or number
+// pill with the kit's own pill function, as kurzgesagt's kits do (not through kit.panel): 1.24 x its size wider than its words.
 export const KIT = `function makeKit(h) {
   const palette = { bg: '#141a3a', text: '#ffffff', accent: '#ffb000', night: '#0b0f24', ink: '#1a1a2e' };
   const font = (size, weight = 700) => weight + ' ' + size + 'px "Selawik", sans-serif';
@@ -45,14 +46,20 @@ export const KIT = `function makeKit(h) {
     const R = h.rng(5); ctx.fillStyle = '#ffffff';
     for (let i = 0; i < 80; i++) ctx.fillRect(R() * h.W, (R() * h.H + lt * 90) % h.H, 6, 6);
   };
+  const pill = (ctx, x, y, w, hgt) => { h.rr(x, y, w, hgt, 0.27 * hgt); ctx.fillStyle = palette.accent; ctx.fill(); };
   const panel = (ctx, x, y, w, hgt) => { h.rr(x, y, w, hgt, 12); ctx.fillStyle = palette.accent; ctx.fill(); };
   const title = (ctx, text, x, y, o = {}) => { ctx.font = font(o.size || 60); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = palette.text; ctx.fillText(text, x, y); };
+  const tag = (ctx, text, x, y) => {
+    ctx.font = font(42); const w = ctx.measureText(text).width + 1.24 * 42, hgt = 1.62 * 42;
+    pill(ctx, x - w / 2, y - hgt / 2, w, hgt);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = palette.ink; ctx.fillText(text, x, y);
+  };
   const body = (ctx, x, y, r, o = {}) => {
     ctx.save(); ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * Math.PI); ctx.clip();
     ctx.fillStyle = o.base || palette.accent; ctx.fillRect(x - r, y - r, 2 * r, 2 * r);
     ctx.restore();
   };
-  return { palette, font, bg, panel, title, body };
+  return { palette, font, bg, panel, title, tag, body };
 }`;
 
 // A round body in an 800 x 800 box: kit.body of radius 272 (kurzgesagt's box is 2.94 R wide), so h.asset's scale is R / 272.
@@ -62,6 +69,18 @@ export const body = (id: string, colour: string): Asset => ({
   h: 800,
   code: `function drawAsset(ctx, p, h, kit) { kit.body(ctx, 0, 0, 272, { base: '${colour}' }); }`,
 });
+
+// A character in a 640 x 520 box: a ball of radius 200 with two eyes, in p.colour; it returns its head top and hands.
+export const ball: Asset = {
+  id: 'ball',
+  w: 640,
+  h: 520,
+  code: `function drawAsset(ctx, p, h, kit) {
+    ctx.beginPath(); ctx.arc(0, 20, 200, 0, 2 * Math.PI); ctx.fillStyle = p.colour || '#c8102e'; ctx.fill();
+    for (const x of [-70, 70]) { ctx.beginPath(); ctx.arc(x, -20, 34, 0, 2 * Math.PI); ctx.fillStyle = '#ffffff'; ctx.fill(); }
+    return { head: [0, -180], handL: [-200, 60], handR: [200, 60] };
+  }`,
+};
 
 export interface Line {
   who: string;
@@ -77,6 +96,7 @@ export interface Asset {
 }
 export interface Shot {
   code: string;
+  start?: number; // 0: the reel's opening shot
   dur?: number;
   lines?: Line[];
   assets?: Asset[];
@@ -96,7 +116,7 @@ export async function validateShot(stage: Stage, shot: Shot): Promise<Result> {
   const raw: unknown = await stage.page.evaluate(
     (code, sh, t, ck) => window.validateShot(code, sh, t, ck),
     shot.code,
-    { dur, lines },
+    { dur, lines, start: shot.start ?? 4 },
     tl,
     shot.ck ?? {},
   );

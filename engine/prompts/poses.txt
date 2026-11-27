@@ -16,5 +16,6 @@ RULES
 - No furniture inside poses: desks, tables, chairs, sofas and doorways belong to the room (the background) or the shot. A sitting pose is the body sitting (bent knees, seat height at the bottom of the box) and the shot puts the seat under it. The ONE exception is below.
 - A character lying or sitting IN something that appears in several shots (a bed, a car seat, a bath) gets a pose that draws that thing too, in the right order: the back part, then the character, then the front part (for a bed: frame, mattress and pillow, then the character with the head on the pillow, then the blanket over the body). Name it after both, for example "in_bed_awake".
 - Poses must be drawable in a simple cartoon: no foreshortening, no back views, no hands doing fine work.
+- A pose whose shots hand something over or hold a shot's prop (a sign, a paper, a flag) says in its look which hand holds it and where that hand is. The drawing returns its hand points, so a shot can put the prop in that hand.
 - box: the drawing box that fits EVERY pose of that character, in px at scale 1: standing poses fill its height, lying or in-bed poses fill its width. If any pose includes a bed or other large thing, make the box wide enough for it (for example 1000 x 900).
 - Supporting characters need only the poses their shots use (often 2 or 3).
