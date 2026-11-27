@@ -12,6 +12,7 @@ import { LoopState, readLoop, writeLoop } from '../src/loop.ts';
 import { createM3 } from '../src/minimax.ts';
 import { drain, enqueue, listJobs, startWorker, type WorkerOptions } from '../src/queue.ts';
 import {
+  readEvents,
   readJob,
   readRunRecord,
   runDir,
@@ -502,4 +503,45 @@ await test('a worker killed in the fallback cut after a voice refusal keeps the 
   } finally {
     await fake.close();
   }
+});
+
+await test('a busy engine lock makes the job wait, not fail, and it finishes when the holder is gone', async () => {
+  const varDir = newVar();
+  const id = await enqueue(varDir, { request: 'how big is the Sun' });
+  // another harness (a live process of ours) holds engine.lock for about 2 s
+  const holder = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 2000)'], {
+    windowsHide: true,
+    stdio: 'ignore',
+  });
+  if (holder.pid === undefined) throw new Error('holder did not start');
+  await writeFile(
+    path.join(varDir, 'engine.lock'),
+    JSON.stringify({
+      harness_pid: holder.pid,
+      engine_pid: null,
+      started_at: new Date().toISOString(),
+      token: 'holder',
+    }),
+  );
+  const gone = new Promise<void>((resolve) => {
+    holder.on('exit', () => {
+      resolve();
+    });
+  });
+  const t0 = Date.now();
+  const ran = await withFake([intake, review(true)], async (url) => {
+    const worker = drain({ ...optionsFor(varDir, url), lockPollMs: 100 });
+    await new Promise((r) => setTimeout(r, 700));
+    const mid = await readJob(varDir, id);
+    assert.equal(mid.status, 'running');
+    assert.equal(mid.error, null);
+    return worker;
+  });
+  await gone;
+  assert.ok(Date.now() - t0 >= 1500, 'it waited for the holder');
+  assert.deepEqual(ran, [id]);
+  assert.equal((await readJob(varDir, id)).status, 'done');
+  const waits = (await readEvents(varDir, id)).filter((e) => e.event === 'engine.wait');
+  assert.equal(waits.length, 1);
+  assert.deepEqual(waits[0]?.data, { cut: 1, holder_pid: holder.pid });
 });

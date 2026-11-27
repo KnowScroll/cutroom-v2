@@ -4,7 +4,16 @@ import { readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 import type { Config, VoiceModelKey } from './config.ts';
-import { EngineCrashError, parseOutputs, runCut, type CutResult, type Spent } from './engine.ts';
+import {
+  EngineCrashError,
+  EngineLockedError,
+  parseOutputs,
+  runCut,
+  type CutResult,
+  type RunCutOptions,
+  type Spent,
+  type VoiceRefused,
+} from './engine.ts';
 import { basicGates } from './gates/basic.ts';
 import { frameGates, frameSetup, measureFrames, readShots } from './gates/frames.ts';
 import { runIntake } from './intake.ts';
@@ -61,6 +70,8 @@ export interface JobOptions {
   jobId?: string;
   /** Extra environment for the engine process. */
   engineEnv?: Readonly<Record<string, string>>;
+  /** Milliseconds between tries while another process holds the engine lock (default 2000). */
+  lockPollMs?: number;
   /** One line per step for the person watching the CLI. */
   log?: (line: string) => void;
 }
@@ -240,6 +251,21 @@ interface Round {
 }
 
 // Resume helpers (design §8): the planned round and the job's own start.
+/** Waits ms; a SIGINT/SIGTERM meanwhile exits at once (the job stays running and resumes at the next start). */
+async function sleepOrExit(ms: number): Promise<void> {
+  const bye = (signal: NodeJS.Signals): void => {
+    process.exit(signal === 'SIGINT' ? 130 : 143);
+  };
+  process.on('SIGINT', bye);
+  process.on('SIGTERM', bye);
+  try {
+    await new Promise((r) => setTimeout(r, ms));
+  } finally {
+    process.off('SIGINT', bye);
+    process.off('SIGTERM', bye);
+  }
+}
+
 function snapshotToJson(s: Snapshot): { lines: string[]; code: Record<string, string> } {
   return { lines: s.lines, code: Object.fromEntries(s.code) };
 }
@@ -439,6 +465,24 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
     return res;
   };
 
+  // design §8: a busy engine lock means wait, not fail; the job stays running and nothing is spent
+  const runWaiting = async (opts: RunCutOptions): Promise<CutResult | VoiceRefused> => {
+    let waited = false;
+    for (;;) {
+      try {
+        return await runCut(opts);
+      } catch (e) {
+        if (!(e instanceof EngineLockedError)) throw e;
+        if (!waited) {
+          waited = true;
+          await event('engine', 'engine.wait', { cut: opts.cut, holder_pid: e.holderPid });
+          log(`waiting for the engine lock (pid ${String(e.holderPid)})`);
+        }
+        await sleepOrExit(options.lockPollMs ?? 2000);
+      }
+    }
+  };
+
   let intake: Intake | null = null;
   const cuts: CutRecord[] = [];
   const rounds: FixRound[] = [];
@@ -587,7 +631,7 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
           log(
             `engine: cut ${String(n)} with voice ${model}${notesFile === undefined ? '' : ', notes'}`,
           );
-          const run = await runCut({
+          const run = await runWaiting({
             config,
             runDir: dir,
             briefFile,

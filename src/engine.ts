@@ -150,6 +150,14 @@ const LockFile = z.object({
 type LockFile = z.infer<typeof LockFile>;
 
 export class EngineBusyError extends Error {}
+/** Another live harness holds engine.lock: the caller waits and tries again (design §8). */
+export class EngineLockedError extends EngineBusyError {
+  holderPid: number;
+  constructor(message: string, holderPid: number) {
+    super(message);
+    this.holderPid = holderPid;
+  }
+}
 export class EngineCrashError extends Error {
   spent: Spent = { usd: 0, tokensIn: 0, tokensOut: 0, wallS: 0 };
 }
@@ -345,8 +353,9 @@ async function acquireLock(file: string): Promise<Held> {
     const lock = readLock(file);
     if (lock === null) continue;
     if (judge(lock) === 'busy') {
-      throw new EngineBusyError(
+      throw new EngineLockedError(
         `engine busy: harness pid ${String(lock.harness_pid)} since ${lock.started_at}`,
+        lock.harness_pid,
       );
     }
     if (await takeOver(file, mine)) return held;
