@@ -112,7 +112,7 @@ await test('scientific notation is read in calc and text', () => {
     assert.deepEqual(errorsOf(sheet([derived('f6', text, calc)])), [], `${text} = ${calc}`);
 });
 
-await test('rates, magnitude words and plain counts compute; a chain of plain factors does not', () => {
+await test('rates, magnitude words and plain counts compute; a chain of 100s does not', () => {
   const facts: Fact[] = [
     { id: 'p1', text: 'A gold bar costs $750,000', source: 'general' },
     { id: 'p2', text: 'A gold bar weighs 12.4 kg', source: 'general' },
@@ -123,6 +123,15 @@ await test('rates, magnitude words and plain counts compute; a chain of plain fa
     { id: 'p7', text: 'The world has about 8 billion people', source: 'general' },
     { id: 'p8', text: 'Since 1905 the country has been independent', source: 'general' },
     { id: 'p9', text: 'In 2024 it held an election', source: 'general' },
+    { id: 'p10', text: 'People blink about 100,000 times a day', source: 'general' },
+    {
+      id: 'p11',
+      text: 'A search engine handles about 99,000 searches every second',
+      source: 'general',
+    },
+    { id: 'p12', text: 'The band has 4 members and released 12 albums', source: 'general' },
+    { id: 'p13', text: 'Monaco has about 26,000 people per square kilometre', source: 'general' },
+    { id: 'p14', text: 'Monaco covers 2.08 km2', source: 'general' },
   ];
   const rates = (calc: string, text: string) => sheet([...facts, derived('d1', text, calc)]);
   for (const [calc, text] of [
@@ -134,6 +143,10 @@ await test('rates, magnitude words and plain counts compute; a chain of plain fa
     ['4.4 billion / 8 billion * 100', 'About 55% of people use the internet'],
     ['4.4 / 8 * 100', 'About 55% of people use the internet'],
     ['2024 - 1905', 'The country has been independent for 119 years'],
+    ['100000 * 365', 'That is about 36.5 million blinks a year'],
+    ['99000 * 60 * 60 * 24', 'That is about 8.6 billion searches a day'],
+    ['12 / 4', 'That is 3 albums per member'],
+    ['26000 * 2.08', 'Monaco has about 54,000 people'],
   ] as const)
     assert.deepEqual(errorsOf(rates(calc, text)), [], `${text} = ${calc}`);
 
@@ -145,7 +158,7 @@ await test('rates, magnitude words and plain counts compute; a chain of plain fa
     'an ordinal is not a count',
   );
   const chained = errorsFor(sheet([derived('f3', '1 mm = 1,000,000 pm', '100 * 100 * 100')]), 'f3');
-  assert.match(chained[0] ?? '', /no number the sheet states; 100 more than once/);
+  assert.match(chained[0] ?? '', /uses 100 more than once/);
 });
 
 await test('the answer and the yardstick may say only numbers the sheet states', () => {

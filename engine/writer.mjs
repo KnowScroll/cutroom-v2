@@ -66,7 +66,7 @@ for (const [sym, names, k, d] of [['m', 'metre meter', 1, LEN], ['g', 'gram', 1e
   for (const [p, f] of Object.entries({ pico: 1e-12, nano: 1e-9, micro: 1e-6, milli: 1e-3, centi: 1e-2, kilo: 1e3, mega: 1e6, giga: 1e9 })) defUnit(names.split(' ').map(n => p + n).join(' '), f * k, d);
 }
 defUnit('min mins minute', 60, TIME); defUnit('h hr hrs hour', 3600, TIME); defUnit('d day', 86400, TIME); defUnit('wk week', 604800, TIME); defUnit('month', 2629800, TIME); defUnit('yr yrs year', 31557600, TIME);
-defUnit('t tonne', 1e3, MASS); defUnit('lb pound', 0.45359237, MASS); defUnit('mi mile', 1609.344, LEN); defUnit('ft foot feet', 0.3048, LEN); defUnit('inch', 0.0254, LEN);
+defUnit('t tonne', 1e3, MASS); defUnit('lb lbs pound', 0.45359237, MASS); defUnit('mi mile', 1609.344, LEN); defUnit('kms', 1e3, LEN); defUnit('ft foot feet', 0.3048, LEN); defUnit('inch', 0.0254, LEN);
 defUnit('au', 1.495978707e11, LEN); defUnit('ly light-year lightyear', 9.4607304725808e15, LEN); defUnit('l L litre liter', 1e-3, [3, 0, 0]); defUnit('ha hectare', 1e4, [2, 0, 0]);
 // "km", "km/h", "km2", "m^3", "picometres" -> [SI factor, dimension], or null
 const unitOf = tok => {
@@ -92,11 +92,11 @@ const numVal = m => (m[4] != null ? (+m[1]) ** +m[4] : +m[1] * 10 ** +(m[2] ?? m
 // "a year"); after money only a rate ("$60,500 per kg"); a glued single letter is none ("1990s", "5m")
 function unitAfter(rest, money) {
   const glued = /^[A-Za-zµμ]/.test(rest), raw = rest.replace(/^-/, ' ').trim().split(/\s+/).slice(0, 6), w = raw.map(x => x.replace(/[.,;:!?)"'”’]+$/, ''));
-  const rate = j => /^(per|an?|each|every)$/i.test(w[j] || '') && unitOf(w[j + 1] || '');
+  const rate = j => { if (!/^(per|an?|each|every)$/i.test(w[j] || '')) return null; const sq = /^(square|sq|cubic)$/i.test(w[j + 1] || ''), pw = /^cubic$/i.test(w[j + 1] || '') ? 3 : sq ? 2 : 1, u = unitOf(w[j + (sq ? 2 : 1)] || ''); return u && [u[0] ** pw, u[1].map(x => x * pw), sq ? 3 : 2]; };
   for (let i = 0; i < 2 && i < w.length; i++) {
     if (i && (/^\d/.test(w[0]) || /[.;:!?]$/.test(raw[0]))) break;
     const per = rate(i);
-    if (per) return { u: w.slice(i, i + 2).join(' '), k: 1 / per[0], d: per[1].map(x => -x) };
+    if (per) return { u: w.slice(i, i + per[2]).join(' '), k: 1 / per[0], d: per[1].map(x => -x) };
     if (money) continue;
     let j = i, pow = 1;
     if (/^(square|sq|cubic)$/i.test(w[j])) { pow = /^cubic$/i.test(w[j]) ? 3 : 2; j++; }
@@ -104,7 +104,7 @@ function unitAfter(rest, money) {
     if (!u) continue;
     u = [u[0] ** pow, u[1].map(x => x * pow)];
     const by = rate(j + 1);
-    return { u: w.slice(i, by ? j + 3 : j + 1).join(' '), k: by ? u[0] / by[0] : u[0], d: by ? u[1].map((x, k) => x - by[1][k]) : u[1] };
+    return { u: w.slice(i, by ? j + 1 + by[2] : j + 1).join(' '), k: by ? u[0] / by[0] : u[0], d: by ? u[1].map((x, k) => x - by[1][k]) : u[1] };
   }
   return null;
 }
@@ -190,9 +190,9 @@ const shownIn = (r, text) => {
 };
 // the quantities the non-derived facts state (what a calc may use), and how a bare number reads there: in the unit every fact
 // that states it gives it ("378000 / 5" is 378000 km / 5 km/h), or with its magnitude ("4.4 / 8" is 4.4 billion / 8 billion);
-// a plain factor stays bare
+// a plain factor stays bare, and a count per unit of time is a plain number ("100,000 times a day" * 365)
 const near = (a, b) => Math.abs(a - b) <= 1e-6 * Math.max(Math.abs(a), Math.abs(b));
-const sheetOf = facts => facts.filter(x => x.source !== 'derived').flatMap(x => quantitiesIn(x.text).map(q => ({ ...q, id: x.id })));
+const sheetOf = facts => facts.filter(x => x.source !== 'derived').flatMap(x => quantitiesIn(x.text).map(q => ({ ...q, id: x.id, ...(q.d && sameDim(q.d, [0, 0, -1]) ? { v: q.n, k: 1, d: null, u: '' } : {}) })));
 const bareUnit = sheet => n => {
   if (FREE.has(n)) return null;
   const same = sheet.filter(s => near(s.n, n));
@@ -216,9 +216,9 @@ function calcErrors(x, sheet) {
     if (!same.length) odd.add(`${q.n}, which no other fact on the sheet states`);
     else if (same.every(s => s.d)) odd.add(`${q.n} without its unit (the sheet states ${quoted([...new Set(same.map(s => `${q.n} ${s.u}`))])}: write the one you mean)`);
   }
-  // a calc rests on the sheet, and a plain factor is not chained ("100 * 100 * 100" passed 1 mm = 1,000,000 pm)
-  if (!odd.size && !r.qs.some(q => q.read || q.u || (!FREE.has(q.n) && sheet.some(s => near(s.n, q.n))))) odd.add('no number the sheet states');
-  for (const n of new Set(r.qs.filter(q => !q.u && !q.read && q.n !== 1 && FREE.has(q.n) && !(units && CALENDAR.has(q.n))).map(q => q.n))) if (r.qs.filter(q => !q.u && q.n === n).length > 1) odd.add(`${n} more than once (a chain of factors is a hand conversion)`);
+  // a calc rests on the sheet, and 100 is not chained into a decimal factor ("100 * 100 * 100" passed 1 mm = 1,000,000 pm)
+  if (!odd.size && !r.qs.some(q => q.read || q.u || sheet.some(s => near(s.n, q.n)))) odd.add('no number the sheet states');
+  if (r.qs.filter(q => !q.u && !q.read && q.n === 100).length > 1) odd.add('100 more than once (a chain of 100s is a hand-made decimal factor)');
   if (odd.size) return [`fact ${x.id}: "calc" ${x.calc} uses ${[...odd].join('; ')}${readNote}. Use only the sheet's own numbers, each with its unit as the sheet states it; the engine converts units itself and states the result in the text's unit, so never write a conversion factor such as 24, 1000 or 1000000`];
   const tq = quantitiesIn(x.text), close = (a, b) => Math.abs(a - b) <= Math.abs(b) * 0.03 + 1e-300; // relative only: an absolute margin let 0.00004 pass for 0.00017
   const ok = r.d.some(Boolean) ? tq.some(q => q.d && sameDim(q.d, r.d) && close(q.v, r.v)) : valuesIn(x.text).some(v => close(v, r.v));
