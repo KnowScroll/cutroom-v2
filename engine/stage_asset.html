@@ -88,15 +88,18 @@ const GEO = {};
 function unwrapRing(f0) { for (let i = 2; i < f0.length; i += 2) if (Math.abs(f0[i] - f0[i - 2]) > 180) { const f = f0.slice(); let off = 0;
   for (let j = 2; j < f0.length; j += 2) { const d = f0[j] - f0[j - 2]; if (d > 180) off -= 360; else if (d < -180) off += 360; f[j] = f0[j] + off; } return f; } return f0; }
 const onSeam = lo => Math.abs((((lo % 360) + 360) % 360) - 180) < 0.01; // a point on longitude 180 (the data's cut)
-function partsOf(key, rings) { // each part's bounding cap (centre unit vector, angular radius) and lon / lat box, once
+function partsOf(key, rings) { // each part's bounding cap (centre unit vector, angular radius), lon / lat box and winding, once
   if (GEO[key]) return GEO[key];
   return (GEO[key] = (rings || []).map(unwrapRing).map(f => {
     let X = 0, Y = 0, Z = 0, lo0 = 1e9, lo1 = -1e9, la0 = 1e9, la1 = -1e9;
     for (let i = 0; i < f.length; i += 2) { const lo = f[i] * D2R, la = f[i + 1] * D2R, c = Math.cos(la); X += c * Math.cos(lo); Y += c * Math.sin(lo); Z += Math.sin(la);
       lo0 = Math.min(lo0, f[i]); lo1 = Math.max(lo1, f[i]); la0 = Math.min(la0, f[i + 1]); la1 = Math.max(la1, f[i + 1]); }
-    const m = Math.hypot(X, Y, Z) || 1; X /= m; Y /= m; Z /= m; let rad = 0;
-    for (let i = 0; i < f.length; i += 2) { const lo = f[i] * D2R, la = f[i + 1] * D2R, c = Math.cos(la); rad = Math.max(rad, Math.acos(clamp(X * c * Math.cos(lo) + Y * c * Math.sin(lo) + Z * Math.sin(la), -1, 1))); }
-    return { f, X, Y, Z, rad, lo0, lo1, la0, la1 }; }));
+    const m = Math.hypot(X, Y, Z) || 1; X /= m; Y /= m; Z /= m; let rad = 0, s = 0;
+    const u = i => { const lo = f[i] * D2R, la = f[i + 1] * D2R, c = Math.cos(la); return [c * Math.cos(lo), c * Math.sin(lo), Math.sin(la)]; };
+    for (let i = 0; i < f.length; i += 2) { const [ax, ay, az] = u(i), [bx, by, bz] = u((i + 2) % f.length); rad = Math.max(rad, Math.acos(clamp(X * ax + Y * ay + Z * az, -1, 1)));
+      s += Math.atan2(X * (ay * bz - az * by) + Y * (az * bx - ax * bz) + Z * (ax * by - ay * bx), 1 + X * ax + Y * ay + Z * az + ax * bx + ay * by + az * bz + bx * X + by * Y + bz * Z); }
+    // s > 0: the ring runs counter-clockwise, seen from outside, around the side it encloses (the smaller one: a landmass, or a lake for a hole); the signed spherical triangles from its centre, summed
+    return { f, X, Y, Z, rad, s, lo0, lo1, la0, la1 }; }));
 }
 const geoParts = key => partsOf(key, window.WORLD && window.WORLD[key]);
 function capVisible(parts, v, zoom) {
@@ -133,13 +136,25 @@ function flatPath(parts, v, mode, path = new Path2D()) {
   }
   return path;
 }
-// globe fill: points behind the globe are pushed out to its rim, so a landmass crossing the edge closes along the rim
+// globe fill: each outline is cut where it crosses the horizon (on the great circle between its two points) and every hidden stretch
+// is replaced by the rim arc from where it leaves to where it comes back, turning toward the side the outline encloses (q.s). Pushing
+// hidden points out to the rim instead wrapped a landmass that reaches round the far side around the whole disc, and the even-odd fill
+// then swapped land and ocean (Point Nemo's ocean filled as land).
 function globeFill(parts, v, zoom, path = new Path2D()) {
+  const rim = (p, o) => { const t = p[2] / (p[2] - o[2]); return Math.atan2(p[1] + (o[1] - p[1]) * t - v.y, p[0] + (o[0] - p[0]) * t - v.x); }; // p in front, o behind
   for (const q of capVisible(parts, v, zoom)) {
-    const f = q.f, pts = []; let any = false;
-    for (let i = 0; i < f.length; i += 2) { const p = geo(f[i], f[i + 1], v); if (p[2] > 0) any = true; else { const dx = p[0] - v.x, dy = p[1] - v.y, d = Math.hypot(dx, dy) || 1; p[0] = v.x + dx / d * v.r; p[1] = v.y + dy / d * v.r; } pts.push(p); }
-    if (!any) continue;
-    pts.forEach((p, i) => (i ? path.lineTo(p[0], p[1]) : path.moveTo(p[0], p[1]))); path.closePath();
+    const f = q.f, n = f.length / 2, P = []; for (let i = 0; i < f.length; i += 2) P.push(geo(f[i], f[i + 1], v));
+    const h0 = P.findIndex(p => p[2] <= 0);
+    if (h0 < 0) { P.forEach((p, i) => (i ? path.lineTo(p[0], p[1]) : path.moveTo(p[0], p[1]))); path.closePath(); continue; }
+    const runs = []; let run = null; // the visible stretches, from a hidden point on: entry angle a0 on the rim, points, exit angle a1
+    for (let k = 1; k <= n; k++) { const a = P[(h0 + k - 1) % n], b = P[(h0 + k) % n];
+      if (b[2] > 0) { if (a[2] <= 0) runs.push(run = { a0: rim(b, a), pts: [] }); run.pts.push(b); } else if (a[2] > 0) run.a1 = rim(a, b); }
+    // from an exit, the next entry along the rim in the outline's direction (a gap within 1e-6 of a full turn is the same point: a seam)
+    const ccw = q.s > 0, next = r => { let best = null, bd = 9; for (const o of runs) { let d = (ccw ? r.a1 - o.a0 : o.a0 - r.a1) % TAU; if (d < 0) d += TAU; if (d > TAU - 1e-6) d = 0; if (d < bd) { bd = d; best = o; } } return [best, bd]; };
+    for (const r0 of runs) { if (r0.done) continue; let r = r0;
+      path.moveTo(v.x + v.r * Math.cos(r.a0), v.y + v.r * Math.sin(r.a0));
+      while (r && !r.done) { r.done = true; for (const p of r.pts) path.lineTo(p[0], p[1]); const [o, d] = next(r); path.arc(v.x, v.y, v.r, r.a1, ccw ? r.a1 - d : r.a1 + d, ccw); r = o; }
+      path.closePath(); }
   }
   return path;
 }
@@ -621,11 +636,20 @@ function placeAsset(id, x, y, s = 1, params = {}) {
   const fn = ASSETS[id], spec = SPECS[id] || { w: 300, h: 300 };
   if (!fn) { if (STRICT) throw new Error(`unknown asset "${id}"; available: ${Object.keys(ASSETS).join(', ')}`); return; }
   if (STRICT && spec.poses && spec.poses.length && !spec.poses.includes(params.pose)) throw new Error(`asset "${id}" has no pose "${params.pose}"; its poses are: ${spec.poses.join(', ')} (pick the closest one; expression, eyes and mouth are separate params)`);
+  if (STRICT) { const bad = [['x', x], ['y', y], ['s', s]].filter(([, n]) => !Number.isFinite(+n)); if (bad.length) throw new Error(`h.asset('${id}', x, y, s) got ${bad.map(([k, n]) => `${k} = ${n}`).join(', ')}, so the canvas ignores the move or the scale and the asset is drawn at the wrong place or size: ${NAN_CAUSES}`); }
   ctx.save(); ctx.translate(x, y); ctx.scale(s * (params.flip ? -1 : 1), s);
   if (TRACK) { const tf = ctx.getTransform(), sx = Math.hypot(tf.a, tf.b), sy = Math.hypot(tf.c, tf.d); TRACK.assets.push({ id, w: spec.w * sx, h: spec.h * sy, cx: tf.e, cy: tf.f, alpha: ctx.globalAlpha, act: JSON.stringify(Object.fromEntries(Object.entries(params || {}).filter(([k, v]) => typeof v === 'string' && k !== 'mouth'))) }); }
-  try { fn(ctx, { ...params, t: CUR.lt + (params.dt || 0) }, HK, KIT); } catch (e) { if (STRICT) { ctx.restore(); throw e; } }
+  IN_ASSET++; try { fn(ctx, { ...params, t: CUR.lt + (params.dt || 0) }, HK, KIT); } catch (e) { if (STRICT) { ctx.restore(); throw e; } } finally { IN_ASSET--; }
   ctx.restore();
 }
+// a transform with NaN or Infinity is silently ignored by the canvas, so what follows is drawn at the wrong place and size (a NaN
+// camera once passed every check): an error while a shot is validated (its own code and its kit calls) and while an asset is
+// validated (validateAsset; inside a shot an asset's drawing is left out, so the error names the code that made the NaN)
+let IN_ASSET = 0, CHECK_ASSET = false;
+const NAN_CAUSES = 'look for an object read as an array (v[0] on {x, y}) or an array read as an object (v.x on [x, y]), a helper or kit value used in the wrong shape, an undefined field or param, or a division by zero';
+for (const k of ['translate', 'scale', 'rotate', 'transform', 'setTransform']) { const f0 = ctx[k]; ctx[k] = function (...a) {
+  if (((STRICT && IN_SHOT && !IN_ASSET) || CHECK_ASSET) && a.some(n => typeof n !== 'object' && !Number.isFinite(+n))) throw new Error(`ctx.${k}(${a.map(n => (typeof n === 'number' ? String(n) : JSON.stringify(n) ?? String(n))).join(', ')}): a value is not a number (NaN or Infinity), so the canvas ignores this call and everything after it is drawn at the wrong place or size; ${NAN_CAUSES}`);
+  return f0.apply(this, a); }; }
 const HK = {
   W, H, clamp, lerp, easeOut, easeIn, easeInOut, easeBack, rng, rgba, mix, rr, poly, wrap, speedlines, burst, geo, geoDist, landPath, coastPath, borderPath, countryPath, countryCentre, countryView, stick, graph, route, fmt, cache, photo, quote, note,
   asset: placeAsset, anchor: (who, x, y) => { ANCH[who] = [x, y]; },
@@ -634,16 +658,22 @@ const HK = {
 };
 // M3's function is called with arguments matched by parameter NAME when it uses the standard names, so a swapped order still works
 const argsFor = (code, fname, std) => { const m = code.match(new RegExp(`function\\s+${fname}\\s*\\(([^)]*)\\)`)); if (!m || /[{[]/.test(m[1])) return std.join(', '); return m[1].split(',').map(s => s.split('=')[0].trim()).map((n, i) => (std.includes(n) ? n : std[i] || 'undefined')).join(', '); };
-// a shot that paints a big solid rectangle over the kit's room (seen: a flat grey wall over the office)
-let BG_DONE = false, IN_SHOT = false;
+// a shot that paints a big solid rectangle over the kit's room (seen: a flat grey wall over the office). A fill inside a clip paints
+// the clip's shape, not a rectangle (kit.body fills its square inside the body's disc), so it is not counted; a rectangle counts
+// only the part inside the frame. (Counting a clipped square rejected every body above R 394: the Sun at R 763 was "112%".)
+let BG_DONE = false, IN_SHOT = false, CLIP = false;
 { const fr0 = ctx.fillRect; ctx.fillRect = function (x, y, w, h) {
-  if (TRACK && IN_SHOT && BG_DONE && this.globalAlpha > 0.6 && typeof this.fillStyle === 'string' && !/rgba?([^)]*,s*0?.[0-5]d*s*)/.test(this.fillStyle)) {
-    const tf = this.getTransform(), area = Math.abs(w * h * (tf.a * tf.d - tf.b * tf.c));
+  if (TRACK && IN_SHOT && BG_DONE && !CLIP && this.globalAlpha > 0.6 && typeof this.fillStyle === 'string' && !/rgba?\([^)]*,\s*(0|0?\.[0-5]\d*)\s*\)/.test(this.fillStyle)) {
+    const tf = this.getTransform(), xs = [x, x + w].flatMap(px => [y, y + h].map(py => tf.a * px + tf.c * py + tf.e)), ys = [x, x + w].flatMap(px => [y, y + h].map(py => tf.b * px + tf.d * py + tf.f));
+    const inFrame = Math.max(0, Math.min(W, Math.max(...xs)) - Math.max(0, Math.min(...xs))) * Math.max(0, Math.min(H, Math.max(...ys)) - Math.max(0, Math.min(...ys)));
+    const area = Math.min(Math.abs(w * h * (tf.a * tf.d - tf.b * tf.c)), inFrame);
     if (area > W * H * 0.3) TRACK.cover = Math.max(TRACK.cover || 0, area / (W * H));
   }
   return fr0.call(this, x, y, w, h); }; }
-// count save/restore while M3's draw() runs (balanced code nets 0)
-let SAVES = 0; { const s0 = ctx.save, r0 = ctx.restore; ctx.save = function () { SAVES++; return s0.call(this); }; ctx.restore = function () { SAVES--; return r0.call(this); }; }
+// count save/restore while M3's draw() runs (balanced code nets 0); the clip flag is saved and restored with the canvas state
+let SAVES = 0; { const s0 = ctx.save, r0 = ctx.restore, c0 = ctx.clip, z0 = ctx.reset, CLIPS = [];
+  ctx.save = function () { SAVES++; CLIPS.push(CLIP); return s0.call(this); }; ctx.restore = function () { SAVES--; if (CLIPS.length) CLIP = CLIPS.pop(); return r0.call(this); };
+  ctx.clip = function (...a) { CLIP = true; return c0.apply(this, a); }; if (z0) ctx.reset = function () { CLIP = false; CLIPS.length = 0; return z0.call(this); }; }
 // a name declared twice in the same scope (M3 repeats this, e.g. 'shoe'): list every line that declares it
 const dupHint = (code, m) => {
   const d = String(m).match(/Identifier '([\w$]+)' has already been declared/); if (!d) return '';
@@ -791,7 +821,8 @@ function render(t, opts = {}) {
   ctx.translate(W / 2, 960); ctx.scale(z, z); ctx.translate(-W / 2, -960);
   const fn = SHOTS[i];
   SAVES = 0; BG_DONE = false; IN_SHOT = true; DEFER = PIXEL ? [] : null;
-  if (fn) { try { fn(ctx, lt, sh, HK, KIT); } catch (e) { DEFER = null; if (STRICT) { ctx.restore(); throw e; } } }
+  // a crash must end the shot too: a stale IN_SHOT counted the next frame's black fill as the cover check's "solid rectangle over 100%"
+  if (fn) { try { fn(ctx, lt, sh, HK, KIT); } catch (e) { DEFER = null; if (STRICT) { IN_SHOT = false; ctx.restore(); throw e; } } }
   IN_SHOT = false; const unbalanced = SAVES; ctx.restore();
   if (DEFER) { const jobs = DEFER; DEFER = null; pixelate(PIXEL); replayText(jobs); }
   if (STRICT && unbalanced) throw new Error(`draw() calls ctx.save() ${Math.abs(unbalanced)} time(s) ${unbalanced > 0 ? 'more' : 'less'} than ctx.restore() in this frame, so the canvas state leaks into the next frame and the zoom builds up: every ctx.save() needs exactly one ctx.restore() after it (count them, including inside if blocks, loops and early returns)`); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.setLineDash([]); ctx.shadowBlur = 0;
@@ -881,7 +912,7 @@ window.validateAsset = (code, spec, kitCode) => {
   const s = Math.min(820 / spec.w, 820 / spec.h), states = (spec.states && spec.states.length ? spec.states : [{}]).slice(0, 10), imgs = [];
   // reset all canvas state and pass a fresh params copy each draw, so leaked ctx state or a mutated p is not mistaken for randomness
   const blank = () => { if (ctx.reset) ctx.reset(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.fillStyle = '#7f7f7f'; ctx.fillRect(0, 0, W, H); };
-  const draw = (p) => { blank(); ctx.save(); ctx.translate(540, 960); ctx.scale(s, s); SAVES = 0; fn(ctx, { ...p }, HK, KIT); const ub = SAVES; ctx.restore(); if (ub) throw new Error(`drawAsset calls ctx.save() ${Math.abs(ub)} time(s) ${ub > 0 ? 'more' : 'less'} than ctx.restore(), so its canvas state leaks into whatever is drawn next: every ctx.save() needs exactly one ctx.restore() after it (count them, including inside if blocks, loops and early returns)`); };
+  const draw = (p) => { blank(); ctx.save(); ctx.translate(540, 960); ctx.scale(s, s); SAVES = 0; CHECK_ASSET = true; try { fn(ctx, { ...p }, HK, KIT); } finally { CHECK_ASSET = false; } const ub = SAVES; ctx.restore(); if (ub) throw new Error(`drawAsset calls ctx.save() ${Math.abs(ub)} time(s) ${ub > 0 ? 'more' : 'less'} than ctx.restore(), so its canvas state leaks into whatever is drawn next: every ctx.save() needs exactly one ctx.restore() after it (count them, including inside if blocks, loops and early returns)`); };
   try {
     blank(); const empty = snap();
     const runs = states.map((st, k) => ({ ...st, t: 0.4 + k * 0.7 }));
@@ -922,7 +953,7 @@ window.validateShot = (code, shot, tl, ck = {}) => {
   setupCode({ ...tl, shots: [] }); let fn;
   try { fn = compileShot(code); } catch (e) { return { ok: false, errors: [`SyntaxError: ${e.message}${dupHint(code, e.message)}`] }; }
   const sh = { ...shot, start: 0 }, saved = TL; TL = { ...tl, total: sh.dur, shots: [sh] }; SHOTS = { 0: fn }; STRICT = true;
-  const errors = [], warn = [], frames = [], shotsnaps = []; let maxMs = 0, biggest = 0; const texts = new Map();
+  const errors = [], warn = [], frames = [], shotsnaps = []; let maxMs = 0, span = 0; const texts = new Map();
   try {
     const times = [0.25, sh.dur * 0.3, sh.dur * 0.55, sh.dur * 0.8, sh.dur - 0.15].map(x => clamp(x, 0.05, sh.dur - 0.05));
     if (tl.d3) { for (const tw of times) { TRACK = { texts: [], assets: [] }; try { render(tw, { still: true }); } catch { } } TRACK = null; } // 3D: first use builds rooms, textures and shaders; not timed
@@ -930,8 +961,10 @@ window.validateShot = (code, shot, tl, ck = {}) => {
       TRACK = { texts: [], assets: [] }; const t0 = performance.now();
       try { render(t, { still: true }); } catch (e) { const m = String(e && e.message || e); errors.push(`runtime error at lt=${t.toFixed(2)}s: ${m}${at(e, code)}${hint(m)}${/^(kit|h)\.\w+ is not a function/.test(m) ? '. The signature must be exactly function draw(ctx, lt, sh, h, kit): h (helpers) is the 4th parameter and kit (style kit: bg, panel, title, palette, font) is the 5th; check the order and that you do not reassign them' : ''}${/reading 'start'|reading 'end'/.test(m) ? '. sh.lines has only ' + (CUR.sh?.lines?.length ?? '?') + ' line(s) in this shot; never index past sh.lines.length - 1' : ''}`); TRACK = null; break; }
       maxMs = Math.max(maxMs, performance.now() - t0); shotsnaps.push(snap());
-      for (const a of TRACK.assets) if (a.alpha > 0.5) biggest = Math.max(biggest, a.w, a.h);
-      for (const a of TRACK.photos || []) if (a.alpha > 0.5) biggest = Math.max(biggest, a.w); // a real photo (h.photo) is a subject too
+      // the subjects of this frame together (assets, and real photos: h.photo), each box cut to the frame: how far the group spans
+      const subj = [...TRACK.assets.filter(a => a.alpha > 0.5).map(a => [a.cx - a.w / 2, a.cy - a.h / 2, a.cx + a.w / 2, a.cy + a.h / 2]), ...(TRACK.photos || []).filter(a => a.alpha > 0.5 && a.x1 != null).map(a => [a.x0, a.y0, a.x1, a.y1])]
+        .map(([x0, y0, x1, y1]) => [Math.max(0, x0), Math.max(0, y0), Math.min(W, x1), Math.min(H, y1)]).filter(([x0, y0, x1, y1]) => x1 > x0 && y1 > y0);
+      if (subj.length) span = Math.max(span, Math.max(...subj.map(b => b[2])) - Math.min(...subj.map(b => b[0])), Math.max(...subj.map(b => b[3])) - Math.min(...subj.map(b => b[1])));
       for (const x of TRACK.texts) if (x.alpha > 0.3) { if (x.scale >= 0.9 && (x.x0 < 44 || x.x1 > W - 44 || x.y0 < 0)) texts.set('cut:' + x.text, `text "${x.text}" runs to the frame edge (x ${Math.round(x.x0)} to ${Math.round(x.x1)}), where phones and panels cut it off; keep text inside x 60 to 1020: shorten it or use a smaller font`); if (x.squeeze > 1.12) texts.set('squeeze:' + x.text, `text "${x.text}" is squeezed to ${Math.round(100 / x.squeeze)}% of its width by fillText's maxWidth, so it is unreadable; shorten it (at most 5 words) or use a smaller font so it fits without squeezing`); if (x.size < 30 && x.scale >= 0.9 && x.text.trim().length > 1) texts.set('small:' + x.text, `text "${x.text}" is only ${Math.round(x.size)} px; use at least 36 px`); }
       // the shot's own words must not sit on a real photo or its credit line (e2: labels and leader text over the credits)
       for (const ph of TRACK.photos || []) if (ph.alpha > 0.5 && ph.x1 != null) for (const x of TRACK.texts) if (x.alpha > 0.3 && x.scale >= 0.9 && x.text.trim()) {
@@ -1017,7 +1050,9 @@ window.validateShot = (code, shot, tl, ck = {}) => {
       if (shotsnaps.length >= 4 && diff(shotsnaps[2], shotsnaps[3]) < 0.5) errors.push('not animated: frames at 55% and 80% of the shot are identical; keep things moving');
       render(times[2], { still: true }); const a = snap(); render(times[2], { still: true }); if (diff(a, snap()) > 0.01) errors.push('not deterministic: use lt and h.rng(seed) only');
       for (const ln of sh.lines) if (ln.who !== 'narrator') { ANCH = {}; render((ln.start + ln.end) / 2, { still: true }); if (!ANCH[ln.who]) errors.push(`speaker "${ln.who}" is not anchored while talking: call h.anchor('${ln.who}', x, yAboveHead) every frame they are on screen`); }
-      if (ck.hero !== null && biggest < 380) errors.push(`the largest subject is only ${Math.round(biggest)} px; the hero asset should be 400 to 900 px during its moment`);
+      // relative, not a fixed size for one thing: the things on screen together must read clearly (a group spanning a quarter of the frame
+      // width at some moment). "The largest subject under 380 px" made coders enlarge one body and break true size ratios.
+      if (ck.hero !== null && span < W / 4) errors.push(span ? `the things in this shot are small together: assets and photos span at most ${Math.round(span)} px at once. Scale them together, by one factor that keeps their true size ratios, until the group spans at least ${W / 4} px (a quarter of the frame width) and the subject reads clearly; never enlarge one thing alone` : `this shot never shows a subject: no asset or photo is drawn at 50% opacity or more in its checked frames; draw the subject with h.asset`);
       errors.push(...texts.values());
       if (maxMs > 180) errors.push(`too slow: ${maxMs.toFixed(0)} ms per frame`);
     }

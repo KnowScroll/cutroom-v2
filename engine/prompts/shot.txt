@@ -20,7 +20,7 @@ THE CONTRACT
 - Pure function of lt: no Math.random (use h.rng(seed)), no Date, timers, document, window or network.
 
 WHAT GOOD LOOKS LIKE
-- A big hero: the main subject is 400 to 900 px tall or wide during its moment. Supporting assets smaller, background simple.
+- Scale things together: things shown together share one scale (their true size ratio where size matters; never enlarge one alone), and the subject reads clearly at its moment (together the things span at least a quarter of the frame width). Supporting assets smaller, background simple.
 - Continuous motion: something moves in every frame (asset travel with easing, bob, parallax between background and foreground, particles, speed lines).
 - Staging follows the lines: introduce things as they are mentioned, land the payoff on its line and hold it at least 0.8 s.
 - Depth: overlap, scale differences, parallax (foreground moves faster than background).
