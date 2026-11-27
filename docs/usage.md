@@ -11,9 +11,10 @@ One request becomes one job:
 3. **Gates and review:** 12 measured gates check the mp4, then an M3 vision review grades it.
 4. **Fix rounds** run if the cut is not approved, up to 3, and each one makes a new cut:
    - a *notes* round re-runs from the engine's checkpoints with the review's fixes;
-   - a *template* round patches the working template;
-   - a *voice* round switches voice.
-5. **The best cut** is selected and the job writes `run.json` and `report.md`. Best means the fewest blocking gate FAILs, then the highest review score, then the later cut.
+   - a *template* round patches the working template (the patch is undone if the next cut is not better);
+   - a *voice* round switches voice;
+   - an *intake* round (at most once, only when you did not name the template) picks another template when the review finds the template cannot show the subject, and starts the reel over.
+5. **The best cut** is selected and the job writes `run.json` and `report.md`. Best means approved first, then no fact error found by the review, then the fewest blocking gate FAILs, then the highest review score, then the later cut.
 
 A job ends `done` even when no cut is approved: you still get the best cut and a report that says why it was not approved. It ends `failed` when an error stops it: the engine exits non-zero twice on a cut, the writer gives up, or every voice is refused. Cuts made before the error stay recorded, and the best of them is still selected and served (report.md flags the failure).
 
@@ -185,14 +186,14 @@ With the API, `reel.mp4` and `report` serve the same files, so you never need th
 ## Reading the result
 
 **`report.md`**, from the top:
-- **Flags:** not approved, intake fit `none`, sync conflicts, a failure, no cut produced.
+- **Flags:** not approved, intake fit `none`, a review that found the template wrong, sync conflicts, a failure, no cut produced.
 - **Selected cut:** which cut, why it was picked, its template, voice and film length, and the review's summary.
 - **Loop:** why the fix rounds stopped.
 - **Intake:** the template, fit, audience, goal, tone and target length.
-- **Cuts:** one row per cut with voice, score sum, blocking FAILs, approved, film, wall time and cost.
+- **Cuts:** one row per cut with template, voice, score sum, blocking FAILs, fact errors, approved, film, wall time and cost.
 - **Fix rounds:** one line per round.
 - **Scores and gates:** the review's scores and the gate table for the selected cut.
-- **Still wrong:** for the selected cut, its failing gates, the steps the engine shipped failing, and the review's fixes that were not applied.
+- **Still wrong:** for the selected cut, its failing gates, its fact errors, the steps shipped failing (with the cut they first failed in), and the review's fixes that were not applied.
 - **Voice switches, credits, cost and time.**
 
 **Gates.** Gates are measured in code. A `block` gate that fails stops a cut from being approved. An `info` gate is reported only. The first 5 gates are always `block` at the thresholds shown. The 7 frame gates (`same_view` to `alive`) can be set per template by `gate <name>: off | info | <threshold>` lines in its `## checks`; the thresholds shown are their defaults.
@@ -200,7 +201,7 @@ With the API, `reel.mp4` and `report` serve the same files, so you never need th
 | gate               | passes when                                                                     |
 | ------------------ | ------------------------------------------------------------------------------- |
 | `format`           | 1080x1920, 30 fps, has audio, length = timeline +-0.1 s                         |
-| `shipped_failing`  | no shot or asset shipped after failing the engine's own validator               |
+| `shipped_failing`  | no shot or asset shipped after failing the engine's own validator, in this cut or unchanged since an earlier one |
 | `voice_pitch`      | the voice's pitch spread is at least 4 semitones (not monotone)                 |
 | `music_fit`        | the engine's music fit check passed                                             |
 | `voice_over_music` | the voice sits 10-14 dB over the music                                          |

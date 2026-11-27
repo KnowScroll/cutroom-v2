@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 import type { CutResult } from '../engine.ts';
-import type { Gate } from '../record.ts';
+import type { Gate, ShippedStep } from '../record.ts';
 
 export const MIN_PITCH_ST = 4;
 export const MIN_VOICE_OVER_MUSIC_DB = 10;
@@ -83,10 +83,60 @@ async function formatGate(cut: CutResult): Promise<Gate> {
   return { name: 'format', value, threshold, pass, mode: 'block' };
 }
 
-/** The block gates of design §6.3 that need no frames: format, shipped_failing, voice_pitch, music_fit, voice_over_music. A null measurement fails. */
-export async function basicGates(cut: CutResult): Promise<Gate[]> {
+// The code of every step a cut ships, as the engine writes it into reel-v<n>/plan.json.
+const ShippedCode = z.object({
+  kit: z.string().nullish(),
+  assets: z.array(z.object({ id: z.string(), code: z.string().nullish() })),
+  shots: z.array(z.object({ code: z.string().nullish() })),
+});
+type ShippedCode = z.infer<typeof ShippedCode>;
+
+async function shippedCode(dir: string): Promise<ShippedCode> {
+  const file = path.join(dir, 'plan.json');
+  const parsed = ShippedCode.safeParse(JSON.parse(await readFile(file, 'utf8')));
+  if (!parsed.success) throw new Error(`${file}: ${z.prettifyError(parsed.error)}`);
+  return parsed.data;
+}
+
+/** The code of an engine step label (asset_reel.mjs make(): shot<n>, asset:<id>, their -rev and -poses, kit). */
+function codeOf(plan: ShippedCode, step: string): string | null | undefined {
+  const shot = /^shot(\d+)(?:-rev)?$/.exec(step)?.[1];
+  if (shot !== undefined) return plan.shots[Number(shot) - 1]?.code;
+  const asset = /^asset:(.+?)(?:-poses|-rev)?$/.exec(step)?.[1];
+  if (asset !== undefined) return plan.assets.find((a) => a.id === asset)?.code;
+  return step === 'kit' ? plan.kit : undefined;
+}
+
+/**
+ * The steps cut n ships failing (design §6.3): those its own log names, and those of the previous cut whose code is
+ * unchanged (a restored checkpoint, or a redraw that failed and kept the old code, is logged by no later run).
+ */
+export async function shippedFailing(
+  cut: Pick<CutResult, 'cut' | 'dir' | 'failingSteps'>,
+  previous: { dir: string; failing: readonly ShippedStep[] } | null,
+): Promise<ShippedStep[]> {
+  const own: ShippedStep[] = cut.failingSteps.map((f) => ({ ...f, cut: cut.cut }));
+  if (previous === null || previous.failing.length === 0) return own;
+  const before = await shippedCode(previous.dir);
+  const now = await shippedCode(cut.dir);
+  const carried = previous.failing.filter(
+    (f) => !own.some((o) => o.step === f.step) && codeOf(before, f.step) === codeOf(now, f.step),
+  );
+  return [...own, ...carried];
+}
+
+/**
+ * The block gates of design §6.3 that need no frames: format, shipped_failing, voice_pitch, music_fit, voice_over_music.
+ * A null measurement fails. `shipped` defaults to the steps the cut's own log names.
+ */
+export async function basicGates(
+  cut: CutResult,
+  shipped: readonly ShippedStep[] = cut.failingSteps.map((f) => ({ ...f, cut: cut.cut })),
+): Promise<Gate[]> {
   const a = cut.audio;
-  const shipped = cut.failingSteps.map((f) => f.step);
+  const steps = shipped.map((f) =>
+    f.cut === cut.cut ? f.step : `${f.step} (from cut ${String(f.cut)})`,
+  );
   // A reel that cannot be probed or has no readable timeline is a failed format gate, not a thrown error.
   const format: Gate = await formatGate(cut).catch((e: unknown) => ({
     name: 'format',
@@ -99,9 +149,9 @@ export async function basicGates(cut: CutResult): Promise<Gate[]> {
     format,
     {
       name: 'shipped_failing',
-      value: shipped.length === 0 ? 'none' : shipped.join(', '),
+      value: steps.length === 0 ? 'none' : steps.join(', '),
       threshold: 'none',
-      pass: shipped.length === 0,
+      pass: steps.length === 0,
       mode: 'block',
     },
     {

@@ -17,11 +17,16 @@ const base = {
   template: 'alpha',
   fit: 'good',
   reason: 'a fits',
+  subject: 'the Sun, a star',
+  subject_kind: 'data',
+  covers: 'Alpha is for sizes',
+  excludes: '',
   audience: 'curious teens',
   goal: 'know the size',
   tone: 'wry',
   seconds: 50,
 };
+const beta = { ...base, template: 'beta-two', covers: 'for history' };
 
 async function setup() {
   const dir = await mkdtemp(path.join(tmpdir(), 'intake-'));
@@ -40,9 +45,15 @@ async function setup() {
 
 async function run(
   script: Step[],
-  extra: { request?: string; template?: string; seconds?: number | undefined } = {},
+  extra: {
+    request?: string;
+    template?: string;
+    seconds?: number | undefined;
+    exclude?: { template: string; why: string };
+  } = {},
+  templatesDir?: string,
 ) {
-  const dir = await setup();
+  const dir = templatesDir ?? (await setup());
   const fake = await startFakeMiniMax(script);
   try {
     const m3 = createM3({ apiKey: 'k', endpoint: fake.url, retryWaitsMs: [5] });
@@ -87,7 +98,7 @@ await test('the model template is returned; prompt holds every about; usd is sum
 });
 
 await test('a caller template is used and the model is told to judge it', async () => {
-  const { result, requests } = await run([answer({ ...base, template: 'beta-two' })], {
+  const { result, requests } = await run([answer(beta)], {
     template: 'beta-two',
   });
   assert.ok(!(result instanceof Error));
@@ -97,7 +108,7 @@ await test('a caller template is used and the model is told to judge it', async 
 
 await test('an answer naming another template than the caller is rejected, retried, then errors', async () => {
   const other = answer({ ...base, template: 'alpha', fit: 'good', reason: 'alpha fits' });
-  const retried = await run([other, answer({ ...base, template: 'beta-two', fit: 'none' })], {
+  const retried = await run([other, answer({ ...beta, fit: 'none' })], {
     template: 'beta-two',
   });
   assert.ok(!(retried.result instanceof Error));
@@ -121,7 +132,7 @@ await test('an unknown caller template is an error without a model call', async 
 
 await test('an unknown name is retried once, then errors', async () => {
   const bad = answer({ ...base, template: 'gamma' });
-  const retried = await run([bad, answer({ ...base, template: 'beta-two' })]);
+  const retried = await run([bad, answer(beta)]);
   assert.ok(!(retried.result instanceof Error));
   assert.equal(retried.result.intake.template, 'beta-two');
   assert.equal(retried.requests.length, 2);
@@ -192,4 +203,117 @@ await test('the real templates folder lists with an about each', async () => {
   assert.ok(list.length >= 15);
   assert.ok(list.every((t) => t.about.length > 40));
   assert.ok((await readFile(path.join(root, 'src', 'prompts', 'intake.txt'), 'utf8')).length > 0);
+});
+
+// The Venus job's shape (findings §A root cause 1): an Earth-only globe template and a space template.
+const GLOBE_ABOUT =
+  'A dark-globe geography explainer. For anything about places, positions, distances and sizes on Earth: coordinates, extremes, routes. Not for machines, history without a map, biology or character stories.';
+const SPACE_ABOUT =
+  'A flat-vector science and scale explainer. For sizes, distances, numbers and life stories of things in space, nature, the body and physics. Not for history, people or machines with moving parts.';
+async function scopeTemplates(): Promise<string> {
+  const dir = await mkdtemp(path.join(tmpdir(), 'intake-scope-'));
+  await writeFile(path.join(dir, '_base.md'), '# base\n');
+  await writeFile(path.join(dir, 'globe.md'), `# globe\n\n## about\n${GLOBE_ABOUT}\n`);
+  await writeFile(path.join(dir, 'space.md'), `# space\n\n## about\n${SPACE_ABOUT}\n`);
+  return dir;
+}
+const VENUS = 'Why a day on Venus is longer than its year';
+const venusOnGlobe = {
+  ...base,
+  template: 'globe',
+  fit: 'good',
+  reason: 'a place and its sizes',
+  subject: 'Venus, a planet',
+  // the stretch M3 made: the about says "on Earth"
+  covers: 'places, positions, distances and sizes in space',
+};
+const venusInSpace = {
+  ...venusOnGlobe,
+  template: 'space',
+  covers: 'sizes, distances, numbers and life stories of things in space',
+};
+
+await test('a Venus-style request rated "good" on an Earth-only about is sent back, and another template is chosen', async () => {
+  const { result, requests } = await run(
+    [answer(venusOnGlobe), answer(venusInSpace)],
+    { request: VENUS },
+    await scopeTemplates(),
+  );
+  assert.ok(!(result instanceof Error));
+  assert.equal(result.intake.template, 'space');
+  assert.equal(result.intake.fit, 'good');
+  assert.equal(result.intake.subject, 'Venus, a planet');
+  assert.equal(result.intake.covers, venusInSpace.covers);
+  assert.equal(requests.length, 2);
+  const retry = JSON.stringify(requests[1]?.body);
+  assert.match(retry, /is not in the description of globe/);
+});
+
+await test('a fit the quoted words do not hold twice becomes fit none on the closest template', async () => {
+  const { result, requests } = await run(
+    [answer(venusOnGlobe), answer(venusOnGlobe)],
+    { request: VENUS },
+    await scopeTemplates(),
+  );
+  assert.ok(!(result instanceof Error));
+  assert.equal(requests.length, 2);
+  assert.equal(result.intake.template, 'globe');
+  assert.equal(result.intake.fit, 'none');
+  assert.match(result.intake.reason, /^a place and its sizes \(scope check: "covers" .* is not in/);
+});
+
+await test('a subject under the "Not for" has no fit; quotes match whatever their case, spacing or quote marks', async () => {
+  const excluded = {
+    ...venusInSpace,
+    reason: 'a history of the probes',
+    excludes: 'history',
+  };
+  const none = await run(
+    [answer(excluded), answer(excluded)],
+    { request: VENUS },
+    await scopeTemplates(),
+  );
+  assert.ok(!(none.result instanceof Error));
+  assert.equal(none.result.intake.fit, 'none');
+  assert.match(none.result.intake.reason, /falls under the "Not for" of space \("history"\)/);
+  assert.match(JSON.stringify(none.requests[1]?.body), /Not for/);
+
+  const loose = {
+    ...venusInSpace,
+    covers: '"Sizes,  distances, numbers\nand life stories of things in SPACE."',
+  };
+  const held = await run([answer(loose)], { request: VENUS }, await scopeTemplates());
+  assert.ok(!(held.result instanceof Error));
+  assert.equal(held.result.intake.fit, 'good');
+  assert.equal(held.requests.length, 1);
+});
+
+await test('fit none with nothing quoted is taken as it is', async () => {
+  const honest = { ...venusOnGlobe, fit: 'none', reason: 'no template draws planets', covers: '' };
+  const { result, requests } = await run(
+    [answer(honest)],
+    { request: VENUS },
+    await scopeTemplates(),
+  );
+  assert.ok(!(result instanceof Error));
+  assert.equal(requests.length, 1);
+  assert.equal(result.intake.fit, 'none');
+  assert.equal(result.intake.reason, 'no template draws planets');
+});
+
+await test('an excluded template is left out of the list, the review says why, and naming it is an unknown template', async () => {
+  const { result, requests } = await run(
+    [answer(venusOnGlobe), answer(venusInSpace)],
+    { request: VENUS, exclude: { template: 'globe', why: 'it draws only the Earth' } },
+    await scopeTemplates(),
+  );
+  assert.ok(!(result instanceof Error));
+  assert.equal(result.intake.template, 'space');
+  const first = JSON.stringify(requests[0]?.body);
+  assert.ok(!first.includes('### globe'), 'the excluded template is not offered');
+  assert.match(
+    first,
+    /review found that template cannot show this request's subject: it draws only the Earth/,
+  );
+  assert.match(JSON.stringify(requests[1]?.body), /unknown template \\"globe\\"/);
 });

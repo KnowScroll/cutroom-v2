@@ -137,7 +137,7 @@ await test('failing-shot lines are parsed', async () => {
   const s = await setup({ FAKE_ENGINE_FAILING_SHOT: '1' });
   const r = cutOf(await runCut(s.opts));
   assert.equal(r.failingSteps.length, 1);
-  assert.equal(r.failingSteps[0]?.step, 'shot4');
+  assert.equal(r.failingSteps[0]?.step, 'shot2');
   assert.match(r.failingSteps[0].reason, /solid rectangle over 92%/);
   assert.equal(r.rejections.length, 3);
 });

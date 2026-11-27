@@ -46,6 +46,13 @@ export const Intake = z.object({
   goal: z.string(),
   tone: z.string(),
   seconds: z.number(),
+  // the scope check of design §6.2; defaults keep run.json files written before it readable
+  subject: z.string().default(''),
+  subject_kind: z.string().default(''),
+  /** Words of the template's about that cover the subject, copied by the model and found there by code. */
+  covers: z.string().default(''),
+  /** Words of the template's "Not for" the subject falls under (then fit is none). */
+  excludes: z.string().default(''),
 });
 export type Intake = z.infer<typeof Intake>;
 
@@ -98,6 +105,10 @@ export const Review = z.strictObject({
   scores: ReviewScores,
   notes: ReviewNotes,
   template_patch: z.array(TemplatePatch).optional(),
+  /** Claims the cut says or shows that are false (design §6.5: a cut with one ranks after every cut without). */
+  fact_errors: z.array(z.string()).optional(),
+  /** Why the template cannot show the brief's subject at all (design §6.1: re-runs intake once per job). */
+  wrong_template: z.string().optional(),
 });
 export type Review = z.infer<typeof Review>;
 
@@ -107,6 +118,14 @@ export const PhaseCost = z.object({
   tokens_out: NonNegative,
 });
 export type PhaseCost = z.infer<typeof PhaseCost>;
+
+/** A step (shot<n>, asset:<id>, kit) in a cut although it failed its validator, and the cut whose log said so. */
+export const ShippedStep = z.object({
+  step: z.string(),
+  reason: z.string(),
+  cut: z.number().int().positive(),
+});
+export type ShippedStep = z.infer<typeof ShippedStep>;
 
 export const CutRecord = z.object({
   n: z.number().int().positive(),
@@ -122,6 +141,8 @@ export const CutRecord = z.object({
   notes_applied: ReviewNotes.nullable(),
   patch_applied: z.array(TemplatePatch).nullable(),
   engine_rejections: z.array(z.string()),
+  /** What the shipped_failing gate counted: this cut's log, plus earlier failing steps whose code is unchanged. */
+  shipped_failing: z.array(ShippedStep).default([]),
   credits: z.string(),
 });
 export type CutRecord = z.infer<typeof CutRecord>;
@@ -153,7 +174,9 @@ export type NoteTargets = z.infer<typeof NoteTargets>;
 export const FixRound = z.object({
   n: z.number().int().positive(),
   cut: z.number().int().positive(),
-  kind: z.enum(['notes', 'template', 'voice']),
+  kind: z.enum(['notes', 'template', 'voice', 'intake']),
+  /** Intake round: the new intake after the review's wrong_template verdict (the next cut is rebuilt from the facts). */
+  intake: Intake.nullable().default(null),
   /** notes-<cut>.json, passed with --apply-notes (notes round). */
   notes_file: z.string().nullable(),
   /** Review notes not passed on: on a shot or asset the work plan.json lacks, or skipped by a template round. */
@@ -164,6 +187,8 @@ export const FixRound = z.object({
       k: z.number().int().positive(),
       from: z.string(),
       deleted: z.array(z.string()),
+      /** Set when the next cut is reviewed: kept only if that cut ranks better than the one that asked for it. */
+      kept: z.boolean().nullable().default(null),
     })
     .nullable(),
   rejected_patches: z.array(z.object({ patch: TemplatePatch, reason: z.string() })),
@@ -396,11 +421,21 @@ export async function readRunRecord(varDir: string, id: string): Promise<RunReco
   return parsed.data;
 }
 
-function blockingFails(cut: CutRecord): number {
+export function blockingFails(cut: CutRecord): number {
   return cut.gates.filter((g) => g.mode === 'block' && !g.pass).length;
 }
 
-function scoreSum(cut: CutRecord): number | null {
+/** The false claims the cut's review found (none for an unreviewed cut). */
+export function factErrors(cut: CutRecord): readonly string[] {
+  return cut.review?.fact_errors ?? [];
+}
+
+/** Approved means the review approved, no blocking gate FAILs and no fact error (design §6.5); a re-asked approve is not enough. */
+export function isApproved(cut: CutRecord): boolean {
+  return cut.review?.approve === true && blockingFails(cut) === 0 && factErrors(cut).length === 0;
+}
+
+export function scoreSum(cut: CutRecord): number | null {
   return cut.review === null ? null : Object.values(cut.review.scores).reduce((a, b) => a + b, 0);
 }
 
@@ -436,10 +471,14 @@ function targets(t: NoteTargets): string {
 
 function roundLine(r: FixRound): string {
   const parts = [`round ${String(r.n)} -> cut ${String(r.cut)}: ${r.kind}`];
+  if (r.intake !== null) {
+    parts.push(`intake again: template ${r.intake.template}, fit ${r.intake.fit}`);
+  }
   if (r.patch !== null) {
     parts.push(
       `template patch (history ${String(r.patch.k)}), checkpoints from ${r.patch.from} deleted (${String(r.patch.deleted.length)} files)`,
     );
+    if (r.patch.kept === false) parts.push('patch reverted: the next cut was not better');
   }
   if (r.drops_rounds.length > 0) {
     parts.push(`drops the changes of round ${r.drops_rounds.join(', ')}`);
@@ -462,6 +501,15 @@ export function renderReport(run: RunRecord): string {
 
   const flags: string[] = [];
   if (run.intake?.fit === 'none') flags.push(`fit: none (${run.intake.reason})`);
+  for (const c of run.cuts) {
+    const why = c.review?.wrong_template;
+    if (why !== undefined)
+      flags.push(`wrong template ${c.template} (review of cut ${String(c.n)}): ${why}`);
+  }
+  for (const r of run.rounds) {
+    if (r.intake?.fit === 'none')
+      flags.push(`fit: none after intake round ${String(r.n)} (${r.intake.reason})`);
+  }
   for (const c of run.sync_conflicts) flags.push(`sync conflict: ${c}`);
   if (run.status === 'failed') flags.push(`job failed: ${run.error ?? 'no error recorded'}`);
   if (run.selected === null) flags.push('no cut was produced');
@@ -487,10 +535,11 @@ export function renderReport(run: RunRecord): string {
     const i = run.intake;
     // the model's sentences usually end in a period already
     const bare = (t: string): string => t.replace(/\.$/, '');
+    const subject = i.subject === '' ? '' : ` Subject: ${bare(i.subject)} (${i.subject_kind}).`;
     out.push(
       '## Intake',
       '',
-      `Template ${i.template}, fit ${i.fit} (${bare(i.reason)}). Audience: ${bare(i.audience)}. Goal: ${bare(i.goal)}. Tone: ${bare(i.tone)}. Target ${String(i.seconds)} s.`,
+      `Template ${i.template}, fit ${i.fit} (${bare(i.reason)}).${subject} Audience: ${bare(i.audience)}. Goal: ${bare(i.goal)}. Tone: ${bare(i.tone)}. Target ${String(i.seconds)} s.`,
       '',
     );
   }
@@ -498,15 +547,14 @@ export function renderReport(run: RunRecord): string {
   out.push(
     '## Cuts',
     '',
-    '| cut | voice | score | blocking FAILs | approved | film | wall | cost |',
-    '|---|---|---|---|---|---|---|---|',
+    '| cut | template | voice | score | blocking FAILs | fact errors | approved | film | wall | cost |',
+    '|---|---|---|---|---|---|---|---|---|---|',
   );
   for (const c of run.cuts) {
     const sum = scoreSum(c);
-    const approved =
-      c.review === null ? '-' : c.review.approve && blockingFails(c) === 0 ? 'yes' : 'no';
+    const approved = c.review === null ? '-' : isApproved(c) ? 'yes' : 'no';
     out.push(
-      `| ${String(c.n)} | ${c.voice_model} | ${sum === null ? '-' : String(sum)} | ${String(blockingFails(c))} | ${approved} | ${secs(c.film_s)} | ${secs(c.wall_s)} | ${money(engineUsd(c))} |`,
+      `| ${String(c.n)} | ${c.template} | ${c.voice_model} | ${sum === null ? '-' : String(sum)} | ${String(blockingFails(c))} | ${c.review === null ? '-' : String(factErrors(c).length)} | ${approved} | ${secs(c.film_s)} | ${secs(c.wall_s)} | ${money(engineUsd(c))} |`,
     );
   }
   out.push('');
@@ -536,9 +584,11 @@ export function renderReport(run: RunRecord): string {
     out.push('');
 
     for (const g of selected.gates) if (!g.pass) wrong.push(`gate ${g.name} fails (${g.mode})`);
+    for (const f of factErrors(selected)) wrong.push(`fact error: ${f}`);
     // Rejections the engine later fixed are not wrong any more; only steps it shipped failing are (all stay in run.json).
-    for (const r of selected.engine_rejections) {
-      if (r.startsWith('shipped failing:')) wrong.push(r);
+    for (const s of selected.shipped_failing) {
+      const since = s.cut === selected.n ? '' : ` (unchanged since cut ${String(s.cut)})`;
+      wrong.push(`shipped failing: ${s.step}: ${s.reason}${since}`);
     }
     if (selected.review !== null && !run.approved) {
       const n = selected.review.notes;
@@ -596,14 +646,21 @@ export async function writeReport(varDir: string, run: RunRecord): Promise<strin
   return text;
 }
 
+/** The intake cut n was made under: the last intake round before it, else the job's intake. */
+export function intakeOf(run: Pick<RunRecord, 'intake' | 'rounds'>, n: number): Intake | null {
+  return run.rounds.filter((r) => r.intake !== null && r.cut <= n).at(-1)?.intake ?? run.intake;
+}
+
 export function indexLineOf(run: RunRecord): IndexLine {
   const selected = run.cuts.find((c) => c.n === run.selected?.cut);
+  // an intake round can change the template: the line names the selected cut's
+  const intake = selected === undefined ? run.intake : intakeOf(run, selected.n);
   return {
     id: run.id,
     date: run.finished,
-    template: run.intake?.template ?? null,
+    template: intake?.template ?? null,
     sha: selected?.template_sha ?? null,
-    fit: run.intake?.fit ?? null,
+    fit: intake?.fit ?? null,
     cuts: run.cuts.length,
     selected: run.selected?.cut ?? null,
     approved: run.approved,
