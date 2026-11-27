@@ -8,6 +8,26 @@ import type { Gate } from '../record.ts';
 // The caption band the picture is judged without, y from its top edge to its bottom edge.
 export type CaptionBand = { top: number; bottom: number };
 
+// Where the engine draws the narrator's captions for a template's `captions:` check
+// (engine/stage_asset.html, caption() and the *Caption() functions, up to 4 wrapped lines with their
+// outline and entry motion). A missing or unknown value draws the default panel centred at y 1600,
+// so no template is caption-less. `select` captions sit at the top (y 300-430, stage_asset.html's
+// own picture-band rule); the ported strips then put them in the top strip (0-560) and start the
+// bottom strip at 430.
+const CAPTION_BANDS: ReadonlyMap<string, CaptionBand> = new Map([
+  ['words', { top: 1490, bottom: 1630 }],
+  ['plain', { top: 1480, bottom: 1720 }],
+  ['line', { top: 1380, bottom: 1620 }],
+  ['phrases', { top: 1450, bottom: 1560 }],
+  ['select', { top: 300, bottom: 430 }],
+]);
+const PANEL_BAND: CaptionBand = { top: 1460, bottom: 1770 };
+
+/** The caption band of a template's `captions:` check value ('' when the template has none), matched as the engine matches it. */
+export function captionBand(captions: string): CaptionBand {
+  return CAPTION_BANDS.get(captions) ?? PANEL_BAND;
+}
+
 type StaticBand = { seconds: number; fromS: number };
 
 // Rounded where frame_audit.py rounds before it judges; the balance and flat shares stay exact, as

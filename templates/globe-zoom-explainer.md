@@ -106,6 +106,8 @@ required beats: hook, locate, measure, compare, second, twist, payoff, close
 hook: number or question
 places: wikipedia
 reference analysis: studio/refs/test4
+gate balance: info
+gate alive: info
 
 ## director
 - Flag: a globe with no land on it (the ocean and grid alone), continents that do not look like the real ones, or land drawn outside the globe or over the space behind it; a globe that is a flat disc without its ocean light pool, rim and halo; markers, lines or labels that do not sit on their real place (check every coordinate against standard knowledge) or that float off the globe; a frame that does not move; more than 2 markers, 2 highlighted lines or 3 labels at once, or any panel, card, legend, icon or arrow; a counter whose value or unit differs from the line that says it, or that jumps instead of rolling; the title and a counter at the top at the same time; counters in colours other than gold, ice blue, orange and white, or the same colour used for two different quantities; the payoff without both numbers side by side; text cut off or squeezed; a close that does not return to the hook's view; anything important below y 1440.

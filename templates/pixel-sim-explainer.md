@@ -65,6 +65,8 @@ A low-resolution pixel-art explainer of a dramatic physical event at two scales.
 pixel grid: 180
 beats: hook, mechanism, buildup, climax, scale, stats, loop
 required beats: hook, mechanism, buildup, climax, scale, loop
+gate balance: info
+gate alive: info
 
 ## director
 - Flag: a counter or stat card without a number; stat cards stacked or overlapping; a shot without its caption panel; big rings or discs behind a subject; anything that is not on the pixel grid (smooth gradients, hairlines, blurred glows, soft shadows); dark outlines; a simulation that shows an invented process instead of the topic's real mechanism; any moment where the viewer cannot tell what is happening (several unexplained changes at once, a change the caption does not name, sprites too small to read); an empty or placeholder panel; panel text wider than its panel or longer than 2 lines; filler panel titles; labels that are colour names or not the real names of parts; a counter that does not show one real quantity with its unit; subjects smaller than the shots section asks; anything important in the caption band below y 1400; a white flash longer than 1.5 s; a macro scene that does not show where the event really happens; an ending that does not return to the opening frame.

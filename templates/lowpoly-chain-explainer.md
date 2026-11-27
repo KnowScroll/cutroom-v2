@@ -75,6 +75,8 @@ A calm, clean, game-like low-poly 3D explainer that builds one idea out of the p
 beats: hook, link, twist, payoff, loop
 required beats: hook, link, payoff, loop
 reference analysis: studio/refs/ref2
+gate balance: info
+gate alive: info
 
 ## director
 - Flag: a card row whose value is a word instead of a number; a comparison box for anything that is not one of the named kinds; shots after the payoff other than the loop; clutter (anything on screen beyond the header, one model with its path and tag, and one card; or, in the comparison, the boxes); two models overlapping or sharing the stage; a card that is missing, empty, has fewer or more than 3 rows, or shows words instead of numbers with units; cards whose quantities differ from thing to thing; comparison boxes that overlap or put their numbers in different places; a header that differs from shot to shot, shows words or has no plate; mountains missing on the horizon; a grid floor too faint to see; coloured or textured models; dark outlines; lumpy or box-like models; a line whose named thing is not after "you get"; anything important below y 1400; an ending that does not return to the hook's layout.

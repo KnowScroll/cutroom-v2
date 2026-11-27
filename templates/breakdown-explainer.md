@@ -63,6 +63,7 @@ required beats: hook, why, steps, outcome
 hero width: 0.5 - 0.8
 hero centre y: 850 - 1000
 labels: from narration
+gate alive: info
 
 ## director
 - Flag: the subject too small (under half the frame width) or off-centre with empty space; parts that are hard to tell apart; a part named but not highlighted or labelled; a label pointing at the wrong part; more than 3 labels at once; labels covering the subject; sentences written on screen; positions or proportions that are anatomically or mechanically wrong; anything graphic; shots where nothing moves.

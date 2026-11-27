@@ -59,6 +59,8 @@ shots: 8 - 13
 hero size: 0.35 - 2.2
 acting beat: 5
 background detail: 1.2
+gate blank: info
+gate alive: info
 
 ## director
 - Flag: any line changed, missing or out of order compared with the script; a wrong speaker; a stage direction not acted; a listener with no reaction; characters that do not match their described looks or change between shots; a pause that is not held; text-heavy screens; anything graphic.

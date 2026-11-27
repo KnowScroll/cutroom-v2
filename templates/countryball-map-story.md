@@ -128,6 +128,8 @@ acting beat: 7
 captions: phrases
 places: wikipedia
 reference analysis: studio/refs/vod
+gate static_band: info
+gate alive: info
 
 ## director
 - Flag: a map that is not the real one (coasts or countries drawn by hand, a country filled with a made-up shape, land in the sea), a country filled with the wrong colour for its flag or two neighbours in the story with the same fill; a ball whose flag is wrong for its country or time (check stripes, order and emblem against standard knowledge); a ball not on or beside its own country; more than 3 balls (outside the marching crowd), 1 sign, 1 title or 3 labels at once; a panel, card or legend; a sign whose word is not one of the WORD's values or does not change on the line that says the new value; the payoff not matching the hook's composition; a title number that differs from the line; text cut off, squeezed or below y 1440; a frame that does not move; a ball line longer than 6 words or in the narrator's voice.
