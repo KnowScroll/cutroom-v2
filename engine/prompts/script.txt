@@ -24,7 +24,8 @@ RULES
 - A shot is one to three sentences, as many as its point needs: an explaining shot may take two or three, a punch shot one short line (3 to 7 words). Vary the length across shots; never every line the same length.
 - Spoken English: short common words, active voice, one idea per sentence, "you" where it fits. Name a thing early in the line where it appears on screen. A term the viewer may not know is explained the first time it is said.
 - A number is made felt: next to the yardstick, or against the other number. Never two new numbers in one line.
-- Say numbers rounded the way people say them ("about one point four million kilometres", "about four light-years", at most 3 digits); the exact figure goes on screen ("see") when it matters. A number said twice is said the same way.
+- Say numbers rounded the way people say them ("about one point four million kilometres", at most 3 digits, within 2% of the sheet's number); the exact figure goes on screen ("see") when it matters. A number said twice is said the same way.
+- Rounding must keep every stated comparison true: when numbers are compared (a difference, a ratio, longer or shorter), say each at the precision their comparison needs (1,250 and 1,180 differ by 70: say "one thousand one hundred and eighty", never "about one thousand two hundred").
 - No pointless repetition: every line tells the viewer something new or uses what they already know to get further (the answer worked out from the earlier numbers is fine; the last shot may restate the answer). Never say the same thing twice in other words.
 - Time runs forward: events in the order they happened; where the spine marks background or a flashback, the line says when we are.
 - Numbers written as words (the speech engine cannot read digits); no emojis; no hype words (astonishing, incredible, amazing, remarkable, unbelievable, mind-blowing, insane, fascinating, staggering, crazy): say the concrete thing.

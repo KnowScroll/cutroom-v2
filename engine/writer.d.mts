@@ -80,6 +80,7 @@ export interface FactCheckProblem {
   problem?: string;
   fix?: string;
   unused?: boolean;
+  dropped?: boolean;
 }
 export interface Story {
   idea?: string;

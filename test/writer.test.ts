@@ -633,6 +633,7 @@ const reviewed = (fix: unknown) => ({
   'script-revise': script(LINES),
   'factcheck-2': PROBLEMS,
   'script-fix': fix,
+  'script-fix-2': { shots: [] },
 });
 const lineOf = (story: Story, shot: number): string => story.shots[shot - 1]?.lines[0]?.text ?? '';
 const userMessage = (calls: Call[], step: string): string =>
@@ -1381,4 +1382,145 @@ await test('time runs forward by month and day within a year', async () => {
     back.logs.find((l) => l.startsWith('spine rejected')) ?? '',
     /shot 3 \("when": "7 June 1905"\) goes back in time after shot 2 \("August 1905"\)/,
   );
+});
+
+// ---------- QC1b: grounded claims, no flagged line left, 2% spoken numbers ----------
+await test('each claim the checker lists must cite sheet facts that state its numbers', async () => {
+  const claims = (shot: number, claim: string, facts: string[]) => ({
+    shot,
+    verdict: 'ok',
+    claims: [{ claim, facts, verdict: 'ok' }],
+  });
+  const { story, logs } = await runWriter({
+    ...passed(),
+    factcheck: checked({
+      lines: [
+        claims(1, 'an atom is smaller than a grain of sand', ['f1']),
+        claims(2, 'an atom is one hundred picometres across', ['f2']),
+        claims(3, 'a millimetre holds a billion picometres', ['f9']),
+        claims(4, 'an atom is ten million times smaller', []),
+        claims(5, 'the sand would be ten thousand kilometres wide', ['f2']),
+      ],
+      problems: [],
+    }),
+  });
+  const found = (
+    story.review as { factcheck?: { problems?: { shot?: number; problem?: string }[] } }
+  ).factcheck?.problems;
+  assert.deepEqual(
+    (found ?? []).map((p) => [p.shot, p.problem?.replace("the engine's claim check: ", '')]),
+    [
+      [3, 'it cites f9, which the sheet does not have'],
+      [4, 'it says a number but cites no fact on the sheet'],
+      [5, 'it says "ten thousand", which f2 does not state (within 2%)'],
+    ],
+  );
+  assert.ok(
+    logs.some((l) => l.startsWith('factcheck: the claim check found 3')),
+    logs.join('\n'),
+  );
+});
+
+// a script whose shot 2 has a second line the second fact check flags
+const twoLines = () => {
+  const s = script(LINES);
+  const shot2 = s.shots[1];
+  if (shot2) shot2.lines.push({ who: 'narrator', text: 'That is almost none of it.' });
+  return s;
+};
+const flagged = checked({
+  problems: [
+    {
+      shot: 2,
+      kind: 'wrong',
+      claim: 'almost none of it',
+      problem: 'it says almost none for a real share',
+      fix: 'say the share',
+    },
+  ],
+});
+
+await test('a line still flagged after the fix gets a second fix pass, then is dropped if its shot keeps another line', async () => {
+  const second = 'That is a tiny share of the grain.';
+  const again = await runWriter({
+    ...passed(),
+    viewer: flatViewer,
+    script: twoLines(),
+    'script-revise': twoLines(),
+    'factcheck-2': flagged,
+    'script-fix': {
+      shots: [
+        {
+          shot: 2,
+          lines: [
+            { who: 'narrator', text: LINES[1]?.[0] ?? '' },
+            { who: 'narrator', text: 'That is five hundred of them.' },
+          ],
+        },
+      ],
+    },
+    'script-fix-2': {
+      shots: [
+        {
+          shot: 2,
+          lines: [
+            { who: 'narrator', text: LINES[1]?.[0] ?? '' },
+            { who: 'narrator', text: second },
+          ],
+        },
+      ],
+    },
+  });
+  assert.equal(again.story.shots[1]?.lines[1]?.text, second, 'the second pass is taken');
+  assert.ok(
+    again.logs.includes('script-fix-2: rewrote shots 2 for the fact check'),
+    again.logs.join('\n'),
+  );
+
+  const dropped = await runWriter({
+    ...passed(),
+    viewer: flatViewer,
+    script: twoLines(),
+    'script-revise': twoLines(),
+    'factcheck-2': flagged,
+  });
+  assert.deepEqual(
+    dropped.story.shots[1]?.lines.map((l) => l.text),
+    [LINES[1]?.[0]],
+    'the flagged line is dropped; the line with the cue word stays',
+  );
+  assert.ok(
+    dropped.logs.some((l) =>
+      l.startsWith('script-fix: dropped shot 2\'s line "That is almost none'),
+    ),
+    dropped.logs.join('\n'),
+  );
+  assert.deepEqual(dropped.story.review?.factcheck2?.problems ?? [], []);
+  assert.equal(dropped.story.review?.fixed2?.[0]?.dropped, true);
+});
+
+await test('a spoken number must be within 2% of the sheet, and the rounding hint stays within it', async () => {
+  // 9.7 million for the sheet's 10 million: 3% off (5% used to pass it)
+  const off = LINES.map((l, i): [string, string] =>
+    i === 3
+      ? ['Which means an atom is nine point seven million times smaller than the sand.', 'million']
+      : l,
+  );
+  const { logs } = await runWriter({ ...passed(), 'script#1': script(off) });
+  assert.match(
+    logs.find((l) => l.startsWith('script rejected')) ?? '',
+    /shot 4: .* says "nine point seven million", which no fact on the sheet states within 2%/,
+  );
+  // two digits would make 224.7 "two hundred and twenty" (2.1% off): the hint keeps three
+  const hint = spokenErrors(
+    [
+      {
+        lines: [
+          { who: 'narrator', text: 'Its year lasts two hundred and twenty-four point seven days.' },
+        ],
+      },
+    ],
+    [{ text: 'A year lasts 224.7 days' }],
+  ).map(String);
+  assert.match(hint[0] ?? '', /\("about two hundred and twenty-five"\)/);
 });

@@ -193,7 +193,9 @@ function wordRuns(text) {
 const numbersSaid = text => [...[...normNum(text).matchAll(NUM)].map(m => ({ s: m[0].trim(), v: numVal(m), one: /^\d$/.test(m[0].trim()) })), ...wordNumbers(text)];
 const valuesIn = text => numbersSaid(text).map(n => n.v);
 // the numbers a text says that no fact states (rounding allowed: within 5%), as written
-const untraced = (text, facts) => { const have = facts.flatMap(x => valuesIn(x.text)); return numbersSaid(text || '').filter(n => !n.one && !have.some(v => Math.abs(n.v - v) <= Math.abs(v) * 0.05)).map(n => n.s); };
+// (a spoken number is held to 2%: at 5%, "two hundred and twenty" passed for 224.7 days and broke a stated 18.3-day difference)
+const SPOKEN = 0.02;
+const untraced = (text, facts, tol = 0.05) => { const have = facts.flatMap(x => valuesIn(x.text)); return numbersSaid(text || '').filter(n => !n.one && !have.some(v => Math.abs(n.v - v) <= Math.abs(v) * tol)).map(n => n.s); };
 const quoted = xs => xs.map(x => `"${x}"`).join(', ');
 // the user's request states numbers too (its Audience, Goal and Tone lines are the intake's reading, never facts)
 const withRequest = (facts, brief) => [...facts, { id: 'request', text: requestOf(brief) }];
@@ -206,7 +208,9 @@ export function spokenErrors(shots, facts) {
   shots.forEach((s, i) => (s.lines || []).forEach(l => {
     for (const n of numbersSaid(l.text)) {
       if (n.one || !n.v) continue;
-      if (!(Number.isInteger(n.v) && n.v >= 1000 && n.v <= 2100) && sig(n.v) > 3) E.push(soft(`shot ${i + 1}: "${l.text}" says "${n.s}" to ${sig(n.v)} digits: say it rounded the way people say it ("about ${sayNum(n.v, 2) || fmtNum(n.v)}") and leave the exact figure to the screen`));
+      // the hint is the shortest rounding that stays within 2% (two digits made 224.7 "two hundred and twenty")
+      const hint = [2, 3].map(d => sayNum(n.v, d)).find(s => s && numbersSaid(s).some(x => Math.abs(x.v - n.v) <= Math.abs(n.v) * SPOKEN));
+      if (!(Number.isInteger(n.v) && n.v >= 1000 && n.v <= 2100) && sig(n.v) > 3) E.push(soft(`shot ${i + 1}: "${l.text}" says "${n.s}" to ${sig(n.v)} digits: say it rounded the way people say it ("about ${hint || fmtNum(n.v)}") and leave the exact figure to the screen`));
       const h = have.filter(v => Math.abs(n.v - v) <= Math.abs(v) * 0.05).sort((a, b) => Math.abs(a - n.v) - Math.abs(b - n.v))[0];
       if (h != null) by.set(h, [...(by.get(h) || []), { i, n }]);
     }
@@ -591,7 +595,12 @@ export function createWriter(E) {
         if (tells.length) Er.push(soft(`shot${tells.length > 1 ? 's' : ''} ${tells.join(', ')} already say${tells.length > 1 ? '' : 's'} the answer's number: say it in the payoff shot (${sp.payoff_shot}) only; the close may echo it once`));
         // every number said must be one the sheet or the request states (nothing else checks a spoken number against the facts)
         const src = withRequest(f.facts, brief);
-        shots.forEach((s, i) => s.lines.forEach(l => { const n = untraced(l.text, src); if (n.length) Er.push(`shot ${i + 1}: "${l.text}" says ${quoted(n)}, which no fact on the sheet states: say the sheet's numbers (rounding is fine) or leave the number out`); }));
+        // more than 5% off is no fact on the sheet (hard); 2 to 5% off is rounded too far (asked for, so length or rounding never ends a run)
+        shots.forEach((s, i) => s.lines.forEach(l => {
+          const far = untraced(l.text, src), near = untraced(l.text, src, SPOKEN).filter(x => !far.includes(x));
+          if (far.length) Er.push(`shot ${i + 1}: "${l.text}" says ${quoted(far)}, which no fact on the sheet states: say the sheet's numbers (rounded no further than 2%) or leave the number out`);
+          if (near.length) Er.push(soft(`shot ${i + 1}: "${l.text}" says ${quoted(near)}, which no fact on the sheet states within 2%: round no further than 2% (a stated comparison must stay true)`));
+        }));
         Er.push(...spokenErrors(shots, src));
       }
     }
@@ -640,15 +649,15 @@ export function createWriter(E) {
     return next;
   }
   // a rewrite brings no number the sheet does not state (a fix once "corrected" a line to a number no fact held)
-  const newNumbers = (lines, f) => lines.flatMap(l => untraced(l.text, withRequest(f.facts, brief)));
+  const newNumbers = (lines, f) => lines.flatMap(l => untraced(l.text, withRequest(f.facts, brief), SPOKEN));
   const sameLines = (a, b) => a.lines.map(l => l.text).join('\n') === b.lines.map(l => l.text).join('\n') && (a.see || '') === (b.see || '');
   // the shots a problem is about: its own shot, or for a wrong sheet fact ("f15: ...") every shot whose spine uses that fact (a
   // meaningless payoff fact stayed in the Mariana script: a sheet problem named no shot)
   const shotsOf = (p, o, sp) => { if (o.shots[+p.shot - 1]) return [+p.shot - 1]; const id = String(p.claim || '').match(/^(\w+):/)?.[1]; return id && sp ? sp.shots.map((s, i) => ((s.facts || []).includes(id) && o.shots[i] ? i : -1)).filter(i => i >= 0) : []; };
   // fix the claims a fact check flagged, shot by shot (a whole-script revision kept the wrong claim), keeping the length; returns
   // the script and the problems no taken fix touched (the harness reports those)
-  async function fixClaims(o, sp, f, problems) {
-    const byShot = {}; for (const p of problems || []) for (const i of shotsOf(p, o, sp)) (byShot[i] ||= []).push({ claim: p.claim, problem: o.shots[+p.shot - 1] ? p.problem : `the sheet fact this shot uses is wrong: ${p.problem}`, fix: p.fix });
+  async function fixClaims(o, sp, f, problems, step = 'script-fix', note = '') {
+    const byShot = {}; for (const p of problems || []) for (const i of shotsOf(p, o, sp)) (byShot[i] ||= []).push({ claim: p.claim, problem: `${o.shots[+p.shot - 1] ? p.problem : `the sheet fact this shot uses is wrong: ${p.problem}`}${note}`, fix: p.fix });
     const req = Object.entries(byShot).map(([i, ps]) => ({ shot: +i + 1, max_words: countWords(o.shots[i]) + 2, keep: [o.shots[i].cue?.word].filter(Boolean), problems: ps, lines: o.shots[i].lines.map(l => ({ who: l.who, text: l.text, tone: l.tone })), see: o.shots[i].see || '' }));
     // fixed only where every shot it touches was rewritten (a wrong fact in shots 2 and 3, fixed in 2 only, was dropped while 3
     // still said it); a change to the screen alone counts for a shot with one problem only
@@ -657,15 +666,30 @@ export function createWriter(E) {
     if (!req.length) return { o, left: problems || [] };
     // the fixer sees the sheet (with each derived fact's calc) and the reference: the fact checker once reversed who paid whom, and
     // its "fix" must not be applied blindly; a new on-screen number must be on the sheet too (a counter showed Earth's 365.25 days)
-    const cur = await editShots('script-fix', 'fix', req, o, (s, lines, i, see) => {
-      const n = [...newNumbers(lines, f), ...untraced(see || '', [...f.facts, { text: s.see || '' }])]; if (n.length) { log(`script-fix: shot ${i + 1}'s fix says ${quoted(n)}, which no fact on the sheet states; not taken`); return false; }
+    const cur = await editShots(step, 'fix', req, o, (s, lines, i, see) => {
+      const n = [...newNumbers(lines, f), ...untraced(see || '', [...f.facts, { text: s.see || '' }])]; if (n.length) { log(`${step}: shot ${i + 1}'s fix says ${quoted(n)}, which no fact on the sheet states; not taken`); return false; }
       return lines.reduce((a, l) => a + words(l.text), 0) <= countWords(s) + 3;
     }, `\n\nFACT SHEET\n${calcList(f)}${E.refBlock()}`);
     const changed = req.map(q => q.shot).filter(n => !sameLines(cur.shots[n - 1], o.shots[n - 1]));
-    if (!changed.length) { log(`script-fix: no fix was taken for shots ${req.map(q => q.shot).join(', ')}; keeping the script`); return { o, left: problems || [] }; }
-    if (scriptErrors(cur, sp, f).some(e => !e.soft)) { log('script-fix: the fix broke a check; keeping the script'); return { o, left: problems || [] }; }
-    log(`script-fix: rewrote shots ${changed.join(', ')} for the fact check`);
+    if (!changed.length) { log(`${step}: no fix was taken for shots ${req.map(q => q.shot).join(', ')}; keeping the script`); return { o, left: problems || [] }; }
+    if (scriptErrors(cur, sp, f).some(e => !e.soft)) { log(`${step}: the fix broke a check; keeping the script`); return { o, left: problems || [] }; }
+    log(`${step}: rewrote shots ${changed.join(', ')} for the fact check`);
     return { o: cur, left: left(cur, problems || []) };
+  }
+  // the last resort for a line still flagged after two fix passes: drop it when its shot keeps another line, the cue word and every
+  // hard check (the quit hook's "almost none do" for 12% stayed in the final script); otherwise it stays, reported
+  function dropFlagged(o, problems, sp, f) {
+    let cur = o; const dropped = [];
+    for (const p of problems) {
+      const i = +p.shot - 1, s = cur.shots[i]; if (!s) continue;
+      const want = toks(p.claim).filter(w => !STOP.has(w)), score = l => (says(l.text, p.claim) ? 1 : want.length ? want.filter(w => toks(l.text).some(x => sameWord(x, w))).length / want.length : 0);
+      const k = s.lines.length > 1 ? s.lines.map((l, j) => [j, score(l)]).filter(([, v]) => v >= 0.6).sort((a, b) => b[1] - a[1])[0]?.[0] : undefined;
+      const keepsCue = j => !s.cue?.word || s.lines.some((l, m) => m !== j && says(l.text, s.cue.word));
+      const next = k == null || !keepsCue(k) ? null : { ...cur, shots: cur.shots.map((x, m) => (m === i ? { ...x, lines: x.lines.filter((_, n) => n !== k) } : x)) };
+      if (!next || scriptErrors(next, sp, f).some(e => !e.soft)) { log(`script-fix: shot ${i + 1}'s line stays flagged (${k == null ? 'no other line, or no line says the claim' : 'it holds the cue word or the shot needs it'}): "${p.claim}"`); continue; }
+      log(`script-fix: dropped shot ${i + 1}'s line "${s.lines[k].text}", still flagged: ${p.problem}`); cur = next; dropped.push(p);
+    }
+    return { o: cur, dropped };
   }
   async function fitWords(o, sp, f) {
     if (SCRIPT()) return o;
@@ -724,7 +748,25 @@ export function createWriter(E) {
     let r = await json(step, system, user, ['off']), gap = r ? missing(r) : [];
     if (gap.length) { log(`${step}: no verdict for ${gap.join(', ')}; asked once more`); r = (await json(`${step}-again`, system, `${user}\n\nGive a verdict for every fact id and every shot; the last answer left out ${gap.join(', ')}.`, ['off'])) || r; }
     if (r) for (const v of r.facts || []) { const x = f.facts.find(y => y.id === v?.id); if (x && v.verdict && !/^ok\b/i.test(String(v.verdict))) (r.problems ||= []).push({ shot: 'sheet', kind: 'wrong', claim: `${x.id}: ${x.text}`, problem: String(v.verdict), fix: '' }); }
+    if (r) { const g = groundingErrors(r, o, f); if (g.length) { log(`${step}: the claim check found ${g.length}: ${g.map(p => `shot ${p.shot} "${p.claim}"`).join('; ')}`); (r.problems ||= []).push(...g); } }
     return r;
+  }
+  // claim grounding: the checker lists each claim of a shot with the sheet facts it rests on; a cited id must exist, a claim with a
+  // number must cite a fact, and each of its numbers must be one its cited facts (or the request) state within 2% (QC1b: without
+  // thinking, "two hundred and twenty" for 224.7 days and a false cited fact passed as fine)
+  function groundingErrors(r, o, f) {
+    const out = [], req = valuesIn(requestOf(brief));
+    for (const ln of r?.lines || []) {
+      const shot = +ln?.shot; if (!o.shots[shot - 1]) continue;
+      for (const c of Array.isArray(ln.claims) ? ln.claims : []) {
+        const claim = String(c?.claim || '').trim(), ids = [].concat(c?.facts || []).map(String).filter(Boolean); if (!claim) continue;
+        const gone = ids.filter(id => id !== 'request' && !f.facts.some(x => x.id === id)), nums = numbersSaid(claim).filter(n => !n.one);
+        const have = [...f.facts.filter(x => ids.includes(x.id)).flatMap(x => valuesIn(x.text)), ...(ids.includes('request') ? req : [])], off = nums.filter(n => !have.some(v => Math.abs(n.v - v) <= Math.abs(v) * SPOKEN));
+        const why = gone.length ? `it cites ${gone.join(', ')}, which the sheet does not have` : !nums.length ? '' : !ids.length ? 'it says a number but cites no fact on the sheet' : off.length ? `it says ${quoted(off.map(n => n.s))}, which ${ids.join(', ')} ${ids.length > 1 ? 'do' : 'does'} not state (within 2%)` : '';
+        if (why) out.push({ shot, kind: 'unsupported', claim, problem: `the engine's claim check: ${why}`, fix: "say the number the cited fact states (within 2%), or cut the claim" });
+      }
+    }
+    return out;
   }
   // a conflict (the brief against the reference) is reported, never fixed: a fix would flip the brief's premise. One the checker
   // says a sheet fact settles ("settled_by") is no conflict: the line is wrong and is fixed toward the sheet
@@ -792,8 +834,13 @@ export function createWriter(E) {
         // final script.json); a wrong sheet fact no shot uses is marked as not said
         const purpose = fixPurpose('fact check of the revision', fc2, sp), todo = toFix(fc2).filter(p => !purpose.includes(p));
         for (const p of todo) if (!shotsOf(p, o, sp).length && p.shot === 'sheet') p.unused = true;
-        const fx = todo.some(p => !p.unused) ? await fixClaims(o, sp, f, todo.filter(p => !p.unused)) : { o, left: todo.filter(p => !p.unused) };
-        o = fx.o;
+        let fx = todo.some(p => !p.unused) ? await fixClaims(o, sp, f, todo.filter(p => !p.unused)) : { o, left: todo.filter(p => !p.unused) };
+        // a flagged line must not survive: what stays goes to the fixer once more, then a line still flagged is dropped where its shot
+        // can lose it; whatever is left after that stays reported
+        if (fx.left.some(p => shotsOf(p, fx.o, sp).length)) fx = await fixClaims(fx.o, sp, f, fx.left, 'script-fix-2', ' (an earlier fix was not taken: its numbers were not the sheet\'s within 2%, or it ran too long; say the sheet\'s own number or cut the claim)');
+        const drop = dropFlagged(fx.o, fx.left, sp, f);
+        o = drop.o; fx = { o, left: fx.left.filter(p => !drop.dropped.includes(p)) };
+        for (const p of drop.dropped) p.dropped = true;
         const fixed = [...purpose, ...todo.filter(p => !p.unused && !fx.left.includes(p))];
         if (fixed.length) { review.factcheck2 = { ...review.factcheck2, problems: (review.factcheck2?.problems || []).filter(p => !fixed.includes(p)) }; review.fixed2 = fixed; }
         log(`fact check of the revision: ${fixed.length} fixed, ${(review.factcheck2?.problems || []).length} left`);
@@ -811,7 +858,7 @@ export function createWriter(E) {
 }
 
 // the script as a readable page (<out>-work/script.md)
-const problemLine = p => `- shot ${p.shot}: "${p.claim}": ${p.problem} -> ${p.kind === 'conflict' ? '(a conflict: reported, not fixed)' : p.fix}${p.unused ? ' (no shot uses this fact)' : ''}`;
+const problemLine = p => `- shot ${p.shot}: "${p.claim}": ${p.problem} -> ${p.kind === 'conflict' ? '(a conflict: reported, not fixed)' : p.fix}${p.unused ? ' (no shot uses this fact)' : ''}${p.dropped ? ' (its line was dropped)' : ''}`;
 export function scriptMd(st) {
   const fx = Object.fromEntries((st.facts || []).map(f => [f.id, f]));
   const factLine = f => `${f.text}${f.source === 'derived' ? ` [= ${f.calc}]` : f.source === 'general' ? ' [general]' : ''}`;
