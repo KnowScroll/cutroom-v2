@@ -62,6 +62,12 @@ Voice refusals not counted as cuts (#18): 4 eleven-v4 HTTP 402 invocations; thei
 | 32 | 2026-11-28 | #70 QC1b | `--until script` proxima on PR #74 cf22854 (completes, 1-3 min) | none | 0.0329 | var/runs/qc1b-proxima |
 | 33 | 2026-11-28 | #70 QC1b | `--until script` sun on PR #74 cf22854 (completes, 1-3 min) | none | 0.0309 | var/runs/qc1b-sun |
 | 34 | 2026-11-28 | #70 QC1b | `--until script` quit on PR #74 cf22854 (completes, 1-3 min) | none | 0.0286 | var/runs/qc1b-quit |
+| 35 | 2026-11-28 | #70 QC1c | `--until script` nemo on PR #74 6ef300c | none | 0.0447 | var/runs/qc1c-nemo |
+| 36 | 2026-11-28 | #70 QC1c | `--until script` venus on PR #74 6ef300c | none | 0.0334 | var/runs/qc1c-venus |
+| 37 | 2026-11-28 | #70 QC1c | `--until script` mariana on PR #74 6ef300c | none | 0.0271 | var/runs/qc1c-mariana |
+| 38 | 2026-11-28 | #70 QC1c | `--until script` proxima on PR #74 6ef300c | none | 0.0388 | var/runs/qc1c-proxima |
+| 39 | 2026-11-28 | #70 QC1c | `--until script` sun on PR #74 6ef300c | none | 0.0315 | var/runs/qc1c-sun |
+| 40 | 2026-11-28 | #70 QC1c | `--until script` quit on PR #74 6ef300c | none | 0.0295 | var/runs/qc1c-quit |
 | 1 | 2026-11-27 | #2 | `--until script` import check | none | 0.0289 | var/runs/import-check |
 | 2 | 2026-11-27 | #2 | full reel `--rounds 0` (resumed from script) | heygen (4.66 st) | 0.0537 (folder total 0.0826) | var/runs/import-check |
 | 3 | 2026-11-27 | #9 | `--apply-notes --cut 2`, attempt 1 (shot-5 note rejected by validator; kept as reel-v2-attempt1) | heygen (4.72 st) | 0.0153 | var/runs/e2-check |
