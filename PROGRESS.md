@@ -133,8 +133,8 @@ QC0 items done directly: patched working copies reset (Windows globe-zoom-explai
 - Merged also: #48 (PR #63, cced615; H7 holds: free re-render recipe on #48), #45 (PR #65, 5290aff; 9 script cuts to get the maths right).
 - Merged also: #50 (PR #66, e2681fd), #46 (PR #67, 172e613).
 - Merged also: #51 (PR #69, 3cfa79d), #52 (PR #71, 969ca15).
-- Merged also: #47 (PR #68, 204ece4), #59 (PR #72, cb21389; Windows var synced), #56 (PR #75, de56474), #53 (PR #73, 240fd3a), #70 (PR #74, 4559432), #49 (PR #76, 8fbcc6d).
-- Running: #55 T10a, #57 T10c. Next: QC3-QC5 (#60). Voice blocked until 00:00 UTC (free limit) unless credit is added.
+- Merged also: #47 (PR #68, 204ece4), #59 (PR #72, cb21389; Windows var synced), #56 (PR #75, de56474), #53 (PR #73, 240fd3a), #70 (PR #74, 4559432), #49 (PR #76, 8fbcc6d), #55 (PR #77, c6ead60), #57 (PR #78, 1eded8c). All implementation issues closed; both vars synced (WSL clone at 1eded8c).
+- Running: none. Next: QC3-QC5 (#60). Voice blocked until 00:00 UTC (free limit) unless credit is added.
 - Scope moves: line-note checks from #54 to #49 (engine applyNotes reuses the writer checks).
 
 ### Real cuts, phase Q (budget 80)
@@ -146,4 +146,4 @@ A cut is one engine invocation that makes model calls (`--until script` counts).
 
 ## Next action
 
-Phase Q: T0 doc PR, then the lanes (HANDOFF §11).
+T11 (#60): QC3 single cuts for briefs A, B, C, D, F, G with fresh AV reviews, then QC4 (new topics + 3 regression templates), then QC5 (5 API jobs). Blocked on voice: heygen free allows ~50 requests/day (~3-4 reels); resets 00:00 UTC. User asked to add OpenRouter credit (unlocks paid voices and 1000 free/day). Budget: 40 of 80 cuts used.
