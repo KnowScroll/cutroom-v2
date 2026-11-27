@@ -28,7 +28,7 @@ html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style>
 <script>
 'use strict';
 // Generic host for model-made reels: a model-written style kit, model-drawn assets and model-animated shots.
-// The host adds only neutral craft (camera drift, cut transitions), captions and bubbles, and runs the validators.
+// The host adds only neutral craft (cut transitions; a slow push-in when the template asks), captions and bubbles, and runs the validators.
 const W = 1080, H = 1920, cv = document.getElementById('c'); let ctx = cv.getContext('2d', location.search.includes('cpu') ? { willReadFrequently: true } : undefined); // let: h.cache points the helpers at an offscreen canvas while it draws // validation pages (?cpu) use a CPU canvas from the start: Chrome otherwise switches GPU to CPU after a few readbacks mid-validation and the anti-aliasing change looked like randomness. The video render keeps the faster GPU canvas.
 CanvasRenderingContext2D.prototype.beezierCurveTo = CanvasRenderingContext2D.prototype.bezierCurveTo; // a typo M3 keeps writing
 let TL = null, KIT = null, ASSETS = {}, SHOTS = {}, SPECS = {}, CUR = { sh: null, lt: 0 }, ANCH = {}, TRACK = null, STRICT = false;
@@ -944,7 +944,9 @@ function render(t, opts = {}) {
   // fresh canvas state every frame: an unbalanced ctx.restore() in M3's code once leaked its zoom into the next frame and compounded (x8 over a shot)
   if (ctx.reset) ctx.reset(); else ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.save(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-  const z = opts.still || (TL.d3 && TL.d3.mode === 'lowpoly') ? 1 : 1 + 0.03 * lt / sh.dur; // neutral camera drift (none in low-poly reels: it would resample their hard 4 x 4 pixels)
+  // the host's slow push-in over each shot, only when the template asks (TL.zoom: the share it zooms in over a shot, 0.03 = 3%;
+  // a template's "host zoom: 0.03" check line): a move that shows nothing new. Never in low-poly reels (it would resample their 4 x 4 pixels)
+  const z = opts.still || !(+TL.zoom > 0) || (TL.d3 && TL.d3.mode === 'lowpoly') ? 1 : 1 + +TL.zoom * lt / sh.dur;
   ctx.translate(W / 2, 960); ctx.scale(z, z); ctx.translate(-W / 2, -960);
   const fn = SHOTS[i];
   SAVES = 0; BG_DONE = false; IN_SHOT = true; DEFER = PIXEL ? [] : null;
@@ -1070,7 +1072,7 @@ window.validateAsset = (code, spec, kitCode) => {
     }
     draw(runs[0]); const a = snap();
     draw(runs[0]); const nd = diff(a, snap()); if (nd > 0.01) errors.push(`not deterministic: the same params drawn twice gave different images (difference ${nd.toFixed(2)}). Use only p.t and an h.rng(seed) created inside drawAsset; never Math.random, values kept between calls, or changes to kit or h`);
-    // no "animated" check here: faint idle motion is hard to measure, and validateShot already rejects shots that do not move
+    // no "animated" check here or in validateShot: a thing held still while its line explains it is fine; motion must show something
   } catch (e) { errors.push(`runtime error: ${e.message}${at(e, code)}${hint(e.message)}`); }
   const ext = union ? { x0: (union.x0 - 540) / s, x1: (union.x1 - 540) / s, y0: (union.y0 - 960) / s, y1: (union.y1 - 960) / s } : null;
   return { ok: !errors.length, errors, box, ext, preview: imgs.length ? sheet(imgs, 300, 533) : null };
@@ -1228,7 +1230,6 @@ window.validateShot = (code, shot, tl, ck = {}) => {
       }
       [0.2, 0.55, 0.92].forEach(f => { render(clamp(sh.dur * f, 0.05, sh.dur - 0.05), { still: true }); frames.push(grab(270, 480)); });
       if (shotsnaps.every(s => spread(s) < 8)) errors.push('the frame is nearly blank: paint the background with kit.bg and place assets');
-      if (shotsnaps.length >= 4 && diff(shotsnaps[2], shotsnaps[3]) < 0.5) errors.push('not animated: frames at 55% and 80% of the shot are identical; keep things moving');
       render(times[2], { still: true }); const a = snap(); render(times[2], { still: true }); if (diff(a, snap()) > 0.01) errors.push('not deterministic: use lt and h.rng(seed) only');
       for (const ln of sh.lines) if (ln.who !== 'narrator') { ANCH = {}; render((ln.start + ln.end) / 2, { still: true }); if (!ANCH[ln.who] && !AUTO[ln.who]) errors.push(`speaker "${ln.who}" is not anchored while talking: pass who: '${ln.who}' to their h.asset (or call h.anchor('${ln.who}', x, yAboveHead)) every frame they are on screen`); }
       // relative, not a fixed size for one thing: the things on screen together must read clearly (a group spanning a quarter of the frame
