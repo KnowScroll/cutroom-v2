@@ -18,7 +18,8 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 
 | issue | agent / model | branch or worktree | started | note |
 |---|---|---|---|---|
-| #14 | implementer / sonnet | claude/14-queue (worktree) | 2026-11-27 | PR #33: review fixes in; rebasing onto #13, then re-review |
+| #14 | implementer / sonnet | claude/14-queue (worktree) | 2026-11-27 | PR #33: fixes + rebase in (db56c27), re-review running |
+| #15 | implementer / sonnet | claude/15-http (worktree, on #14 branch; rebase after #33) | 2026-11-27 | CP3b: cleared for 1 real API job with a kill + restart, after the rebase |
 
 ## Real cuts (budget: 40 cuts with model calls, docs/plan.md)
 
@@ -44,4 +45,4 @@ Free re-renders (no model calls) not counted: #16 radio-lp-e4 resume (fonts-radi
 
 ## Next action
 
-#14 in flight. Then #15 (CP3b), #17 (CP4), #18 (CP5).
+#14 in review, #15 in flight (CP3b). Then #17 (CP4), #18 (CP5).
