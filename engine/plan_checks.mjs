@@ -71,7 +71,7 @@ export async function placeErrors(p) {
   for (const [i, s] of p.shots.entries()) {
     const idea = String(s.idea || '');
     // pinned: a MARKER, a LINE's start, a RING's centre ("around" in prose, "spins around the globe to X [..]", is not one)
-    for (const m of idea.matchAll(AT)) await check(i, m[2], +m[3], +m[4], 80, m[1] === 'MARKER at' || m[1] === 'LINE from' || (m[1] === 'around' && /\bRING\b(?:[^.;]|\.(?=\d))*$/.test(idea.slice(0, m.index))));
+    for (const m of idea.matchAll(AT)) await check(i, m[2], +m[3], +m[4], 80, m[1] === 'MARKER at' || m[1] === 'LINE from' || (m[1] === 'around' && /\bRING\b(?:[^.;[\]]|\.(?=\d))*$/.test(idea.slice(0, m.index))));
     for (const m of idea.matchAll(LINE)) for (const [n, lon, lat] of [[m[1], m[2], m[3]], [m[4], m[5], m[6]]]) if (n) await check(i, n, +lon, +lat, 80, true);
     for (const m of idea.matchAll(LAB)) await check(i, m[1], +m[2], +m[3], 250, false); // a label may sit beside its place
   }

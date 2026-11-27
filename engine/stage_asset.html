@@ -1322,7 +1322,7 @@ window.validateShot = (code, shot, tl, ck = {}) => {
             const box = got.length ? { x0: Math.min(...got.map(x => x.x0)), x1: Math.max(...got.map(x => x.x1)), y0: Math.min(...got.map(x => x.y0)), y1: Math.max(...got.map(x => x.y1)) } : null, al = got.length ? Math.min(...got.map(x => x.alpha)) : 0;
             const bad = left.size ? [] : [dist(box) > 60 && `at x ${Math.round(mid(box)[0])}, y ${Math.round(mid(box)[1])}`, Math.abs(al - op) > 0.25 && `at opacity ${al.toFixed(2)}`].filter(Boolean);
             if (left.size || bad.length) texts.set(`carry:${side}:label:${ws.join(' ')}`, `the label "${c.label}" is carried across the cut at x ${c.x}, y ${c.y}${ops} (${how}), but ${at} ${left.size ? 'does not show it in full' : `shows it ${bad.join(', ')}`}: ${fix}`); continue; }
-          const id = [c.look?.which, c.look?.who].find(v => v != null), all = T.assets.filter(a => a.id === c.thing && shows({ ...a, alpha: 1 }));
+          const id = [c.look?.which, c.look?.who].find(v => v != null), all = T.assets.filter(a => a.id === c.thing && a.alpha > 0.02 && shows({ ...a, alpha: 1 }));
           const mine = all.filter(a => id == null || [pOf(a).which, a.who].some(v => v != null && same(v, id))).sort((p, q) => Math.hypot(p.cx - c.x, p.cy - c.y) - Math.hypot(q.cx - c.x, q.cy - c.y));
           const a = mine[0], name = `"${c.thing}"${id != null ? ` (${id})` : ''}`, plan = `at x ${c.x}, y ${c.y}, scale ${c.scale}${ops}`, k = `carry:${side}:${c.thing}:${id}`;
           if (!a) { texts.set(k, `${name} is carried across the cut ${plan} (${how}), but ${at} does not show it${all.length ? ' (only as another thing)' : ''}: ${fix}`); continue; }
