@@ -38,6 +38,7 @@ Voice refusals not counted as cuts (#18): 4 eleven-v4 HTTP 402 invocations; thei
 | 8 | 2026-11-27 | #45 | `--until script` Moon on 9875f2e: maths right (8.6 years, a fraction of a lifetime); wall 342 s | none | 0.0407 | var/runs/q-t1-moon6 |
 | 9 | 2026-11-27 | #45 | `--until script` atom on 9875f2e: maths right (0.5 mm / 100 pm = 5 million) | none | 0.0438 | var/runs/q-t1-atom3 |
 | 10 | 2026-11-27 | #45 | `--until script` Venus on 9875f2e: premise inverted (reference lacks the 243-day spin: T2) | none | 0.0342 | var/runs/q-t1-venus |
+| 11 | 2026-11-27 | #50 | full cut on PR #66 (Moon): stopped at voice, heygen free HTTP 429 free-models-per-day | heygen (refused) | ~0.03 (script stage) | var/runs/q-t6-moon |
 | 1 | 2026-11-27 | #2 | `--until script` import check | none | 0.0289 | var/runs/import-check |
 | 2 | 2026-11-27 | #2 | full reel `--rounds 0` (resumed from script) | heygen (4.66 st) | 0.0537 (folder total 0.0826) | var/runs/import-check |
 | 3 | 2026-11-27 | #9 | `--apply-notes --cut 2`, attempt 1 (shot-5 note rejected by validator; kept as reel-v2-attempt1) | heygen (4.72 st) | 0.0153 | var/runs/e2-check |
@@ -92,6 +93,8 @@ User decisions 2026-11-27: D24 (repairs in cutroom-v2, fastreel frozen; #44 reco
 
 Preflight 2026-11-27: main clean, `npm run check` green (140 tests, 139 pass, 1 skipped), no engine.lock, WSL clone pulled to 575cabb.
 QC0 items done directly: patched working copies reset (Windows globe-zoom-explainer.md and kurzgesagt.md, WSL globe-zoom-explainer.md: deleted, then `sync`; no `patched: true` left in either manifest).
+
+**Voice blocked (2026-11-27 16:00 UTC):** heygen free returned HTTP 429 "free-models-per-day" (OpenRouter: add 10 credits to unlock 1000 free requests a day). No voice works until the daily reset or until the user adds credit. Full cuts reuse cached voice meanwhile.
 
 **Voice credit (2026-11-27):** OpenRouter credit is 0 (usage 0.18 over a 0 total), so heygen-paid, minimax, gemini-tts and eleven-v* through OpenRouter will refuse. The free `heygen` voice answers (200). It ends 2026-11-30. Real runs use `--voice-model heygen`. User item: add OpenRouter credit before 2026-11-30, or the phase stops for voice.
 
