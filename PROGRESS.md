@@ -98,8 +98,8 @@ QC0 items done directly: patched working copies reset (Windows globe-zoom-explai
 ### In flight
 
 - Merged: #44 (PR #61, c1ceb02, QC0 done), #58 (PR #62, 8b23d5c; both vars cleaned, WSL clone at 8b23d5c), #54 (PR #64, 5eaf742).
-- Merged also: #48 (PR #63, cced615; H7 holds: free re-render recipe on #48).
-- In review: #45 T1 (PR #65). Running: #50 T6 (opus; started early: its asset_reel.mjs regions are disjoint from the writer lane).
+- Merged also: #48 (PR #63, cced615; H7 holds: free re-render recipe on #48), #45 (PR #65, 5290aff; 9 script cuts to get the maths right).
+- Running: #50 T6, #46 T2, #47 T3 (opus, worktrees; T3 started in parallel with T2: disjoint regions, the T3 agent may make 2 script cuts at its end).
 - Scope moves: line-note checks from #54 to #49 (engine applyNotes reuses the writer checks).
 
 ### Real cuts, phase Q (budget 80)
