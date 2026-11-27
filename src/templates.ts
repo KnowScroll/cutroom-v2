@@ -478,6 +478,33 @@ export async function applyPatches(
   return { k, applied, rejected, sections };
 }
 
+/**
+ * The history entry `job` already wrote for `round`, when the working copy is at its result: a restart after the patch
+ * was applied (§8). The patch is never applied twice. A snapshot whose copy was not changed (a crash between the
+ * writes) is not returned, so the round applies its patches again under a new k.
+ */
+export async function findAppliedPatch(
+  workingDir: string,
+  kind: string,
+  job: string,
+  round: number,
+): Promise<HistoryEntry | null> {
+  const dir = historyDir(workingDir, kind);
+  let names: string[];
+  try {
+    names = await readdir(dir);
+  } catch (err) {
+    if (hasCode(err, 'ENOENT')) return null;
+    throw err;
+  }
+  const now = await shaOfFile(join(workingDir, `${kind}.md`));
+  for (const name of names.filter((f) => f.endsWith('.json')).sort()) {
+    const entry = HistoryEntry.parse(await readJson(join(dir, name)));
+    if (entry.job === job && entry.round === round && entry.sha_after === now) return entry;
+  }
+  return null;
+}
+
 /** Adds the gates and scores of the cut made after patch entry `k` (when that cut is reviewed). */
 export async function recordNextCut(
   workingDir: string,
