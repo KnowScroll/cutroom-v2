@@ -4,7 +4,7 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 
 ## State
 
-2026-11-27: preparation done (docs, labels, milestones, issues #1-#18). Implementation started. #1 merged (PR #19, 3107663). #4 merged (PR #20, 8dbef11). #3 merged (PR #21, 482a73b). #2 merged (PR #22, e0cbf2c). #12 merged (PR #23, fbdb64a). #6 merged (PR #24, 392bb28). #9 merged (PR #26, 3713298). #10 merged (PR #27, ec301b7). #5 merged (PR #25, 8fd890c). #16 merged (PR #28, 4e5b00b). #7 merged (PR #29, adc2cb2). #8 merged (PR #30, 253126b): **CP1 done** (recorded in #8). #11 merged (PR #31, 51d9c19): **CP2 done** (recorded in #11). Session interrupted once (2026-11-27); #5, #6, #9, #10 resumed from their worktrees.
+2026-11-27: preparation done (docs, labels, milestones, issues #1-#18). Implementation started. #1 merged (PR #19, 3107663). #4 merged (PR #20, 8dbef11). #3 merged (PR #21, 482a73b). #2 merged (PR #22, e0cbf2c). #12 merged (PR #23, fbdb64a). #6 merged (PR #24, 392bb28). #9 merged (PR #26, 3713298). #10 merged (PR #27, ec301b7). #5 merged (PR #25, 8fd890c). #16 merged (PR #28, 4e5b00b). #7 merged (PR #29, adc2cb2). #8 merged (PR #30, 253126b): **CP1 done** (recorded in #8). #11 merged (PR #31, 51d9c19): **CP2 done** (recorded in #11). #13 merged (PR #32, 2a63883): **CP3a done** (recorded in #13). Session interrupted once (2026-11-27); #5, #6, #9, #10 resumed from their worktrees.
 
 ## Waiting on the user
 
@@ -18,8 +18,7 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 
 | issue | agent / model | branch or worktree | started | note |
 |---|---|---|---|---|
-| #14 | implementer / sonnet | claude/14-queue (worktree) | 2026-11-27 | PR #33 in review |
-| #13 | implementer / opus | claude/13-frame-gates (worktree) | 2026-11-27 | PR #32 in review; CP3a job done |
+| #14 | implementer / sonnet | claude/14-queue (worktree) | 2026-11-27 | PR #33: review fixes in; rebasing onto #13, then re-review |
 
 ## Real cuts (budget: 40 cuts with model calls, docs/plan.md)
 
@@ -45,4 +44,4 @@ Free re-renders (no model calls) not counted: #16 radio-lp-e4 resume (fonts-radi
 
 ## Next action
 
-#13 (CP3a) and #14 in flight. Then #15 (CP3b), #17 (CP4), #18 (CP5).
+#14 in flight. Then #15 (CP3b), #17 (CP4), #18 (CP5).
