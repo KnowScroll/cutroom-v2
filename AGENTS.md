@@ -18,7 +18,7 @@ cutroom-v2 turns a request into a vertical reel: a TypeScript harness (intake, r
 - Dependencies: runtime `zod`, `puppeteer-core` (the engine's). Dev: `typescript`, `@types/node`, `eslint`, `typescript-eslint`, `prettier`. Prefer Node built-ins (`node:http`, `node:child_process`, `node:test`, `fetch`, `process.loadEnvFile`). A new dependency needs a reason in the PR body.
 - No abstractions for futures nobody asked for: no plugin systems, no generic job frameworks, no wrappers around one call.
 - Comments only where the code cannot say it (a measured threshold, a reason a check exists).
-- `engine/` is imported JavaScript: change only what design §4.2 allows, in its existing style, no refactors, no lint or type rules applied to it.
+- `engine/` is imported JavaScript: change it only as design §4.2 and D24 allow (D24: the issue shows run evidence of the failure, the §4.1 contract and checkpoints stay, a test, a re-render or a real run verifies it), in its existing style, no refactors, no lint or type rules applied to it.
 - `templates/` holds the originals. The harness never writes there. Developers (and issues that say so) edit them.
 
 ## Checks

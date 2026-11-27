@@ -1,6 +1,6 @@
 ---
 name: new-template
-description: Make a new fastreel reel template from a reference reel (an .mp4): Claude Code analyses it with rea-video and writes templates/<kind>.md, MiniMax-M3 makes the reels with asset_reel.mjs, then fix rounds until it is right. Use when the user gives a reference video and wants "a template like this", "reels in this style", or runs /new-template <ref.mp4> "<first brief>".
+description: Make a new cutroom-v2 reel template from a reference reel (an .mp4): Claude Code analyses it with rea-video and writes templates/<kind>.md, MiniMax-M3 makes the reels with asset_reel.mjs, then fix rounds until it is right. Use when the user gives a reference video and wants "a template like this", "reels in this style", or runs /new-template <ref.mp4> "<first brief>".
 ---
 
 # new-template: reference reel -> template -> reels
@@ -52,4 +52,4 @@ Then `templates/<kind>.log`: "epoch 0" = made from which reference, what was tak
 5. Fix the TEMPLATE (never the reel), add an epoch to the log (what the reel got right, each flaw -> fix), run `-e2`. Ask the user before going past 3 rounds.
 
 ## 5. Report
-Each reel: length, MiniMax cost per phase (`var/runs/<slug>-eN-cost.txt`), the grade distances, what improved and what is still wrong, the contact rows. Name engine changes the template needed (engine files: asset_reel.mjs, stage_asset.html, asset_*_prompt.txt, templates/_base.md, README.md) and ask before touching them. Do not commit unless asked.
+Each reel: length, MiniMax cost per phase (`var/runs/<slug>-eN-cost.txt`), the grade distances, what improved and what is still wrong, the contact rows. Name engine changes the template needed (engine files: `engine/asset_reel.mjs`, `engine/stage_asset.html`, `engine/prompts/*.txt`, `templates/_base.md`, README.md); an engine change needs a D24 issue with run evidence, so file or name it instead of editing. Do not commit unless asked.
