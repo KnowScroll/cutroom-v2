@@ -443,7 +443,8 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
   const originalsDir = options.originalsDir ?? path.join(repoRoot, 'templates');
   const workingDir = path.join(varDir, 'templates');
   const log = options.log ?? (() => undefined);
-  const t0 = Date.now();
+  // Durations come from the monotonic clock: WSL steps its wall clock by seconds, also backwards (#38).
+  const t0 = performance.now();
   const { id, started } = await openJob(varDir, options);
   const dir = runDir(varDir, id);
   let earlierS = 0; // seconds of the starts before this one (resume)
@@ -508,7 +509,7 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
     await writeLoop(dir, {
       intake,
       sync_conflicts: syncConflicts,
-      elapsed_s: earlierS + (Date.now() - t0) / 1000,
+      elapsed_s: earlierS + (performance.now() - t0) / 1000,
       cuts,
       rounds,
       voice_switches: switches,
@@ -853,7 +854,7 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
     approved,
     totals: {
       usd: engineUsd + harnessUsd,
-      wall_s: earlierS + (finished.getTime() - t0) / 1000,
+      wall_s: earlierS + (performance.now() - t0) / 1000,
       cuts: cuts.length,
       harness_calls: calls.length,
     },

@@ -101,7 +101,7 @@ async function job(
   script: Step[],
   engineEnv: Record<string, string> = {},
   voices = 'heygen,minimax',
-  opts: { varDir?: string; originals?: string } = {},
+  opts: { varDir?: string; originals?: string; log?: (line: string) => void } = {},
 ): Promise<Ran> {
   const varDir = opts.varDir ?? path.join(root, `var${String(++counter)}`);
   const fake = await startFakeMiniMax(script);
@@ -118,6 +118,7 @@ async function job(
       m3: createM3({ apiKey: 'test-key', endpoint: fake.url }),
       originalsDir: opts.originals ?? originalsDir,
       engineEnv,
+      ...(opts.log === undefined ? {} : { log: opts.log }),
     });
     return { run, varDir, dir: runDir(varDir, run.id) };
   } finally {
@@ -519,6 +520,21 @@ await test('a note on an asset the work plan.json lacks is not passed on', async
   });
   assert.deepEqual(run.rounds[0]?.ignored_notes, ['asset sun: not in the work plan.json']);
   assert.ok((await readEvents(varDir, run.id)).some((e) => e.event === 'notes.ignored'));
+});
+
+await test('a wall clock stepped back during a job leaves its wall time the time it ran (#38)', async (t) => {
+  // WSL steps its wall clock back 2-4 s in the first minute after a boot; here it goes back a minute after review 1
+  t.mock.timers.enable({ apis: ['Date'], now: Date.now() });
+  const p0 = performance.now();
+  const { run, varDir } = await job([intake, review(true)], {}, 'heygen', {
+    log: (line) => {
+      if (line.startsWith('review 1:')) t.mock.timers.setTime(Date.now() - 60_000);
+    },
+  });
+  const ran = (performance.now() - p0) / 1000;
+  assert.equal(run.status, 'done', run.error ?? '');
+  assert.ok(run.totals.wall_s > 0 && run.totals.wall_s <= ran, String(run.totals.wall_s));
+  assert.equal((await readRunRecord(varDir, run.id)).totals.wall_s, run.totals.wall_s);
 });
 
 await test('a template round deletes the invalidated checkpoints and passes no notes', async () => {

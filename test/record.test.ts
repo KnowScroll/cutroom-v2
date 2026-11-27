@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -192,6 +192,29 @@ await test('run.json round-trips through its schema and a bad record is rejected
     await writeRunRecord(dir, run);
     assert.deepEqual(await readRunRecord(dir, job.id), run);
     await assert.rejects(writeRunRecord(dir, { ...run, git_commit: 7 } as unknown as RunRecord)); // deliberately invalid
+  });
+});
+
+await test('a run record that fails its schema names the failing field and the file', async () => {
+  await withVar(async (dir) => {
+    const job = await createJob(dir, { request: 'sky' }, at);
+    const run = sampleRun(job.id);
+    const file = join(dir, 'runs', job.id, 'run.json');
+    await assert.rejects(writeRunRecord(dir, { ...run, totals: { ...run.totals, wall_s: -2.5 } }), {
+      message: /run record not written to .*run\.json: .*>=0.*\n.*at totals\.wall_s/s,
+    });
+    await assert.rejects(readFile(file), { code: 'ENOENT' });
+
+    await writeRunRecord(dir, run);
+    const text = await readFile(file, 'utf8');
+    assert.ok(text.includes('"film_s": 44.2'));
+    await writeFile(file, text.replace('"film_s": 44.2', '"film_s": "long"'));
+    await assert.rejects(readRunRecord(dir, job.id), (e: unknown) => {
+      assert.ok(e instanceof Error);
+      assert.ok(e.message.startsWith(`${file}: `), e.message);
+      assert.match(e.message, /at cuts\[0\]\.film_s/);
+      return true;
+    });
   });
 });
 
