@@ -7,6 +7,7 @@ import {
   padding,
   rateMoved,
   repeatErrors,
+  spokenErrors,
   shotTimes,
   silenceOf,
   type Fact,
@@ -585,6 +586,7 @@ interface Call {
 async function runWriter(
   answers: Record<string, unknown>,
   brief = BRIEF,
+  checks: Record<string, string> = {},
 ): Promise<{ story: Story; calls: Call[]; logs: string[] }> {
   const calls: Call[] = [];
   const logs: string[] = [];
@@ -600,7 +602,7 @@ async function runWriter(
     },
     prompt: (name) => `PROMPT ${name}`,
     guide: () => '',
-    checks: () => ({}),
+    checks: () => checks,
     range: () => null,
     list: () => [],
     ckSave: () => undefined,
@@ -752,7 +754,7 @@ await test('a conflict the checker says a sheet fact settles is fixed toward the
   assert.match(userMessage(calls, 'script-fix'), /"shot": 5/);
 });
 
-await test('the fact checker thinks, gives a verdict on every fact and shot, and is asked again for the ones it left out', async () => {
+await test('the fact checker runs without thinking, gives a verdict on every fact and shot, and is asked again for the ones it left out', async () => {
   const again = checked({ problems: [] });
   again.facts = again.facts.map((v) =>
     v.id === 'f2' ? { id: 'f2', verdict: 'it says this of the wrong thing' } : v,
@@ -762,7 +764,8 @@ await test('the fact checker thinks, gives a verdict on every fact and shot, and
     factcheck: { problems: [] },
     'factcheck-again': again,
   });
-  assert.deepEqual(calls.find((c) => c.step === 'factcheck')?.efforts, ['low', 'off']);
+  // no thinking: low-effort thinking took 47-551 s per check in QC1; the verdicts are what make it read every fact
+  assert.deepEqual(calls.find((c) => c.step === 'factcheck')?.efforts, ['off']);
   assert.ok(
     logs.some(
       (l) => l.startsWith('factcheck: no verdict for f1, f2,') && l.endsWith('; asked once more'),
@@ -1168,4 +1171,177 @@ await test('a script line with a number not on the sheet is sent back', async ()
     /shot 3: "So one millimetre holds a million picometres\." says "a million", which no fact on the sheet states/,
   );
   assert.equal(lineOf(story, 3), LINES[2]?.[0]);
+});
+
+// ---------- scripts answer the request (#70) ----------
+const flatViewer = { ...VIEWER, flat: [{ shot: 2, why: 'adds nothing' }] };
+
+await test('the second fact check gets one fix pass: a wrong sheet fact reaches the shot using it, the screen can be fixed, and only what stays is reported', async () => {
+  const shot5 =
+    'So if an atom were one metre wide, the sand would reach ten thousand kilometres across.';
+  const second = {
+    facts: SHEET.facts.map((x) => ({
+      id: x.id,
+      verdict:
+        x.id === 'f6'
+          ? 'it adds a comparison to itself'
+          : x.id === 'f5'
+            ? 'says it of the wrong thing'
+            : 'ok',
+    })),
+    lines: LINES.map((_, i) => ({ shot: i + 1, verdict: 'ok' })),
+    problems: [
+      {
+        shot: 4,
+        kind: 'wrong',
+        claim: 'the counter',
+        problem: 'the counter shows another number',
+        fix: 'show 10 million',
+      },
+    ],
+  };
+  const { story, calls, logs } = await runWriter({
+    ...passed(),
+    viewer: flatViewer,
+    'factcheck-2': second,
+    'script-fix': {
+      shots: [
+        { ...fixOf(4, LINES[3]?.[0] ?? ''), see: 'A counter lands on 10 million' },
+        fixOf(5, shot5),
+      ],
+    },
+  });
+  assert.match(
+    userMessage(calls, 'script-fix'),
+    /the sheet fact this shot uses is wrong: it adds a comparison to itself/,
+  );
+  assert.equal(story.shots[3]?.see, 'A counter lands on 10 million');
+  assert.equal(lineOf(story, 5), shot5);
+  const left = story.review?.factcheck2?.problems ?? [];
+  assert.deepEqual(
+    left.map((p) => [p.claim?.slice(0, 3), p.unused]),
+    [['f5:', true]],
+    'only the wrong fact no shot uses stays, marked',
+  );
+  assert.equal(story.review?.fixed2?.length, 2);
+  assert.ok(logs.includes('fact check of the revision: 2 fixed, 1 left'), logs.join('\n'));
+});
+
+await test('the viewer judges the reel against the request, and a request left unanswered rebuilds the spine', async () => {
+  const brief = `${BRIEF}\n\nGoal: The viewer should feel awe.`;
+  const noAnswer = { ...VIEWER, answers_request: 'no: it never says how much smaller' };
+  const { calls, logs } = await runWriter(
+    { ...passed(), viewer: noAnswer, 'spine-revise': SPINE },
+    brief,
+  );
+  const input = userMessage(calls, 'viewer');
+  assert.ok(input.startsWith(`YOUR REQUEST\n${BRIEF}\n\nTHE REEL\n`), input.slice(0, 120));
+  assert.doesNotMatch(input, /Goal:/, "the intake's Goal line is no part of the request");
+  assert.equal(steps(calls, 'spine-revise#1'), 1);
+  assert.match(userMessage(calls, 'spine-revise#1'), /it never says how much smaller/);
+  assert.ok(logs.includes('spine-revise: the script was written again on the new spine'));
+});
+
+await test('a sheet that cannot answer the request says what is missing', async () => {
+  const { story, logs } = await runWriter({
+    ...passed(),
+    facts: { ...SHEET, missing: 'the width of a grain in atoms' },
+  });
+  assert.ok(
+    logs.includes(
+      'facts: the sheet cannot fully answer the request: the width of a grain in atoms',
+    ),
+  );
+  assert.equal(story.missing, 'the width of a grain in atoms');
+});
+
+await test('spoken numbers are rounded, one quantity keeps one value, and a year is said in full', () => {
+  const shot = (text: string) => ({ lines: [{ who: 'narrator', text }] });
+  const facts = [
+    { text: 'Proxima Centauri is 4.2465 ly away' },
+    { text: 'Voyager 1 would take 73,775 years' },
+    { text: 'It was found in 1915' },
+  ];
+  const errors = spokenErrors(
+    [
+      shot('Proxima Centauri is four point two four six five light-years away.'),
+      shot('It was found in nineteen fifteen.'),
+      shot('Voyager would need seventy-three thousand years.'),
+      shot('Seventy-four thousand years, one way.'),
+    ],
+    facts,
+  ).map(String);
+  assert.equal(errors.length, 2, errors.join('\n'));
+  assert.match(
+    errors[0] ?? '',
+    /^shot 1: .* says "four point two four six five" to 5 digits: say it rounded the way people say it \("about four point two"\)/,
+  );
+  assert.match(
+    errors[1] ?? '',
+    /^shots 3, 4 say "seventy three thousand", "seventy four thousand" for one number/,
+  );
+});
+
+await test('the answer is said once: another shot saying it is sent back softly', async () => {
+  const early = LINES.map((l, i): [string, string] =>
+    i === 2
+      ? ['So one millimetre holds a billion picometres, ten million atoms across.', 'billion']
+      : l,
+  );
+  const { logs } = await runWriter({ ...passed(), 'script#1': script(early) });
+  assert.match(
+    logs.find((l) => l.startsWith('script rejected')) ?? '',
+    /shot 3 already says the answer's number: say it in the payoff shot \(4\) only; the close may echo it once/,
+  );
+});
+
+await test('the request states numbers, "nineteen zero five" is a year, and a question is no definition', async () => {
+  const answerErrors = (answer: string, brief: string) =>
+    factErrors(sheet([], { answer }), { ...env, brief })
+      .map(String)
+      .filter((e) => e.startsWith('the answer'));
+  assert.deepEqual(
+    answerErrors('In nineteen zero five the union ended.', 'How did Norway leave Sweden in 1905?'),
+    [],
+  );
+  assert.equal(
+    answerErrors('In nineteen zero five the union ended.', BRIEF).length,
+    1,
+    'not on the sheet nor in the request',
+  );
+
+  const question = LINES.map((l, i): [string, string] =>
+    i === 0 ? ['How small is an atom next to a grain of sand?', 'sand'] : l,
+  );
+  const { logs } = await runWriter({ ...passed(), 'script#1': script(question) }, BRIEF, {
+    hook: 'number or question',
+  });
+  assert.ok(!logs.some((l) => l.startsWith('script rejected')), logs.join('\n'));
+  const plain = LINES.map((l, i): [string, string] =>
+    i === 0 ? ['Picture one grain of sand on your fingertip.', 'sand'] : l,
+  );
+  const hook = await runWriter({ ...passed(), 'script#1': script(plain) }, BRIEF, {
+    hook: 'number or question',
+  });
+  assert.ok(!hook.logs.some((l) => l.startsWith('script rejected')), 'the hook rule is gone');
+});
+
+await test('time runs forward by month and day within a year', async () => {
+  const dated = (...when: string[]) => ({
+    ...SPINE,
+    shots: SPINE.shots.map((s, i) => ({ ...s, when: when[i] ?? '' })),
+  });
+  const ok = await runWriter({
+    ...passed(),
+    'spine#1': dated('', '7 June 1905', 'August 1905', '1906', ''),
+  });
+  assert.ok(!ok.logs.some((l) => l.startsWith('spine rejected')), ok.logs.join('\n'));
+  const back = await runWriter({
+    ...passed(),
+    'spine#1': dated('', 'August 1905', '7 June 1905', '1906', ''),
+  });
+  assert.match(
+    back.logs.find((l) => l.startsWith('spine rejected')) ?? '',
+    /shot 3 \("when": "7 June 1905"\) goes back in time after shot 2 \("August 1905"\)/,
+  );
 });

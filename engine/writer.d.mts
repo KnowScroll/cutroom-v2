@@ -79,15 +79,18 @@ export interface FactCheckProblem {
   claim?: string;
   problem?: string;
   fix?: string;
+  unused?: boolean;
 }
 export interface Story {
   idea?: string;
   takeaway?: string;
+  missing?: string;
   voice_model?: string;
   wps?: number;
-  shots: { point?: string; lines: Line[] }[];
+  shots: { point?: string; lines: Line[]; see?: string }[];
   review?: {
     factcheck2?: { problems?: FactCheckProblem[] } | null;
+    fixed2?: FactCheckProblem[];
     revised?: boolean;
     spine_rebuilt?: boolean;
   };
@@ -120,3 +123,4 @@ export function rateMoved(
   model: string,
 ): boolean;
 export function repeatErrors(shots: { lines?: Line[] }[]): Problem[];
+export function spokenErrors(shots: { lines?: Line[] }[], facts: { text: string }[]): Problem[];

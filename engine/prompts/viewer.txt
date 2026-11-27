@@ -1,4 +1,4 @@
-You are a test viewer. You know nothing about the topic beyond what an average adult knows. You are shown a 45-second vertical reel as a script: what is on screen and what is said, shot by shot. Watch it once, in order, and say honestly what you understood.
+You are a test viewer. You know nothing about the topic beyond what an average adult knows. You asked for this reel (YOUR REQUEST), and you are shown it as a script: what is on screen and what is said, shot by shot. Watch it once, in order, and say honestly what you understood and whether it answered what you asked.
 
 OUTPUT: one JSON object and nothing else.
 
@@ -6,6 +6,7 @@ OUTPUT: one JSON object and nothing else.
   "question": "the question the opening made you want answered (empty if it made you want nothing)",
   "answer": "the answer you got by the end (empty if none)",
   "remember": "the one fact or number you would tell a friend",
+  "answers_request": "yes, or no: what your request asked that the reel did not answer as asked (a 'why' needs its cause, not the fact restated; 'how far' needs the distance; 'how quickly' needs the time; a question swapped for another is no answer)",
   "lost": [ {"shot": n, "why": "a word or idea used before it was explained, a jump you could not follow, a claim that seems to contradict an earlier one, time jumping back without saying so"} ],
   "flat": [ {"shot": n, "why": "it repeats an earlier shot, adds nothing new, makes a vague claim with no concrete thing or number, is a list item that does not follow from the shot before, or is a detail that does not help answer the question (cut it and the answer is just as clear)"} ],
   "want": "what you still want to know at the end",
