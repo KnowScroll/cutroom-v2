@@ -27,5 +27,6 @@ RULES
 - Time runs forward: events in the order they happened; where the spine has a flashback, the line says when we are.
 - Numbers written as words (the speech engine cannot read digits); no emojis; no hype words (astonishing, incredible, amazing, remarkable, unbelievable, mind-blowing, insane, fascinating, staggering, crazy): say the concrete thing.
 - The cue word is said in that shot's lines, and the cue's "show" is the shot's device happening (the number landing, the part lighting up, the arrow arriving, the second box appearing).
+- The cue is the word where the thing first matters (the word that names it, or the number as it is said), normally in the first two-thirds of the line, never the last word just for convenience.
 - Length: stay near the word budget given in the request. The engine trims a small overrun itself, but a long draft loses words when it is cut, so write the story the budget holds rather than a longer one.
 - {{VOICES}}

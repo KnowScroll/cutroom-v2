@@ -273,21 +273,26 @@ const calcList = f => { const facts = f?.facts || [], sheetFor = sheetsFor(facts
 const soft = msg => Object.assign(new String(msg), { soft: true });
 const digitNums = s => (String(s).replace(/(\d),(\d)/g, '$1$2').match(/\d+(?:\.\d+)?/g) || []).map(Number);
 
-// pointless repetition: a narrator line with at most one content word the shots before it did not already say tells the viewer
-// nothing new. A line that builds on an earlier number passes, and so does the last shot (it may restate the answer): the old rule
-// flagged any shared number or 4-word phrase, and rejected one atom script 4 times for "one million atoms" in two different claims
+// pointless repetition: a narrator line that restates one earlier shot (60% of its content words are that shot's) and adds almost
+// nothing (all but one in five were said before): "So the walk would take about eight point eight years, while your whole life
+// would last about seventy-three years" after a shot that said both numbers. A payoff that joins words of several shots into a new
+// claim passes, as do a short punch line, a line that builds on an earlier number and the last shot (it may restate the answer).
+// Measured on 17 real scripts: only that line is flagged (at 50%, a microwave payoff sharing half its words with one shot was too).
+// The old rule flagged any shared number or 4-word phrase: it rejected one atom script 4 times for "one million atoms" in two
+// different claims. Number words match exactly ("nine" is not "ninety")
 export function repeatErrors(shots) {
-  const said = [], E = [];
+  const seen = [], E = [], same = (y, x) => (NUM_WORD.has(x) || NUM_WORD.has(y) ? x === y : sameWord(y, x));
   shots.forEach((s, i) => {
     const mine = [];
     for (const l of s.lines || []) {
       if (l.who !== 'narrator') continue;
-      const w = [...new Set(toks(l.text).filter(x => !STOP.has(x)))];
-      if (i && i < shots.length - 1 && w.length >= 4 && w.filter(x => !said.some(y => sameWord(y, x))).length <= 1)
-        E.push(soft(`shot ${i + 1}: "${l.text}" says nothing the shots before it have not said: cut it or make it take the story further (building on an earlier number is fine; the last shot may restate the answer)`));
+      const w = [...new Set(toks(l.text).filter(x => !STOP.has(x)))], old = w.filter(x => seen.some(ws => ws.some(y => same(y, x))));
+      const echo = Math.max(0, ...seen.map(ws => w.filter(x => ws.some(y => same(y, x))).length));
+      if (i && i < shots.length - 1 && w.length >= 5 && w.length - old.length <= Math.max(1, Math.floor(w.length / 5)) && echo * 5 >= w.length * 3)
+        E.push(soft(`shot ${i + 1}: "${l.text}" says again what an earlier shot said: cut it or make it take the story further (building on an earlier number is fine; the last shot may restate the answer)`));
       mine.push(...w);
     }
-    said.push(...mine);
+    seen.push(mine);
   });
   return E;
 }

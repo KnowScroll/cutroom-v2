@@ -908,6 +908,30 @@ await test('a line that says nothing new is flagged softly; building on a number
   assert.equal(errors.length, 1, errors.join('\n'));
   assert.equal(errors[0]?.soft, true);
   assert.match(String(errors[0]), /^shot 5: "The Moon is about three hundred eighty thousand/);
+
+  // q-t3-moon: the answer shot restated the shot before it; a microwave payoff joining earlier words into a new claim passes
+  const moon = repeatErrors([
+    shot('How long would it take to walk to the Moon?'),
+    shot(
+      'Those hours total about eight point eight years. An average human life lasts about seventy-three years.',
+    ),
+    shot(
+      'So the walk would take about eight point eight years, while your whole life would last about seventy-three years.',
+    ),
+    shot('The sky is closer than your lifetime.'),
+  ]);
+  assert.deepEqual(
+    moon.map((e) => String(e).slice(0, 8)),
+    ['shot 3: '],
+  );
+  const microwave = repeatErrors([
+    shot('How does a microwave oven heat food without the oven becoming hot? Watch the water.'),
+    shot('The magnetron produces the microwaves.'),
+    shot('The microwaves carry a field into the food. Then polar molecules align with that field.'),
+    shot('Water molecules are polar, so microwaves heat them most effectively.'),
+    shot('That is how a microwave heats food.'),
+  ]);
+  assert.deepEqual(microwave.map(String), []);
 });
 
 await test('lead and tail are set per template, and by default a cut no longer leaves 0.95 s of silence', () => {
