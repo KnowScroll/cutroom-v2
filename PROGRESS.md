@@ -54,6 +54,14 @@ Voice refusals not counted as cuts (#18): 4 eleven-v4 HTTP 402 invocations; thei
 | 24 | 2026-11-27 | #47 QC1 | `--until script` mariana on PR #68 b69c316: ok (new topic) | none | 0.1000 | var/runs/qc1-mariana |
 | 25 | 2026-11-27 | #47 QC1 | `--until script` panama on PR #68 b69c316: failed: fit could not reach the budget (new topic) | none | ~0.021 | var/runs/qc1-panama |
 | 26 | 2026-11-27 | #47 QC1 | `--until script` quit on PR #68 b69c316: ok (new topic, dan-koe) | none | 0.0403 | var/runs/qc1-quit |
+| 27 | 2026-11-27 | #47 | `--until script` Norway re-run on 98449c1: completes; months out of order | none | 0.0779 | var/runs/qc1-norway2 |
+| 28 | 2026-11-27 | #47 | `--until script` Panama re-run on 98449c1: completes (154 words, budget 103, warning); factcheck-2 took 551 s | none | 0.0843 | var/runs/qc1-panama2 |
+| 29 | 2026-11-28 | #70 QC1b | `--until script` nemo on PR #74 cf22854 (completes, 1-3 min) | none | 0.0460 | var/runs/qc1b-nemo |
+| 30 | 2026-11-28 | #70 QC1b | `--until script` venus on PR #74 cf22854 (completes, 1-3 min) | none | 0.0206 | var/runs/qc1b-venus |
+| 31 | 2026-11-28 | #70 QC1b | `--until script` mariana on PR #74 cf22854 (completes, 1-3 min) | none | 0.0340 | var/runs/qc1b-mariana |
+| 32 | 2026-11-28 | #70 QC1b | `--until script` proxima on PR #74 cf22854 (completes, 1-3 min) | none | 0.0329 | var/runs/qc1b-proxima |
+| 33 | 2026-11-28 | #70 QC1b | `--until script` sun on PR #74 cf22854 (completes, 1-3 min) | none | 0.0309 | var/runs/qc1b-sun |
+| 34 | 2026-11-28 | #70 QC1b | `--until script` quit on PR #74 cf22854 (completes, 1-3 min) | none | 0.0286 | var/runs/qc1b-quit |
 | 1 | 2026-11-27 | #2 | `--until script` import check | none | 0.0289 | var/runs/import-check |
 | 2 | 2026-11-27 | #2 | full reel `--rounds 0` (resumed from script) | heygen (4.66 st) | 0.0537 (folder total 0.0826) | var/runs/import-check |
 | 3 | 2026-11-27 | #9 | `--apply-notes --cut 2`, attempt 1 (shot-5 note rejected by validator; kept as reel-v2-attempt1) | heygen (4.72 st) | 0.0153 | var/runs/e2-check |
