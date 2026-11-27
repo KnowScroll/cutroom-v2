@@ -59,14 +59,70 @@ function lineToks(ln) {
 // h.cue(word, n): the moment (seconds into the shot) the lines say that word or phrase (the n-th time, default the first);
 // plurals and endings match ("lung" finds "lungs"). While a shot is validated, a word its lines never say is an error.
 const cueNorm = s => String(s).toLowerCase().replace(/[’‘]/g, "'").replace(/[^\p{L}\p{N}'\s-]/gu, ' ').replace(/-/g, ' ').split(/\s+/).filter(Boolean);
+const same = (a, b) => a === b || (b.length >= 4 && (a.startsWith(b) || b.startsWith(a)) && Math.abs(a.length - b.length) <= 3);
 function cueTime(sh, word, n = 1) {
   const want = cueNorm(word), all = [];
   for (const ln of sh.lines) for (const x of lineToks(ln)) for (const p of cueNorm(x.t)) all.push({ p, s: x.s });
-  const same = (a, b) => a === b || (b.length >= 4 && (a.startsWith(b) || b.startsWith(a)) && Math.abs(a.length - b.length) <= 3);
   let hit = 0;
   if (want.length) for (let i = 0; i + want.length <= all.length; i++) if (want.every((w, k) => same(all[i + k].p, w)) && ++hit === Math.max(1, n)) return all[i].s;
   if (STRICT) throw new Error(`h.cue(${JSON.stringify(word)}${n > 1 ? `, ${n}` : ''}): this shot's lines never say "${word}"${n > 1 ? ` ${n} times` : ''}; cue a word they say: ${sh.lines.map(l => `"${l.text}"`).join(' ')}`);
   return sh.lines[0] ? sh.lines[0].start : 0;
+}
+// timing against the voice (validateShot): CUES collects the cue words a shot's code asks for (key -> {word, n, t}); CUE_SHIFT
+// {key, at} re-renders the shot as if that one word were said at `at` seconds, so what the cue drives can be told apart (never a
+// negative time: shots guard with "cue >= 0")
+let CUES = null, CUE_SHIFT = null;
+const cueKey = (w, n) => cueNorm(w).join(' ') + '#' + Math.max(1, +n || 1);
+// every spoken word of a shot with its time, [{p, s, e}]: word parts as cueNorm makes them ("seventy-eight": "seventy", "eight"),
+// a word with digits kept whole ("378,000")
+function saidToks(sh) {
+  const out = []; for (const ln of sh.lines) for (const x of lineToks(ln)) { const d = x.t.match(/\d[\d,]*(?:\.\d+)?/); if (d) out.push({ p: d[0].replace(/,$/, ''), s: x.s, e: x.e }); else for (const p of cueNorm(x.t)) out.push({ p, s: x.s, e: x.e }); }
+  return out;
+}
+const UNITW = 'zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen'.split(' '), TENW = 'twenty thirty forty fifty sixty seventy eighty ninety'.split(' '), SCALEW = { thousand: 1e3, million: 1e6, billion: 1e9, trillion: 1e12 };
+const numKind = w => { const u = UNITW.indexOf(w); return u >= 0 ? (u < 10 ? 'u' : 't') : TENW.includes(w) ? 'T' : w === 'hundred' ? 'h' : SCALEW[w] ? 'S' : /^\d[\d,]*(\.\d+)?$/.test(w) ? 'd' : ''; };
+// the numbers the lines say, in order, each with its first and last word: "three hundred seventy-eight thousand" 378000,
+// "three thousand one hundred and fifty" 3150, "eight point six" 8.6, "one point four million" 1400000, "a million", digits
+function saidNumbers(toks) {
+  const out = [];
+  for (let i = 0; i < toks.length; i++) {
+    let total = 0, cur = 0, prev = '', dec = '', inDec = false, last = -1, j = i;
+    if (toks[i].p === 'a' && toks[i + 1] && 'hS'.includes(numKind(toks[i + 1].p) || 'x')) { cur = 1; prev = 'u'; last = i; j = i + 1; }
+    for (; j < toks.length; j++) {
+      const w = toks[j].p, k = numKind(w);
+      if (k === 'd') { if (last >= 0) break; cur = +w.replace(/,/g, ''); prev = 'd'; last = j; continue; }
+      if (inDec) { if (k === 'u') { dec += UNITW.indexOf(w); last = j; continue; } inDec = false; if (k !== 'S') break; }
+      if (k === 'u' || k === 't') { if ('utd'.includes(prev || 'x') || (prev === 'T' && k === 't')) break; cur += UNITW.indexOf(w); prev = k; last = j; continue; }
+      if (k === 'T') { if (prev && prev !== 'h' && prev !== 'S') break; cur += 20 + 10 * TENW.indexOf(w); prev = 'T'; last = j; continue; }
+      if (k === 'h') { if (last < 0 || prev === 'h' || prev === 'S') break; cur *= 100; prev = 'h'; last = j; continue; }
+      if (k === 'S') { if (last < 0 || prev === 'S') break; total += (cur + (dec ? +('0.' + dec) : 0)) * SCALEW[w]; cur = 0; dec = ''; prev = 'S'; last = j; continue; }
+      if (w === 'point' && last >= 0 && !dec && prev !== 'S' && prev !== 'h') { inDec = true; continue; }
+      if (w === 'and' && (prev === 'h' || prev === 'S') && toks[j + 1] && 'utT'.includes(numKind(toks[j + 1].p) || 'x')) continue;
+      break;
+    }
+    if (last >= 0) { out.push({ v: total + cur + (dec ? +('0.' + dec) : 0), at: i, to: last, said: toks.slice(i, last + 1).map(x => x.p).join(' ') }); i = last; }
+  }
+  return out;
+}
+// a label's words (no digits, no stop words): what names the thing it labels
+const labelToks = text => cueNorm(text).filter(w => w.length >= 2 && !/\d/.test(w) && !CAP_STOP.has(w));
+// when the voice says what a label shows: its number (a label with digits; the first time that value is said, preferring the time
+// it is said next to one of the label's words), else its words said together. {s, e, said, n} (n: which time those words are said,
+// counted as h.cue counts) or null when this shot's lines never say it
+function labelWord(text, toks, nums) {
+  const t = String(text), words = labelToks(t);
+  const hit = (a, b) => { const ws = toks.slice(a, b + 1).map(x => x.p); let n = 0; for (let j = 0; j <= a; j++) if (ws.every((w, k) => toks[j + k] && same(toks[j + k].p, w))) n++; return { s: toks[a].s, e: toks[b].e, said: ws.join(' '), n }; };
+  if (/\d/.test(t)) {
+    const vals = []; for (const m of t.matchAll(/(\d[\d,]*(?:\.\d+)?)\s*([\p{L}]+)?/gu)) { const v = +m[1].replace(/,/g, ''), w = (m[2] || '').toLowerCase(); vals.push(v); if (SCALEW[w]) vals.push(v * SCALEW[w]); }
+    // a lone "one" is often a pronoun ("no one", "this one"): it counts only next to one of the label's words ("day one" for "Day 1")
+    const near = n => [...toks.slice(Math.max(0, n.at - 2), n.at), ...toks.slice(n.to + 1, n.to + 3)].some(x => words.some(u => same(x.p, u)));
+    const hits = nums.filter(n => vals.some(v => Math.abs(n.v - v) <= 1e-9 * Math.max(1, Math.abs(v))) && (n.said !== 'one' || near(n)));
+    const n = hits.find(near) || hits[0]; return n ? hit(n.at, n.to) : null;
+  }
+  if (!words.length) return null;
+  const sig = toks.map((x, j) => ({ p: x.p, j })).filter(x => x.p.length >= 2 && !CAP_STOP.has(x.p));
+  for (let i = 0; i + words.length <= sig.length; i++) if (words.every((w, k) => same(sig[i + k].p, w))) return hit(sig[i].j, sig[i + words.length - 1].j);
+  return null;
 }
 function mouth(sh, who, lt) { for (const ln of sh.lines) if (ln.who === who && lt >= ln.start && lt < ln.end) return (ln.env || [])[Math.floor((lt - ln.start) * 30)] || 0; return 0; }
 function speedlines(cx, cy, lt, col = 'rgba(255,255,255,0.35)') { const R = rng(Math.floor(lt * 12)); ctx.save(); ctx.strokeStyle = col; for (let k = 0; k < 50; k++) { const a = R() * 6.283, r0 = 260 + R() * 200; ctx.lineWidth = 2 + R() * 5; ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); ctx.lineTo(cx + Math.cos(a) * 1600, cy + Math.sin(a) * 1600); ctx.stroke(); } ctx.restore(); }
@@ -159,8 +215,12 @@ function globeFill(parts, v, zoom, path = new Path2D()) {
   return path;
 }
 // land as ONE Path2D: ctx.fill(path, 'evenodd') (lakes such as the Caspian are holes); on a globe, inside a clip to its disc
+// a shot that draws the map (land, countries, coasts or borders; once into h.cache counts) shows the countries its labels name:
+// set while validateShot renders it
+let MAPS = false;
+const mapDrawn = () => { if (IN_SHOT) MAPS = true; };
 function landPath(v, zoom = 1) {
-  return isFlat(v) ? flatPath(geoParts(geoKey('land', v, zoom)), v, 'fill') : globeFill(geoParts(geoKey('land', v, zoom)), v, zoom);
+  mapDrawn(); return isFlat(v) ? flatPath(geoParts(geoKey('land', v, zoom)), v, 'fill') : globeFill(geoParts(geoKey('land', v, zoom)), v, zoom);
 }
 // ---------- countries: h.countryPath(names, v, zoom) fills one country or several (a historic union by its member states) ----------
 // Natural Earth's short names (as of 2020): 'Russia', 'United Kingdom', 'United States of America', 'Czechia', 'Bosnia and Herz.' ...
@@ -192,10 +252,15 @@ function countryList(names) {
   }
   return [...new Set(out)];
 }
+// whether a text names a country (or a union of them) the map data knows: "NORWAY", "the UK", "USSR"
+function countryNamed(text) {
+  const all = (window.WORLD && window.WORLD.countries50) || {}, k = String(text).trim().toLowerCase().replace(/^the\s+/, ''), a = (COUNTRY_ALIAS[k] || k).toLowerCase();
+  return !!COUNTRY_GROUPS[k] || Object.keys(all).some(n => n.toLowerCase() === a);
+}
 const countryParts = (key, n) => partsOf(key + ':' + n, ((window.WORLD && window.WORLD[key]) || {})[n]);
 function countryPath(names, v, zoom = 1) {
   const key = geoKey('countries', v, zoom), path = new Path2D();
-  for (const n of countryList(names)) { const parts = countryParts(key, n); if (isFlat(v)) flatPath(parts, v, 'fill', path); else globeFill(parts, v, zoom, path); }
+  mapDrawn(); for (const n of countryList(names)) { const parts = countryParts(key, n); if (isFlat(v)) flatPath(parts, v, 'fill', path); else globeFill(parts, v, zoom, path); }
   return path;
 }
 // the main body of one or several countries: parts at least 4% of the biggest part's area (far islands and exclaves left out)
@@ -221,7 +286,7 @@ function countryView(names, x = W / 2, y = H / 2, w = 960, hgt = 1100, pad = 0.0
 }
 // coastlines as one Path2D of open lines, only where they face the viewer, without the data's seams at longitude 180 and the South Pole
 function coastPath(v, zoom = 1) {
-  if (isFlat(v)) return flatPath(geoParts(geoKey('land', v, zoom)), v, 'coast');
+  mapDrawn(); if (isFlat(v)) return flatPath(geoParts(geoKey('land', v, zoom)), v, 'coast');
   const path = new Path2D();
   for (const q of geoVisible(geoKey('land', v, zoom), v, zoom)) {
     const f = q.f, n = f.length / 2; let prev = null, pl = null;
@@ -234,7 +299,7 @@ function coastPath(v, zoom = 1) {
 }
 // country borders as one Path2D of open lines (land borders between two countries), only where they face the viewer
 function borderPath(v, zoom = 1) {
-  if (isFlat(v)) return flatPath(geoParts(geoKey('borders', v, zoom)), v, 'line');
+  mapDrawn(); if (isFlat(v)) return flatPath(geoParts(geoKey('borders', v, zoom)), v, 'line');
   const path = new Path2D();
   for (const q of geoVisible(geoKey('borders', v, zoom), v, zoom)) {
     const f = q.f; let down = false;
@@ -611,7 +676,7 @@ function trackText(c, text, x, y, mw) {
   const m = c.measureText(String(text)), tf = c.getTransform(), size = parseFloat((c.font.match(/(\d+(?:\.\d+)?)px/) || [0, 0])[1]) * Math.hypot(tf.a, tf.b);
   const al = c.textAlign, w = m.width, x0 = al === 'center' ? x - w / 2 : (al === 'right' || al === 'end') ? x - w : x;
   const pts = [[x0, y - size * 0.8], [x0 + w, y - size * 0.8], [x0, y + size * 0.3], [x0 + w, y + size * 0.3]].map(([px, py]) => [tf.a * px + tf.c * py + tf.e, tf.b * px + tf.d * py + tf.f]);
-  const t = { text: String(text), size, scale: Math.hypot(tf.a, tf.b), squeeze: mw > 0 && m.width > mw ? m.width / mw : 1,x0: Math.min(...pts.map(p => p[0])), x1: Math.max(...pts.map(p => p[0])), y0: Math.min(...pts.map(p => p[1])), y1: Math.max(...pts.map(p => p[1])), alpha: c.globalAlpha };
+  const t = { text: String(text), size, scale: Math.hypot(tf.a, tf.b), squeeze: mw > 0 && m.width > mw ? m.width / mw : 1,x0: Math.min(...pts.map(p => p[0])), x1: Math.max(...pts.map(p => p[0])), y0: Math.min(...pts.map(p => p[1])), y1: Math.max(...pts.map(p => p[1])), alpha: c.globalAlpha, inAsset: IN_ASSET > 0 };
   TRACK.texts.push(t);
 }
 // rounded boxes a shot or its kit draws after the background (h.rr and kit pills use roundRect): a text inside one is a label with that box
@@ -647,16 +712,17 @@ function placeAsset(id, x, y, s = 1, params = {}) {
   // params.who: the character or named thing this placement shows (one asset can show several): it moves their mouth and anchors their bubble
   const who = params.who != null && params.who !== '' ? String(params.who) : null, fl = params.flip ? -1 : 1, u = drawnBox(id, spec, params);
   if (who && params.mouth === undefined) params = { ...params, mouth: mouth(CUR.sh, who, CUR.lt) };
-  ctx.save(); ctx.translate(x, y); ctx.scale(s * fl, s);
+  ctx.save(); ctx.translate(x, y); ctx.scale(s * fl, s); let tr = null;
   { const tf = ctx.getTransform(), dev = b => { const pts = [[b.x0, b.y0], [b.x1, b.y0], [b.x0, b.y1], [b.x1, b.y1]].map(([px, py]) => [tf.a * px + tf.c * py + tf.e, tf.b * px + tf.d * py + tf.f]); return { x0: Math.min(...pts.map(p => p[0])), x1: Math.max(...pts.map(p => p[0])), y0: Math.min(...pts.map(p => p[1])), y1: Math.max(...pts.map(p => p[1])) }; };
     const box = dev(u), sig = JSON.stringify(Object.fromEntries(Object.entries(params).filter(([k]) => !['t', 'dt', 'mouth'].includes(k))));
     if (who && !AUTO[who]) AUTO[who] = [(box.x0 + box.x1) / 2, box.y0];
-    if (TRACK) { const sx = Math.hypot(tf.a, tf.b), sy = Math.hypot(tf.c, tf.d); TRACK.assets.push({ id, who, front: !!params.front, sig, box, seen: dev(u.seen), u, tf, w: spec.w * sx, h: spec.h * sy, cx: tf.e, cy: tf.f, alpha: ctx.globalAlpha, act: JSON.stringify(Object.fromEntries(Object.entries(params).filter(([k, v]) => typeof v === 'string' && k !== 'mouth' && k !== 'who'))) }); } }
+    if (TRACK) { const sx = Math.hypot(tf.a, tf.b), sy = Math.hypot(tf.c, tf.d); TRACK.assets.push(tr = { id, who, front: !!params.front, sig, box, seen: dev(u.seen), u, tf, w: spec.w * sx, h: spec.h * sy, cx: tf.e, cy: tf.f, alpha: ctx.globalAlpha, act: JSON.stringify(Object.fromEntries(Object.entries(params).filter(([k, v]) => typeof v === 'string' && k !== 'mouth' && k !== 'who'))) }); } }
   let got; IN_ASSET++; try { got = fn(ctx, { ...params, t: CUR.lt + (params.dt || 0) }, HK, KIT); } catch (e) { if (STRICT) { ctx.restore(); throw e; } } finally { IN_ASSET--; }
   ctx.restore();
   // returned in the caller's coordinates: the drawn part of the box, and every [x, y] point the drawing returns (head, hands)
   const at = (px, py) => [x + s * fl * px, y + s * py], xa = x + s * fl * u.x0, xb = x + s * fl * u.x1, out = { x, y, x0: Math.min(xa, xb), x1: Math.max(xa, xb), y0: y + s * u.y0, y1: y + s * u.y1 };
   if (got && typeof got === 'object') for (const [k, v] of Object.entries(got)) if (Array.isArray(v) && v.length === 2 && v.every(n => Number.isFinite(+n)) && !(k in out)) out[k] = at(+v[0], +v[1]);
+  if (tr) Object.defineProperty(out, '_track', { value: tr }); // hidden: h.label and h.measure tie a label to this placement (validateShot)
   return out;
 }
 // the solid part of an asset's box in its own units (centre 0, 0), for its word and switch params (pose, which, state): pixels more
@@ -693,16 +759,22 @@ const NAN_CAUSES = 'look for an object read as an array (v[0] on {x, y}) or an a
 for (const k of ['translate', 'scale', 'rotate', 'transform', 'setTransform']) { const f0 = ctx[k]; ctx[k] = function (...a) {
   if (((STRICT && IN_SHOT && !IN_ASSET) || CHECK_ASSET) && a.some(n => typeof n !== 'object' && !Number.isFinite(+n))) throw new Error(`ctx.${k}(${a.map(n => (typeof n === 'number' ? String(n) : JSON.stringify(n) ?? String(n))).join(', ')}): a value is not a number (NaN or Infinity), so the canvas ignores this call and everything after it is drawn at the wrong place or size; ${NAN_CAUSES}`);
   return f0.apply(this, a); }; }
+// a label placed at h.label(thing) or h.measure(a, b).mid belongs to those things: the point (on screen) and their placements
+function linkLabel(p, things) {
+  if (!TRACK || !Number.isFinite(+p[0]) || !Number.isFinite(+p[1])) return; const q = ctx.getTransform().transformPoint(new DOMPoint(+p[0], +p[1]));
+  (TRACK.links = TRACK.links || []).push({ at: [q.x, q.y], things: things.map(t => t && t._track).filter(Boolean) });
+}
 const HK = {
   W, H, clamp, lerp, easeOut, easeIn, easeInOut, easeBack, rng, rgba, mix, rr, poly, wrap, speedlines, burst, geo, geoDist, landPath, coastPath, borderPath, countryPath, countryCentre, countryView, stick, graph, route, fmt, cache, photo, quote, note,
   asset: placeAsset, anchor: (who, x, y) => { ANCH[who] = [x, y]; if (TRACK) ((TRACK.anchors = TRACK.anchors || {})[who] = TRACK.anchors[who] || []).push([+x, +y]); },
   // a thing is what h.asset returns (or any {x0, y0, x1, y1} box): a label point beside it, a measuring line, sizes at one true scale
-  label: (th, side = 'above', gap = 30) => { const cx = (th.x0 + th.x1) / 2, cy = (th.y0 + th.y1) / 2, p = side === 'below' ? [cx, th.y1 + gap] : side === 'left' ? [th.x0 - gap, cy] : side === 'right' ? [th.x1 + gap, cy] : [cx, th.y0 - gap]; return [clamp(p[0], 60, W - 60), p[1]]; },
+  label: (th, side = 'above', gap = 30) => { const cx = (th.x0 + th.x1) / 2, cy = (th.y0 + th.y1) / 2, p = side === 'below' ? [cx, th.y1 + gap] : side === 'left' ? [th.x0 - gap, cy] : side === 'right' ? [th.x1 + gap, cy] : [cx, th.y0 - gap]; const q = [clamp(p[0], 60, W - 60), p[1]]; linkLabel(q, [th]); return q; },
   measure: (a, b) => { const c = t => [(t.x0 + t.x1) / 2, (t.y0 + t.y1) / 2], [ax, ay] = c(a); let f, t;
     if (!b) { f = [a.x0, ay]; t = [a.x1, ay]; } else { const [bx, by] = c(b); if (Math.abs(bx - ax) >= Math.abs(by - ay)) { const y = (ay + by) / 2; f = [bx > ax ? a.x1 : a.x0, y]; t = [bx > ax ? b.x0 : b.x1, y]; } else { const x = (ax + bx) / 2; f = [x, by > ay ? a.y1 : a.y0]; t = [x, by > ay ? b.y0 : b.y1]; } }
-    return { from: f, to: t, mid: [(f[0] + t[0]) / 2, (f[1] + t[1]) / 2], length: Math.hypot(t[0] - f[0], t[1] - f[1]) }; },
+    const mid = [(f[0] + t[0]) / 2, (f[1] + t[1]) / 2]; linkLabel(mid, b ? [a, b] : [a]); return { from: f, to: t, mid, length: Math.hypot(t[0] - f[0], t[1] - f[1]) }; },
   toScale: (sizes, px) => { const m = Math.max(...sizes.map(Math.abs)) || 1; return sizes.map(v => v * px / m); },
-  mouth: who => mouth(CUR.sh, who, CUR.lt), talking: who => CUR.sh.lines.some(l => l.who === who && CUR.lt >= l.start && CUR.lt < l.end), line: i => L(CUR.sh, i), cue: (w, n) => cueTime(CUR.sh, w, n),
+  mouth: who => mouth(CUR.sh, who, CUR.lt), talking: who => CUR.sh.lines.some(l => l.who === who && CUR.lt >= l.start && CUR.lt < l.end), line: i => L(CUR.sh, i),
+  cue: (w, n) => { const t = cueTime(CUR.sh, w, n); if (!CUES) return t; const key = cueKey(w, n); if (!CUES.has(key)) CUES.set(key, { word: String(w), n: Math.max(1, +n || 1), t }); return CUE_SHIFT && CUE_SHIFT.key === key ? CUE_SHIFT.at : t; },
   get kit() { return KIT; }, get palette() { return KIT && KIT.palette; }, // M3 sometimes reaches the kit through h
 };
 // M3's function is called with arguments matched by parameter NAME when it uses the standard names, so a swapped order still works
@@ -1011,7 +1083,7 @@ window.validateShot = (code, shot, tl, ck = {}) => {
   setupCode({ ...tl, shots: [] }); let fn;
   try { fn = compileShot(code); } catch (e) { return { ok: false, errors: [`SyntaxError: ${e.message}${dupHint(code, e.message)}`] }; }
   // shot.start 0 is the reel's opening; ck.uses: the assets its storyboard shows; ck.scenery: assets that are a place things stand in
-  const opening = shot.start === 0, uses = Array.isArray(ck.uses) ? ck.uses : [], scenery = new Set(ck.scenery || []), sh = { ...shot, start: 0 }, saved = TL; TL = { ...tl, total: sh.dur, shots: [sh] }; SHOTS = { 0: fn }; STRICT = true;
+  const opening = shot.start === 0, uses = Array.isArray(ck.uses) ? ck.uses : [], scenery = new Set(ck.scenery || []), sh = { ...shot, start: 0 }, saved = TL; TL = { ...tl, total: sh.dur, shots: [sh] }; SHOTS = { 0: fn }; STRICT = true; CUES = new Map(); MAPS = false;
   const errors = [], warn = [], frames = [], shotsnaps = []; let maxMs = 0, span = 0; const texts = new Map(), clash = new Map(), seenIds = new Set();
   try {
     const times = [0.25, sh.dur * 0.3, sh.dur * 0.55, sh.dur * 0.8, sh.dur - 0.15].map(x => clamp(x, 0.05, sh.dur - 0.05));
@@ -1169,13 +1241,59 @@ window.validateShot = (code, shot, tl, ck = {}) => {
       let miss = tl.d3 ? [] : uses.filter(id => ASSETS[id] && !seenIds.has(id));
       for (let tt = 0.1; miss.length && !tl.d3 && tt < sh.dur; tt += 0.25) { TRACK = { texts: [], assets: [] }; try { render(tt, { still: true }); } catch { } for (const a of TRACK.assets) if (shows(a)) seenIds.add(a.id); TRACK = null; miss = miss.filter(id => !seenIds.has(id)); }
       for (const id of miss) errors.push(`the storyboard puts "${id}" in this shot, but it is never visible: draw it with h.asset('${id}', ...) inside the frame, at 30% opacity or more and at least 3 px across (a thing too small at true scale is a bright dot with a ring around it)`);
+      // timing against the voice (2D): what shows every 0.1 s (readable words, things, the points h.label and h.measure gave)
+      if (!tl.d3) {
+        const said = saidToks(sh), nums = saidNumbers(said), scan = [], skel = s => s.trim().replace(/\d[\d,]*(?:\.\d+)?/g, '#');
+        const readable = x => !x.inAsset && x.alpha > 0.3 && x.text.trim() && x.size >= 12 && x.x1 > 0 && x.x0 < W && x.y1 > 0 && x.y0 < H; // an asset's own words (a sign's) are part of the thing
+        const frameAt = tt => { TRACK = { texts: [], assets: [] }; let f = null; try { render(tt, { still: true }); f = { t: tt, texts: TRACK.texts.filter(readable), assets: TRACK.assets, links: TRACK.links || [] }; } catch { } TRACK = null; return f; };
+        for (let tt = 0.05; tt < sh.dur - 0.02; tt += 0.1) { const f = frameAt(tt); if (f) scan.push(f); }
+        // a label or number lands with its words: on screen by 0.5 s after the voice has said them. A counter counts from its first
+        // value, and only words that stay (3 checked frames) are judged, not the values a counter rolls through
+        const first = new Map(), seen = new Map(); scan.forEach((f, i) => { for (const t of new Set(f.texts.map(x => x.text.trim()))) { if (!first.has(t)) first.set(t, i); seen.set(t, (seen.get(t) || 0) + 1); } });
+        for (const [text, i0] of first) {
+          const w = seen.get(text) >= 3 && labelWord(text, said, nums); if (!w) continue; const due = w.e + 0.5; if (due >= sh.dur - 0.05) continue;
+          const sk = skel(text), has = f => !!f && f.texts.some(x => x.text.trim() === text || (sk.includes('#') && skel(x.text) === sk));
+          let i = i0; while (i > 0 && sk.includes('#') && has(scan[i - 1])) i--;
+          if (scan[i].t <= due || has(frameAt(due))) continue;
+          texts.set('late:' + text, `the label "${text}" appears at lt=${scan[i].t.toFixed(1)}s, ${(scan[i].t - w.s).toFixed(1)} s after the voice starts saying "${w.said}" (lt=${w.s.toFixed(1)}s): a label or number lands with its words, at most 0.5 s after they are said; time it to h.cue(${JSON.stringify(w.said)}${w.n > 1 ? `, ${w.n}` : ''}), with its thing already on screen`);
+        }
+        // a label shows only while its thing is visible. Its thing: the placement(s) h.label or h.measure gave its point (within 80 px
+        // of its words), else the asset its words name (id, who or which: "Earth" for which: 'earth'). A country's name in a shot that
+        // draws the map names the country on the map, not the character who stands for it
+        const nameOf = a => { if (!a.nm) { let p = {}; try { p = JSON.parse(a.act || '{}'); } catch { } a.nm = cueNorm(`${String(a.id).replace(/[_-]+/g, ' ')} ${a.who || ''} ${p.which || ''}`); } return a.nm; };
+        const names = (ws, toks) => ws.every(w => toks.some(n => same(n, w)));
+        const known = new Map(), bad = new Map();
+        scan.forEach((f, i) => { for (const x of f.texts) {
+          const text = x.text.trim(), near = f.links.filter(l => l.at[0] > x.x0 - 80 && l.at[0] < x.x1 + 80 && l.at[1] > x.y0 - 80 && l.at[1] < x.y1 + 80); let gone = [];
+          if (near.length) gone = near.flatMap(l => l.things).filter(a => !shows(a)).map(nm);
+          else if (!/\d/.test(text) && !(MAPS && countryNamed(text))) { const ws = labelToks(text), key = ws.join(' ');
+            if (ws.length && !known.has(key)) known.set(key, [...new Set(scan.flatMap(g => g.assets.filter(a => names(ws, nameOf(a))).map(nm)))]);
+            if (ws.length && known.get(key).length && !f.assets.some(a => shows(a) && names(ws, nameOf(a)))) gone = known.get(key); }
+          if (gone.length) { const b = bad.get(text) || []; if (b[b.length - 1]?.i !== i) b.push({ i, gone }); bad.set(text, b); } } });
+        // it counts when it lasts 0.4 s (5 checked frames in a row): a thing fading in under a carried label is not one
+        for (const [text, b] of bad) for (let k = 0; k + 4 < b.length; k++) if (b[k + 4].i === b[k].i + 4) { let e = k + 4; while (b[e + 1] && b[e + 1].i === b[e].i + 1) e++;
+          texts.set('alone:' + text, `the label "${text}" shows at lt=${scan[b[k].i].t.toFixed(1)}s to ${scan[b[e].i].t.toFixed(1)}s while its thing ${[...new Set(b[k].gone)].join(', ')} is not visible: a label comes with its thing, so show the thing first and the label only while the thing shows (a label belongs to the thing h.label or h.measure placed it by, else to the asset its words name)`); break; }
+        // a cued change lands at least 0.8 s before the shot ends. It has landed when the frame looks as it does with that cue word
+        // said early (at 0.5 s: shots also clamp "cue - 0.35" at 0), or, when the cue drives motion that never settles (a camera
+        // drifting on after it arrives: saying the word at 0.5 s or 0.87 s gives different frames), when saying it 0.37 s earlier
+        // changes the frame no more than that
+        const tE = sh.dur - 0.8, snapAt = (tt, sft) => { CUE_SHIFT = sft; try { render(tt, { still: true }); return snap(); } catch { return null; } finally { CUE_SHIFT = null; } };
+        if (tE > 0.5) for (const [key, c] of [...CUES].sort((p, q) => p[1].t - q[1].t)) {
+          const landed = tt => { const f = snapAt(tt, null), g = snapAt(tt, { key, at: 0.5 }), g2 = snapAt(tt, { key, at: 0.87 }); if (!f || !g || !g2) return true;
+            const idle = diff(g, g2); if (diff(f, g) <= 0.4 + 1.5 * idle) return true; if (c.t >= tt - 0.1 || idle < 0.05) return false;
+            const fe = snapAt(tt, { key, at: Math.max(0.01, c.t - 0.37) }); return !fe || diff(f, fe) <= 0.25 + 1.5 * idle; };
+          if (landed(tE)) continue;
+          let lands = null; for (let tt = tE + 0.1; tt < sh.dur - 0.02 && lands == null; tt += 0.1) if (landed(tt)) lands = tt;
+          texts.set('cue:' + key, `the change timed to h.cue(${JSON.stringify(c.word)}${c.n > 1 ? `, ${c.n}` : ''}) (said at lt=${c.t.toFixed(1)}s) is still under way at lt=${tE.toFixed(1)}s, 0.8 s before this ${sh.dur.toFixed(1)} s shot ends${lands != null ? `, and lands at about ${lands.toFixed(1)}s` : ', and has not settled by the cut'}, so it is cut off or gone before it reads: a cued change lands at least 0.8 s before the shot ends. Time it to an earlier word where the thing first matters (or the line's start), then hold it (gentle idle motion on lt is fine)`);
+        }
+      }
       // an overlap counts when it lasts: seen in two checked frames, or still there 0.3 s before or after (a pop's overshoot is not one)
       for (const [k, c] of clash) for (const tt of [c.t - 0.3, c.t + 0.3]) if (c.n < 2 && tt > 0.05 && tt < sh.dur - 0.05) { TRACK = { texts: [], assets: [] }; try { render(tt, { still: true }); if (overlaps(tt).has(k)) c.n++; } catch { } TRACK = null; }
       for (const c of clash.values()) if (c.n >= 2) errors.push(c.m);
       errors.push(...texts.values());
       if (maxMs > 180) errors.push(`too slow: ${maxMs.toFixed(0)} ms per frame`);
     }
-  } finally { STRICT = false; TRACK = null; TL = saved; }
+  } finally { STRICT = false; TRACK = null; TL = saved; CUES = null; CUE_SHIFT = null; }
   return { ok: !errors.length, errors, stats: { frameDetail: frameDetail.map(v => +v.toFixed(2)), acts: heroAt.map(a => a && a.act), shown: [...shown], lp: lpSeen }, maxMs: +maxMs.toFixed(1), preview: frames.length ? sheet(frames, 270, 480) : null };
 };
 </script>
