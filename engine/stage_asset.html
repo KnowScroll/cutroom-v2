@@ -100,25 +100,28 @@ function saidNumbers(toks) {
       if (w === 'and' && (prev === 'h' || prev === 'S') && toks[j + 1] && 'utT'.includes(numKind(toks[j + 1].p) || 'x')) continue;
       break;
     }
-    if (last >= 0) { out.push({ v: total + cur + (dec ? +('0.' + dec) : 0), s: toks[i].s, e: toks[last].e, said: toks.slice(i, last + 1).map(x => x.p).join(' '), next: toks.slice(last + 1, last + 3).map(x => x.p) }); i = last; }
+    if (last >= 0) { out.push({ v: total + cur + (dec ? +('0.' + dec) : 0), at: i, to: last, said: toks.slice(i, last + 1).map(x => x.p).join(' ') }); i = last; }
   }
   return out;
 }
 // a label's words (no digits, no stop words): what names the thing it labels
 const labelToks = text => cueNorm(text).filter(w => w.length >= 2 && !/\d/.test(w) && !CAP_STOP.has(w));
 // when the voice says what a label shows: its number (a label with digits; the first time that value is said, preferring the time
-// it is said with the label's unit), else its words said together; {s, e, said} or null when this shot's lines never say it
+// it is said next to one of the label's words), else its words said together. {s, e, said, n} (n: which time those words are said,
+// counted as h.cue counts) or null when this shot's lines never say it
 function labelWord(text, toks, nums) {
-  const t = String(text);
+  const t = String(text), words = labelToks(t);
+  const hit = (a, b) => { const ws = toks.slice(a, b + 1).map(x => x.p); let n = 0; for (let j = 0; j <= a; j++) if (ws.every((w, k) => toks[j + k] && same(toks[j + k].p, w))) n++; return { s: toks[a].s, e: toks[b].e, said: ws.join(' '), n }; };
   if (/\d/.test(t)) {
-    const vals = [], unit = [];
-    for (const m of t.matchAll(/(\d[\d,]*(?:\.\d+)?)\s*([\p{L}]+)?/gu)) { const v = +m[1].replace(/,/g, ''), w = (m[2] || '').toLowerCase(); vals.push(v); if (SCALEW[w]) vals.push(v * SCALEW[w]); else if (w) unit.push(w); }
-    const hits = nums.filter(n => vals.some(v => Math.abs(n.v - v) <= 1e-9 * Math.max(1, Math.abs(v))));
-    return hits.find(n => unit.some(u => n.next.some(x => same(x, u)))) || hits[0] || null;
+    const vals = []; for (const m of t.matchAll(/(\d[\d,]*(?:\.\d+)?)\s*([\p{L}]+)?/gu)) { const v = +m[1].replace(/,/g, ''), w = (m[2] || '').toLowerCase(); vals.push(v); if (SCALEW[w]) vals.push(v * SCALEW[w]); }
+    // a lone "one" is often a pronoun ("no one", "this one"): it counts only next to one of the label's words ("day one" for "Day 1")
+    const near = n => [...toks.slice(Math.max(0, n.at - 2), n.at), ...toks.slice(n.to + 1, n.to + 3)].some(x => words.some(u => same(x.p, u)));
+    const hits = nums.filter(n => vals.some(v => Math.abs(n.v - v) <= 1e-9 * Math.max(1, Math.abs(v))) && (n.said !== 'one' || near(n)));
+    const n = hits.find(near) || hits[0]; return n ? hit(n.at, n.to) : null;
   }
-  const want = labelToks(t), sig = toks.filter(x => x.p.length >= 2 && !CAP_STOP.has(x.p));
-  if (!want.length) return null;
-  for (let i = 0; i + want.length <= sig.length; i++) if (want.every((w, k) => same(sig[i + k].p, w))) return { s: sig[i].s, e: sig[i + want.length - 1].e, said: sig.slice(i, i + want.length).map(x => x.p).join(' ') };
+  if (!words.length) return null;
+  const sig = toks.map((x, j) => ({ p: x.p, j })).filter(x => x.p.length >= 2 && !CAP_STOP.has(x.p));
+  for (let i = 0; i + words.length <= sig.length; i++) if (words.every((w, k) => same(sig[i + k].p, w))) return hit(sig[i].j, sig[i + words.length - 1].j);
   return null;
 }
 function mouth(sh, who, lt) { for (const ln of sh.lines) if (ln.who === who && lt >= ln.start && lt < ln.end) return (ln.env || [])[Math.floor((lt - ln.start) * 30)] || 0; return 0; }
@@ -212,8 +215,12 @@ function globeFill(parts, v, zoom, path = new Path2D()) {
   return path;
 }
 // land as ONE Path2D: ctx.fill(path, 'evenodd') (lakes such as the Caspian are holes); on a globe, inside a clip to its disc
+// a shot that draws the map (land, countries, coasts or borders; once into h.cache counts) shows the countries its labels name:
+// set while validateShot renders it
+let MAPS = false;
+const mapDrawn = () => { if (IN_SHOT) MAPS = true; };
 function landPath(v, zoom = 1) {
-  return isFlat(v) ? flatPath(geoParts(geoKey('land', v, zoom)), v, 'fill') : globeFill(geoParts(geoKey('land', v, zoom)), v, zoom);
+  mapDrawn(); return isFlat(v) ? flatPath(geoParts(geoKey('land', v, zoom)), v, 'fill') : globeFill(geoParts(geoKey('land', v, zoom)), v, zoom);
 }
 // ---------- countries: h.countryPath(names, v, zoom) fills one country or several (a historic union by its member states) ----------
 // Natural Earth's short names (as of 2020): 'Russia', 'United Kingdom', 'United States of America', 'Czechia', 'Bosnia and Herz.' ...
@@ -245,11 +252,15 @@ function countryList(names) {
   }
   return [...new Set(out)];
 }
+// whether a text names a country (or a union of them) the map data knows: "NORWAY", "the UK", "USSR"
+function countryNamed(text) {
+  const all = (window.WORLD && window.WORLD.countries50) || {}, k = String(text).trim().toLowerCase().replace(/^the\s+/, ''), a = (COUNTRY_ALIAS[k] || k).toLowerCase();
+  return !!COUNTRY_GROUPS[k] || Object.keys(all).some(n => n.toLowerCase() === a);
+}
 const countryParts = (key, n) => partsOf(key + ':' + n, ((window.WORLD && window.WORLD[key]) || {})[n]);
 function countryPath(names, v, zoom = 1) {
   const key = geoKey('countries', v, zoom), path = new Path2D();
-  if (TRACK && IN_SHOT) (TRACK.places = TRACK.places || []).push(...[].concat(names || []).map(String)); // a map label can name a country the shot draws
-  for (const n of countryList(names)) { const parts = countryParts(key, n); if (isFlat(v)) flatPath(parts, v, 'fill', path); else globeFill(parts, v, zoom, path); }
+  mapDrawn(); for (const n of countryList(names)) { const parts = countryParts(key, n); if (isFlat(v)) flatPath(parts, v, 'fill', path); else globeFill(parts, v, zoom, path); }
   return path;
 }
 // the main body of one or several countries: parts at least 4% of the biggest part's area (far islands and exclaves left out)
@@ -275,7 +286,7 @@ function countryView(names, x = W / 2, y = H / 2, w = 960, hgt = 1100, pad = 0.0
 }
 // coastlines as one Path2D of open lines, only where they face the viewer, without the data's seams at longitude 180 and the South Pole
 function coastPath(v, zoom = 1) {
-  if (isFlat(v)) return flatPath(geoParts(geoKey('land', v, zoom)), v, 'coast');
+  mapDrawn(); if (isFlat(v)) return flatPath(geoParts(geoKey('land', v, zoom)), v, 'coast');
   const path = new Path2D();
   for (const q of geoVisible(geoKey('land', v, zoom), v, zoom)) {
     const f = q.f, n = f.length / 2; let prev = null, pl = null;
@@ -288,7 +299,7 @@ function coastPath(v, zoom = 1) {
 }
 // country borders as one Path2D of open lines (land borders between two countries), only where they face the viewer
 function borderPath(v, zoom = 1) {
-  if (isFlat(v)) return flatPath(geoParts(geoKey('borders', v, zoom)), v, 'line');
+  mapDrawn(); if (isFlat(v)) return flatPath(geoParts(geoKey('borders', v, zoom)), v, 'line');
   const path = new Path2D();
   for (const q of geoVisible(geoKey('borders', v, zoom), v, zoom)) {
     const f = q.f; let down = false;
@@ -1072,7 +1083,7 @@ window.validateShot = (code, shot, tl, ck = {}) => {
   setupCode({ ...tl, shots: [] }); let fn;
   try { fn = compileShot(code); } catch (e) { return { ok: false, errors: [`SyntaxError: ${e.message}${dupHint(code, e.message)}`] }; }
   // shot.start 0 is the reel's opening; ck.uses: the assets its storyboard shows; ck.scenery: assets that are a place things stand in
-  const opening = shot.start === 0, uses = Array.isArray(ck.uses) ? ck.uses : [], scenery = new Set(ck.scenery || []), sh = { ...shot, start: 0 }, saved = TL; TL = { ...tl, total: sh.dur, shots: [sh] }; SHOTS = { 0: fn }; STRICT = true; CUES = new Map();
+  const opening = shot.start === 0, uses = Array.isArray(ck.uses) ? ck.uses : [], scenery = new Set(ck.scenery || []), sh = { ...shot, start: 0 }, saved = TL; TL = { ...tl, total: sh.dur, shots: [sh] }; SHOTS = { 0: fn }; STRICT = true; CUES = new Map(); MAPS = false;
   const errors = [], warn = [], frames = [], shotsnaps = []; let maxMs = 0, span = 0; const texts = new Map(), clash = new Map(), seenIds = new Set();
   try {
     const times = [0.25, sh.dur * 0.3, sh.dur * 0.55, sh.dur * 0.8, sh.dur - 0.15].map(x => clamp(x, 0.05, sh.dur - 0.05));
@@ -1234,7 +1245,7 @@ window.validateShot = (code, shot, tl, ck = {}) => {
       if (!tl.d3) {
         const said = saidToks(sh), nums = saidNumbers(said), scan = [], skel = s => s.trim().replace(/\d[\d,]*(?:\.\d+)?/g, '#');
         const readable = x => !x.inAsset && x.alpha > 0.3 && x.text.trim() && x.size >= 12 && x.x1 > 0 && x.x0 < W && x.y1 > 0 && x.y0 < H; // an asset's own words (a sign's) are part of the thing
-        const frameAt = tt => { TRACK = { texts: [], assets: [] }; let f = null; try { render(tt, { still: true }); f = { t: tt, texts: TRACK.texts.filter(readable), assets: TRACK.assets, links: TRACK.links || [], places: TRACK.places || [] }; } catch { } TRACK = null; return f; };
+        const frameAt = tt => { TRACK = { texts: [], assets: [] }; let f = null; try { render(tt, { still: true }); f = { t: tt, texts: TRACK.texts.filter(readable), assets: TRACK.assets, links: TRACK.links || [] }; } catch { } TRACK = null; return f; };
         for (let tt = 0.05; tt < sh.dur - 0.02; tt += 0.1) { const f = frameAt(tt); if (f) scan.push(f); }
         // a label or number lands with its words: on screen by 0.5 s after the voice has said them. A counter counts from its first
         // value, and only words that stay (3 checked frames) are judged, not the values a counter rolls through
@@ -1244,19 +1255,20 @@ window.validateShot = (code, shot, tl, ck = {}) => {
           const sk = skel(text), has = f => !!f && f.texts.some(x => x.text.trim() === text || (sk.includes('#') && skel(x.text) === sk));
           let i = i0; while (i > 0 && sk.includes('#') && has(scan[i - 1])) i--;
           if (scan[i].t <= due || has(frameAt(due))) continue;
-          texts.set('late:' + text, `the label "${text}" appears at lt=${scan[i].t.toFixed(1)}s, ${(scan[i].t - w.s).toFixed(1)} s after the voice starts saying "${w.said}" (lt=${w.s.toFixed(1)}s): a label or number lands with its words, at most 0.5 s after they are said; time it to h.cue('${w.said}'), with its thing already on screen`);
+          texts.set('late:' + text, `the label "${text}" appears at lt=${scan[i].t.toFixed(1)}s, ${(scan[i].t - w.s).toFixed(1)} s after the voice starts saying "${w.said}" (lt=${w.s.toFixed(1)}s): a label or number lands with its words, at most 0.5 s after they are said; time it to h.cue(${JSON.stringify(w.said)}${w.n > 1 ? `, ${w.n}` : ''}), with its thing already on screen`);
         }
         // a label shows only while its thing is visible. Its thing: the placement(s) h.label or h.measure gave its point (within 80 px
-        // of its words), else the asset its words name (id, who or which: "Earth" for which: 'earth'; a country the shot draws counts)
+        // of its words), else the asset its words name (id, who or which: "Earth" for which: 'earth'). A country's name in a shot that
+        // draws the map names the country on the map, not the character who stands for it
         const nameOf = a => { if (!a.nm) { let p = {}; try { p = JSON.parse(a.act || '{}'); } catch { } a.nm = cueNorm(`${String(a.id).replace(/[_-]+/g, ' ')} ${a.who || ''} ${p.which || ''}`); } return a.nm; };
-        const names = (ws, toks) => ws.every(w => toks.some(n => same(n, w))), atPlace = (ws, f) => f.places.some(p => names(ws, cueNorm(p)));
+        const names = (ws, toks) => ws.every(w => toks.some(n => same(n, w)));
         const known = new Map(), bad = new Map();
         scan.forEach((f, i) => { for (const x of f.texts) {
           const text = x.text.trim(), near = f.links.filter(l => l.at[0] > x.x0 - 80 && l.at[0] < x.x1 + 80 && l.at[1] > x.y0 - 80 && l.at[1] < x.y1 + 80); let gone = [];
           if (near.length) gone = near.flatMap(l => l.things).filter(a => !shows(a)).map(nm);
-          else if (!/\d/.test(text)) { const ws = labelToks(text), key = ws.join(' ');
-            if (ws.length && !known.has(key)) known.set(key, [...new Set(scan.flatMap(g => g.assets.filter(a => names(ws, nameOf(a))).map(nm)))].concat(scan.some(g => atPlace(ws, g)) ? ['the country'] : []));
-            if (ws.length && known.get(key).length && !f.assets.some(a => shows(a) && names(ws, nameOf(a))) && !atPlace(ws, f)) gone = known.get(key); }
+          else if (!/\d/.test(text) && !(MAPS && countryNamed(text))) { const ws = labelToks(text), key = ws.join(' ');
+            if (ws.length && !known.has(key)) known.set(key, [...new Set(scan.flatMap(g => g.assets.filter(a => names(ws, nameOf(a))).map(nm)))]);
+            if (ws.length && known.get(key).length && !f.assets.some(a => shows(a) && names(ws, nameOf(a)))) gone = known.get(key); }
           if (gone.length) { const b = bad.get(text) || []; if (b[b.length - 1]?.i !== i) b.push({ i, gone }); bad.set(text, b); } } });
         // it counts when it lasts 0.4 s (5 checked frames in a row): a thing fading in under a carried label is not one
         for (const [text, b] of bad) for (let k = 0; k + 4 < b.length; k++) if (b[k + 4].i === b[k].i + 4) { let e = k + 4; while (b[e + 1] && b[e + 1].i === b[e].i + 1) e++;
@@ -1272,7 +1284,7 @@ window.validateShot = (code, shot, tl, ck = {}) => {
             const fe = snapAt(tt, { key, at: Math.max(0.01, c.t - 0.37) }); return !fe || diff(f, fe) <= 0.25 + 1.5 * idle; };
           if (landed(tE)) continue;
           let lands = null; for (let tt = tE + 0.1; tt < sh.dur - 0.02 && lands == null; tt += 0.1) if (landed(tt)) lands = tt;
-          texts.set('cue:' + key, `the change timed to h.cue('${c.word}'${c.n > 1 ? `, ${c.n}` : ''}) (said at lt=${c.t.toFixed(1)}s) is still under way at lt=${tE.toFixed(1)}s, 0.8 s before this ${sh.dur.toFixed(1)} s shot ends${lands != null ? `, and lands at about ${lands.toFixed(1)}s` : ', and has not settled by the cut'}, so it is cut off or gone before it reads: a cued change lands at least 0.8 s before the shot ends. Time it to an earlier word where the thing first matters (or the line's start), then hold it (gentle idle motion on lt is fine)`);
+          texts.set('cue:' + key, `the change timed to h.cue(${JSON.stringify(c.word)}${c.n > 1 ? `, ${c.n}` : ''}) (said at lt=${c.t.toFixed(1)}s) is still under way at lt=${tE.toFixed(1)}s, 0.8 s before this ${sh.dur.toFixed(1)} s shot ends${lands != null ? `, and lands at about ${lands.toFixed(1)}s` : ', and has not settled by the cut'}, so it is cut off or gone before it reads: a cued change lands at least 0.8 s before the shot ends. Time it to an earlier word where the thing first matters (or the line's start), then hold it (gentle idle motion on lt is fine)`);
         }
       }
       // an overlap counts when it lasts: seen in two checked frames, or still there 0.3 s before or after (a pop's overshoot is not one)

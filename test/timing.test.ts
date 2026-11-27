@@ -3,7 +3,7 @@
 // from the investigated reels (findings §B, §C, §P.5): number tags seconds late, tags over an empty stage, changes cut off by the cut.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { body, openStage, validateShot, type Line, type Stage } from './fixtures/stage.ts';
+import { ball, body, openStage, validateShot, type Line, type Stage } from './fixtures/stage.ts';
 
 interface Said {
   v: number;
@@ -85,7 +85,7 @@ await test('a cued change that lands in the last 0.5 s of the shot is rejected; 
     if (k >= 0) h.asset('sun', 900 - 200 * h.easeOut(Math.min(1, k / 0.8)), 1150, 220 / 272);
   }`;
   const clipped =
-    /^the change timed to h\.cue\('speck'\) \(said at lt=2\.\ds\) is still under way at lt=3\.2s/;
+    /^the change timed to h\.cue\("speck"\) \(said at lt=2\.\ds\) is still under way at lt=3\.2s/;
   const r = await validateShot(stage, { code: shot('speck'), assets: [earth, sun] });
   assert.ok(has(r.errors, clipped), r.errors.join(' | '));
   const early = await validateShot(stage, { code: shot('Sun'), assets: [earth, sun] });
@@ -128,6 +128,39 @@ await test('an early label passes while its thing is visible', async () => {
     const r = await validateShot(stage, { code: tagShot('0', place), assets: [earth, sun] });
     assert.ok(!has(r.errors, /^the label "Sun" (shows|appears)/), r.errors.join(' | '));
   }
+});
+
+await test('a country label on the map is not tied to the character named after it, and "no one" is not the number 1', async () => {
+  // countryball reels: the map is on screen from the start, the country's colour and its ball come on later words
+  const map = `function draw(ctx, lt, sh, h, kit) {
+    kit.bg(ctx, lt);
+    const v = h.countryView(['Poland'], 540, 800, 900, 1000);
+    ctx.fillStyle = '#5c8a4a'; ctx.fill(h.landPath(v), 'evenodd');
+    if (lt >= h.cue('squeezed')) { ctx.fillStyle = '#c8102e'; ctx.fill(h.countryPath('Poland', v), 'evenodd'); }
+    h.asset('ball', 540, 900, 0.6 * Math.max(0, Math.min(1, (lt - h.cue('empires')) / 0.3)), { who: 'Poland' });
+    if (lt >= h.cue('Poland')) kit.title(ctx, 'POLAND', 540, 500, { size: 60 });
+  }`;
+  const poland: Line[] = [
+    {
+      who: 'narrator',
+      text: 'Poland was squeezed between two empires for a century.',
+      start: 0.3,
+      end: 3.8,
+    },
+  ];
+  const m = await validateShot(stage, { code: map, lines: poland, dur: 4.6, assets: [ball] });
+  assert.ok(!has(m.errors, /^the label "POLAND"/), m.errors.join(' | '));
+  // "one" said as a pronoun first: the tag on "day one" is on its word
+  const day = `function draw(ctx, lt, sh, h, kit) {
+    kit.bg(ctx, lt);
+    h.asset('earth', 540, 840 + 10 * lt, 200 / 272);
+    if (lt >= h.cue('day one')) kit.tag(ctx, 'Day 1', 540, 1280);
+  }`;
+  const trip: Line[] = [
+    { who: 'narrator', text: 'No one noticed it on day one of the trip.', start: 0.3, end: 3.6 },
+  ];
+  const d = await validateShot(stage, { code: day, lines: trip, dur: 4.6, assets: [earth] });
+  assert.ok(!has(d.errors, /^the label "Day 1" appears/), d.errors.join(' | '));
 });
 
 await stage.close();
