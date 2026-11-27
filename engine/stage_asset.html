@@ -1303,6 +1303,29 @@ window.validateShot = (code, shot, tl, ck = {}) => {
       let miss = tl.d3 ? [] : uses.filter(id => ASSETS[id] && !seenIds.has(id));
       for (let tt = 0.1; miss.length && !tl.d3 && tt < sh.dur; tt += 0.25) { TRACK = { texts: [], assets: [] }; try { render(tt, { still: true }); } catch { } for (const a of TRACK.assets) if (shows(a)) seenIds.add(a.id); TRACK = null; miss = miss.filter(id => !seenIds.has(id)); }
       for (const id of miss) errors.push(`the storyboard puts "${id}" in this shot, but it is never visible: draw it with h.asset('${id}', ...) inside the frame, at 30% opacity or more and at least 3 px across (a thing too small at true scale is a bright dot with a ring around it)`);
+      // continuity at the cuts (2D): the plan's "carry" says what is on screen at a cut and where. Shots are coded apart, so each is held
+      // to it: ck.carryIn (the shot before's carry) at this shot's first frame, ck.carryOut (its own) at its last. A thing is at its
+      // centre within 40 px plus 5% of its box, its scale within 15%, with the planned params; a label is readable within 60 px
+      if (!tl.d3) for (const [list, tt, side] of [[ck.carryIn, 0.05, 'in'], [ck.carryOut, sh.dur - 0.05, 'out']]) if (Array.isArray(list) && list.length) {
+        TRACK = { texts: [], assets: [] }; try { render(tt, { still: true }); } catch { } const T = TRACK; TRACK = null;
+        const at = `your ${side === 'in' ? 'first' : 'last'} frame (lt=${tt.toFixed(2)}s)`, how = side === 'in' ? 'the shot before ends with it so and this shot starts with it' : 'the next shot starts with it so';
+        const fix = side === 'in' ? 'draw it exactly so from lt = 0, already in place with no entrance, and change it only after that' : 'keep it exactly so through the last frame';
+        const pOf = a => { if (!a.ps) { try { a.ps = JSON.parse(a.sig || '{}'); } catch { a.ps = {}; } } return a.ps; }, same = (v, w) => (typeof w === 'number' ? Math.abs(+v - w) <= 0.05 * Math.max(1, Math.abs(w)) : String(v).toLowerCase() === String(w).toLowerCase());
+        for (const c of list) {
+          if (c.label != null) { const want = String(c.label).trim().toLowerCase(), xs = T.texts.filter(x => x.alpha > 0.6 && x.scale >= 0.9 && x.text.trim().toLowerCase() === want);
+            const x = xs.sort((p, q) => Math.hypot((p.x0 + p.x1) / 2 - c.x, (p.y0 + p.y1) / 2 - c.y) - Math.hypot((q.x0 + q.x1) / 2 - c.x, (q.y0 + q.y1) / 2 - c.y))[0], d = x ? Math.hypot((x.x0 + x.x1) / 2 - c.x, (x.y0 + x.y1) / 2 - c.y) : 0;
+            if (!x || d > 60) texts.set(`carry:${side}:label:${want}`, `the label "${c.label}" is carried across the cut at x ${c.x}, y ${c.y} (${how}), but ${at} ${x ? `shows it at x ${Math.round((x.x0 + x.x1) / 2)}, y ${Math.round((x.y0 + x.y1) / 2)}` : 'does not show it in full'}: ${fix}`); continue; }
+          const id = [c.look?.which, c.look?.who].find(v => v != null), all = T.assets.filter(a => a.id === c.thing && a.alpha > 0.5 && shows(a));
+          const mine = all.filter(a => id == null || [pOf(a).which, a.who].some(v => v != null && same(v, id))).sort((p, q) => Math.hypot(p.cx - c.x, p.cy - c.y) - Math.hypot(q.cx - c.x, q.cy - c.y));
+          const a = mine[0], name = `"${c.thing}"${id != null ? ` (${id})` : ''}`, plan = `at x ${c.x}, y ${c.y}, scale ${c.scale}`, k = `carry:${side}:${c.thing}:${id}`;
+          if (!a) { texts.set(k, `${name} is carried across the cut ${plan} (${how}), but ${at} does not show it${all.length ? ' (only as another thing)' : ''}: ${fix}`); continue; }
+          const sc = Math.hypot(a.tf.a, a.tf.b), d = Math.hypot(a.cx - c.x, a.cy - c.y), tol = 40 + 0.05 * a.w, bad = [];
+          if (d > tol) bad.push(`at x ${Math.round(a.cx)}, y ${Math.round(a.cy)} (${Math.round(d)} px away)`);
+          if (Math.abs(sc / c.scale - 1) > 0.15) bad.push(`at scale ${+sc.toFixed(3)}`);
+          for (const [p, v] of Object.entries(c.look || {})) if (!['which', 'who'].includes(p) && !(pOf(a)[p] != null && same(pOf(a)[p], v))) bad.push(`with ${p}: ${JSON.stringify(pOf(a)[p] ?? null)} instead of ${JSON.stringify(v)}`);
+          if (bad.length) texts.set(k, `${name} is carried across the cut ${plan}${c.look && Object.keys(c.look).length ? ` with ${JSON.stringify(c.look)}` : ''} (${how}), but ${at} draws it ${bad.join(', ')}: ${fix}`);
+        }
+      }
       // timing against the voice (2D): what shows every 0.1 s (readable words, things, the points h.label and h.measure gave)
       if (!tl.d3) {
         const said = saidToks(sh), nums = saidNumbers(said), scan = [], skel = s => s.trim().replace(/\d[\d,]*(?:\.\d+)?/g, '#');
