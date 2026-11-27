@@ -101,6 +101,8 @@ A review may return `template_patch` (§6.4). The harness applies it only if:
 
 Before applying: snapshot to `var/templates/history/<kind>/<k>.md` and write `<k>.json` (job, cut, round, patch, reason, gates and scores of the cut that triggered it; the next cut's gates and scores are added when it is reviewed). The manifest marks the template `patched`. A patched copy is used by all later jobs.
 
+2026-11-27 (#54): a patch may not widen what a template is for, so none is applied when the intake fit is not `good` or the review says `wrong_template` (§6.4). A look/motion/assets/shots patch must not re-roll the writer: when a review sends one, its story/plan/sound patches are rejected (they wait for a round of their own). A patch stays only if the cut it made ranks better (§6.5) than the cut that asked for it. One that does not, or whose cut was never reviewed (the job failed), is undone when the job ends, latest first: the working copy goes back to `<k>.md`, the entry gets `reverted: true` and the manifest's `patched` follows the restored text. Not sooner, because the job's later cuts resume from checkpoints built with the patch. A patch that a kept later patch builds on stays, and this is logged.
+
 ### 5.4 Rerun after a patch
 
 The harness deletes the checkpoints from the earliest step that reads the patched section, then reruns the engine (resume):
@@ -129,18 +131,20 @@ sync templates -> intake (M3) -> cut 1 (engine) -> gates -> review (M3)
 - A round is either a notes round or a template round, never both (a patch makes the shots regenerate anyway).
 - The last cut is reviewed too (its scores grade it); its fixes are recorded, not applied.
 - Engine crash: rerun the same command once (it resumes). Second crash: the job fails with the error; the report covers what exists. A voice refusal is not a crash: it switches the voice (§6.7) and does not count as a fix round.
+- 2026-11-27 (#54): a review with `wrong_template` makes an intake round, once per job and never when the caller named the template: intake again without that template, a new `brief.txt`, every checkpoint from facts.json deleted, and the next cut is made from the start with the new template (its notes and patches are not passed on). An approve that lists fact errors is re-asked like one with a blocking FAIL.
 
 ### 6.2 Intake
 
 One M3 call, thinking off. Input: the request, the optional `template` and `seconds`, and every working template's name and `## about`. Prompt adds cutroom's read-the-request questions (audience, goal, tone, subject kind). Output (zod-checked, one retry on bad JSON):
 `{ template: string, fit: "good" | "partial" | "none", reason: string, audience: string, goal: string, tone: string, seconds: number }`.
 A request that names a template uses it (fit is still judged). `brief.txt` = the request verbatim + three lines (audience, goal, tone); always passed with `--brief-file`.
+2026-11-27 (#54): the output adds `subject`, `subject_kind`, `covers` (the words of the chosen about that cover the subject, copied) and `excludes` (its "Not for" words the subject falls under). A fit other than `none` holds only if `covers` is found in the about and `excludes` is empty (blank, null or "none"); otherwise the answer is sent back once with why, and a second miss becomes `fit: none` on that template (D17). The goal names the question, never a predicted answer.
 
 ### 6.3 Gates
 
 Code only. Each gate: `{ name, value, threshold, pass, mode: "block" | "info" }`.
 - `format`: ffprobe 1080x1920, 30 fps, an audio stream, duration = timeline total +-0.1 s. block.
-- `shipped_failing`: engine log lines `using the last` (a shot or asset shipped failing its validator). block.
+- `shipped_failing`: engine log lines `using the last` (a shot or asset shipped failing its validator). block. 2026-11-27 (#54): plus every step that failed in the previous cut whose code (in `reel-v<n>/plan.json`) is unchanged, since a restored checkpoint or a failed redraw logs nothing; the value names the cut it failed in.
 - `voice_pitch` (>= 4 st), `music_fit` (engine PASS), `voice_over_music` (10-14 dB): from `audio.json`. block. Kokoro cannot pass `voice_pitch` (measured 2.2-3.9 st on 10 fastreel reels; it ignores tone tags), so a reel voiced by Kokoro can never be approved; it stays in the voice list as the last resort so a job still returns a cut (§6.7).
 - Frame audit, ported from cutroom `scripts/frame_audit.py` (v1.7): `same_view` <= 14 s, `frame0` detail >= 0.05, `blank` none, `balance`, `flat` <= 60%, `static_band` <= 14 s, `alive` gap <= 3 s and still <= 20%. Caption band left out per the template's `captions:` check. Fastreel's looks differ from cutroom's (dan-koe is flat by design), so per-template modes are set from the 42 local fastreel reels by the rule in D23. Per-template overrides are developer lines in the template's `## checks`: `gate <name>: off | info | <threshold>`.
   2026-11-27 (#13): the D23 rule set the modes. Each template's `info` gates are `gate <name>: info` lines in its original; every other frame gate is `block` at the thresholds above (table in #13). `blank` does not count a sample inside the engine's 0.2 s cut transition at the start of a shot after the first (orchestrator ruling, a measurement fix).
@@ -157,9 +161,12 @@ One M3 vision call per cut, separate from every maker call (it sees only the pac
 ```
 `notes` is exactly fastreel's director schema, so `--apply-notes` takes it unchanged. The prompt asks for a template patch only for a flaw the template's directions cause (it would come back on any topic); reel notes otherwise.
 
+2026-11-27 (#54): each shot's strip adds a frame at its cue word (the stage's `h.cue` timing from timeline.json) and one 0.8 s later, and a full-size frame per shot (at cue + 0.8 s, else 55%) is sent for small text; the fact sheet shows each `calc` (an opaque string) and the packet lists the claims the writer's last fact check flagged (work `script.json`). The prompt says the brief wins on facts and the template on style, adds identity and occlusion checks, and says captions are the engine's. The answer adds `fact_errors?: string[]` and `wrong_template?: string` (§6.1); a null or blank value (M3 sends empty fields rather than leaving them out) is absent, and so is a blank fact error.
+
 ### 6.5 Best cut
 
 Order: fewest blocking FAILs, then highest score sum, then the later cut. Approved with no blocking FAIL ends the job early with that cut.
+2026-11-27 (#54): a fact error blocks: approved means no blocking FAIL and no `fact_errors`, and the order is approved, then no fact error, then fewest blocking FAILs, then highest score sum, then the later cut (a factually wrong cut never beats a correct one).
 
 ### 6.6 MiniMax client
 

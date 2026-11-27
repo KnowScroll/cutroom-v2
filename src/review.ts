@@ -4,7 +4,7 @@ import path from 'node:path';
 import { z } from 'zod';
 import type { CutResult } from './engine.ts';
 import type { ContentBlock, M3Request, M3Result, Message } from './minimax.ts';
-import { gateValue, Review, type Gate, type HarnessCall } from './record.ts';
+import { gateValue, Review, type Gate, type HarnessCall, type ShippedStep } from './record.ts';
 import { sectionsOf } from './templates.ts';
 
 const PROMPT_FILE = new URL('./prompts/review.txt', import.meta.url);
@@ -24,6 +24,8 @@ const SECTIONS = [
 
 // Where in each shot fastreel's review() takes its three frames.
 const STRIP_AT = [0.2, 0.55, 0.92] as const;
+// After the cue word, the time the shot's change has to land and read (the cue-timing rule of HANDOFF T4).
+const AFTER_CUE_S = 0.8;
 
 const PlanJson = z.object({
   brief: z.string(),
@@ -34,7 +36,15 @@ const PlanJson = z.object({
       answer: z.string(),
       payoff: z.string().optional(),
       facts: z
-        .array(z.object({ id: z.string(), text: z.string(), source: z.string().optional() }))
+        .array(
+          z.object({
+            id: z.string(),
+            text: z.string(),
+            source: z.string().optional(),
+            // opaque: the writer's arithmetic as it wrote it (#45 adds units inside the string)
+            calc: z.string().optional(),
+          }),
+        )
         .optional(),
     })
     .optional(),
@@ -42,22 +52,53 @@ const PlanJson = z.object({
   shots: z.array(z.object({ point: z.string().optional(), idea: z.string() })),
 });
 
+const Line = z.object({
+  who: z.string(),
+  text: z.string(),
+  start: z.number(),
+  end: z.number(),
+  words: z.array(z.object({ w: z.string(), start: z.number(), end: z.number() })).optional(),
+});
+type Line = z.infer<typeof Line>;
+
 const TimelineJson = z.object({
   total: z.number(),
   shots: z.array(
     z.object({
       start: z.number(),
       dur: z.number(),
-      lines: z.array(
-        z.object({ who: z.string(), text: z.string(), start: z.number(), end: z.number() }),
-      ),
+      cue: z.string().optional(),
+      lines: z.array(Line),
     }),
   ),
 });
 
+// The writer's fact checks in the work folder's script.json (engine/writer.mjs writeStory: story.review).
+const FactCheck = z
+  .object({
+    problems: z
+      .array(
+        z.object({
+          shot: z.union([z.number(), z.string()]).optional(),
+          claim: z.string().optional(),
+          problem: z.string().optional(),
+          fix: z.string().optional(),
+        }),
+      )
+      .optional(),
+  })
+  .nullish();
+const ScriptJson = z.object({
+  review: z
+    .object({ factcheck: FactCheck, factcheck2: FactCheck, revised: z.boolean().optional() })
+    .nullish(),
+});
+
 export interface ReviewInput {
   /** The cut; its folder holds reel.mp4, plan.json, timeline.json and the asset sheets. */
-  cut: Pick<CutResult, 'cut' | 'dir' | 'reelPath' | 'workDir' | 'rejections' | 'failingSteps'>;
+  cut: Pick<CutResult, 'cut' | 'dir' | 'reelPath' | 'workDir' | 'rejections'>;
+  /** The steps the shipped_failing gate counted, carried-over ones included. */
+  failing: readonly ShippedStep[];
   gates: readonly Gate[];
   /** The working template folder (`var/templates`); only read. */
   templatesDir: string;
@@ -122,14 +163,112 @@ function ffmpeg(args: readonly string[]): Promise<void> {
   });
 }
 
-/** Three frames of one shot, each 270x480, side by side in one jpg (fastreel review()). */
-async function strip(reel: string, start: number, dur: number, out: string): Promise<void> {
-  const inputs = STRIP_AT.flatMap((f) => ['-ss', (start + dur * f).toFixed(2), '-i', reel]);
-  const scaled = STRIP_AT.map((_, k) => `[${String(k)}:v]scale=270:480[f${String(k)}]`).join(';');
+/** Frames of one shot (reel seconds), each 270x480, side by side in one jpg (fastreel review(), more frames). */
+async function strip(reel: string, at: readonly number[], out: string): Promise<void> {
+  const inputs = at.flatMap((t) => ['-ss', t.toFixed(2), '-i', reel]);
+  const scaled = at.map((_, k) => `[${String(k)}:v]scale=270:480[f${String(k)}]`).join(';');
+  const pads = at.map((_, k) => `[f${String(k)}]`).join('');
   await ffmpeg([
     ...['-y', '-v', 'error', ...inputs],
-    ...['-filter_complex', `${scaled};[f0][f1][f2]hstack=inputs=3`, '-frames:v', '1', out],
+    ...['-filter_complex', `${scaled};${pads}hstack=inputs=${String(at.length)}`],
+    ...['-frames:v', '1', out],
   ]);
+}
+
+/** One frame at the reel's own resolution, so small text can be read. */
+async function fullFrame(reel: string, at: number, out: string): Promise<void> {
+  await ffmpeg(['-y', '-v', 'error', '-ss', at.toFixed(2), '-i', reel, '-frames:v', '1', out]);
+}
+
+// The stage's h.cue (engine/stage_asset.html cueNorm, lineToks, cueTime): the moment a shot's lines first say the cue
+// word, from the voice's word times when they match the line's words, else from each word's share of the letters.
+const cueNorm = (s: string): string[] =>
+  s
+    .toLowerCase()
+    .replace(/[’‘]/g, "'")
+    .replace(/[^\p{L}\p{N}'\s-]/gu, ' ')
+    .replace(/-/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w !== '');
+
+function lineToks(ln: Line): { t: string; s: number }[] {
+  const toks = ln.text.split(/\s+/).filter((t) => t !== '');
+  const words = ln.words;
+  if (words !== undefined && words.length === toks.length) {
+    return toks.map((t, i) => ({ t, s: words[i]?.start ?? ln.start }));
+  }
+  const tot = toks.reduce((a, t) => a + t.length + 1, 0) || 1;
+  const dur = Math.max(0.3, ln.end - ln.start);
+  let acc = 0;
+  return toks.map((t) => {
+    const s = ln.start + (dur * acc) / tot;
+    acc += t.length + 1;
+    return { t, s };
+  });
+}
+
+/** Seconds into the shot when its lines first say `word`, or null when they never do. */
+function cueTime(lines: readonly Line[], word: string): number | null {
+  const want = cueNorm(word);
+  const all = lines.flatMap((ln) =>
+    lineToks(ln).flatMap((x) => cueNorm(x.t).map((p) => ({ p, s: x.s }))),
+  );
+  const same = (a: string, b: string): boolean =>
+    a === b ||
+    (b.length >= 4 && (a.startsWith(b) || b.startsWith(a)) && Math.abs(a.length - b.length) <= 3);
+  if (want.length === 0) return null;
+  for (let i = 0; i + want.length <= all.length; i++) {
+    if (want.every((w, k) => same(all[i + k]?.p ?? '', w))) return all[i]?.s ?? null;
+  }
+  return null;
+}
+
+interface Frame {
+  /** Seconds into the shot. */
+  t: number;
+  label: string;
+}
+
+/** fastreel's three frames plus the cue word and AFTER_CUE_S later (clamped to the shot), in time order. */
+function framesOf(shot: z.infer<typeof TimelineJson>['shots'][number]): {
+  frames: Frame[];
+  cue: string;
+} {
+  const last = Math.max(0, shot.dur - 1 / 30);
+  const frames: Frame[] = STRIP_AT.map((f) => ({
+    t: shot.dur * f,
+    label: `${String(Math.round(f * 100))}%`,
+  }));
+  if (shot.cue === undefined) return { frames, cue: 'no cue word' };
+  const at = cueTime(shot.lines, shot.cue);
+  if (at === null) return { frames, cue: `its cue word "${shot.cue}" is never said in its lines` };
+  frames.push(
+    { t: Math.min(at, last), label: `cue "${shot.cue}"` },
+    { t: Math.min(at + AFTER_CUE_S, last), label: `cue + ${String(AFTER_CUE_S)} s` },
+  );
+  return {
+    frames: frames.sort((a, b) => a.t - b.t),
+    cue: `cue word "${shot.cue}" at ${at.toFixed(2)} s`,
+  };
+}
+
+/** The last fact check the writer ran on this script: its claims may be fixed, still in the lines, or wrong. */
+async function factCheckProblems(workDir: string): Promise<string[]> {
+  let text: string;
+  try {
+    text = await readFile(path.join(workDir, 'script.json'), 'utf8');
+  } catch (e) {
+    if (e instanceof Error && 'code' in e && e.code === 'ENOENT') return [];
+    throw e;
+  }
+  const parsed = ScriptJson.safeParse(JSON.parse(text));
+  if (!parsed.success) throw new Error(`${workDir}/script.json: ${z.prettifyError(parsed.error)}`);
+  const review = parsed.data.review;
+  const last = review?.revised === true ? review.factcheck2 : review?.factcheck;
+  return (last?.problems ?? []).map(
+    (p) =>
+      `shot ${String(p.shot ?? '?')}: "${p.claim ?? ''}": ${p.problem ?? ''}${p.fix === undefined ? '' : ` (its fix: "${p.fix}")`}`,
+  );
 }
 
 async function jpeg(file: string): Promise<ContentBlock> {
@@ -191,9 +330,10 @@ function problemOf(e: unknown): string {
 }
 
 /**
- * One M3 vision review of a cut (design §6.4): the packet fastreel's review() builds plus the fact sheet, the gate
- * lines and the engine's rejections. One retry on an unusable answer; one re-ask when it approves while a blocking
- * gate FAILs. Writes `review-<n>.json` (the answer as returned) and the strips into `outDir`.
+ * One M3 vision review of a cut (design §6.4): the packet fastreel's review() builds, plus frames at each cue, a
+ * full-size frame per shot, the fact sheet with its calcs, the writer's last fact-check flags, the gate lines and the
+ * engine's rejections. One retry on an unusable answer; one re-ask when it approves while a blocking gate FAILs or
+ * while it lists fact errors. Writes `review-<n>.json` (the answer as returned) and the frames into `outDir`.
  */
 export async function reviewCut(input: ReviewInput): Promise<ReviewResult> {
   const { cut } = input;
@@ -235,31 +375,56 @@ export async function reviewCut(input: ReviewInput): Promise<ReviewResult> {
     const p = plan.shots[i];
     if (p === undefined) throw new Error(`plan.json: no shot ${String(i + 1)}`);
     const file = path.join(stripDir, `shot${String(i + 1)}.jpg`);
-    await strip(cut.reelPath, s.start, s.dur, file);
+    const { frames, cue } = framesOf(s);
+    await strip(
+      cut.reelPath,
+      frames.map((f) => s.start + f.t),
+      file,
+    );
+    // the frame where the cue's change has landed (the middle one without a cue), at full size for small text
+    const read = frames.find((f) => f.label.startsWith('cue +')) ?? {
+      t: s.dur * 0.55,
+      label: '55%',
+    };
+    const full = path.join(stripDir, `shot${String(i + 1)}-full.jpg`);
+    await fullFrame(cut.reelPath, s.start + read.t, full);
     const lines = s.lines
       .map((l) => `${l.who}: "${l.text}" (${l.start.toFixed(1)}-${l.end.toFixed(1)} s)`)
       .join(' | ');
+    const at = frames.map((f) => `${f.t.toFixed(2)} s (${f.label})`).join(', ');
     content.push(
       {
         type: 'text',
-        text: `Shot ${String(i + 1)} (${s.dur.toFixed(1)} s, ${s.start.toFixed(1)}-${(s.start + s.dur).toFixed(1)} s of the reel).${p.point ? ` Point: ${p.point}` : ''} Storyboard: ${p.idea}\nLines (times from the shot's start): ${lines}\nThree separate vertical frames at 20%, 55% and 92%:`,
+        text: `Shot ${String(i + 1)} (${s.dur.toFixed(1)} s, ${s.start.toFixed(1)}-${(s.start + s.dur).toFixed(1)} s of the reel).${p.point ? ` Point: ${p.point}` : ''} Storyboard: ${p.idea}\nLines (times from the shot's start): ${lines}\nThis shot has ${cue}. ${String(frames.length)} separate vertical frames, left to right, at ${at}:`,
       },
       await jpeg(file),
+      {
+        type: 'text',
+        text: `Shot ${String(i + 1)} at ${read.t.toFixed(2)} s (${read.label}), full size, to read every label and number:`,
+      },
+      await jpeg(full),
     );
   }
 
   const facts = story?.facts ?? [];
   const payoff = story?.payoff === undefined ? '' : ` (the payoff: ${story.payoff})`;
   const rejections = [
-    ...cut.failingSteps.map((f) => `shipped failing: ${f.step}: ${f.reason}`),
+    ...input.failing.map(
+      (f) =>
+        `shipped failing: ${f.step}: ${f.reason}${f.cut === cut.cut ? '' : ` (this code is unchanged since cut ${String(f.cut)}, where it failed)`}`,
+    ),
     ...cut.rejections,
   ];
+  const flagged = await factCheckProblems(cut.workDir);
   content.push({
     type: 'text',
     text: [
       facts.length > 0
-        ? `Fact sheet the script was written from${payoff}:\n${facts.map((f) => `- ${f.id}${f.source ? ` [${f.source}]` : ''}: ${f.text}`).join('\n')}`
+        ? `Fact sheet the script was written from${payoff}. A "calc" is the arithmetic the writer did for a derived fact; it can be wrong (a wrong number, factor or unit):\n${facts.map((f) => `- ${f.id}${f.source ? ` [${f.source}]` : ''}: ${f.text}${f.calc === undefined ? '' : ` [calc: ${f.calc}]`}`).join('\n')}`
         : 'Fact sheet: none.',
+      flagged.length > 0
+        ? `The writer's last fact check flagged these claims; the lines were then rewritten or kept, so each may be fixed, still said or shown, or a wrong flag (the brief wins):\n${flagged.map((f) => `- ${f}`).join('\n')}`
+        : "The writer's last fact check flagged nothing.",
       input.gates.length > 0
         ? `Measured gates:\n${input.gates.map((g) => `- ${gateLine(g)}`).join('\n')}`
         : 'Measured gates: none.',
@@ -299,13 +464,22 @@ export async function reviewCut(input: ReviewInput): Promise<ReviewResult> {
       );
       continue;
     }
-    if (review.approve && blocking.length > 0 && !reasked) {
+    const wrong = review.fact_errors ?? [];
+    if (review.approve && (blocking.length > 0 || wrong.length > 0) && !reasked) {
       reasked = true;
+      const why = [
+        ...(blocking.length > 0
+          ? [`these [block] gates FAIL:\n${blocking.map((l) => `- ${l}`).join('\n')}`]
+          : []),
+        ...(wrong.length > 0
+          ? [`you listed fact errors:\n${wrong.map((l) => `- ${l}`).join('\n')}`]
+          : []),
+      ];
       messages.push(
         { role: 'assistant', content: res.text },
         {
           role: 'user',
-          content: `approve is not allowed: these [block] gates FAIL:\n${blocking.map((l) => `- ${l}`).join('\n')}\nReturn the JSON object again, with notes that fix them where the reel can.`,
+          content: `approve is not allowed: ${why.join('\nand ')}\nReturn the JSON object again, with notes that fix them where the reel can.`,
         },
       );
       continue;

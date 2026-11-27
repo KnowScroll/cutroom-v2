@@ -58,6 +58,8 @@ export const HistoryEntry = z.object({
   next: z
     .object({ cut: z.number().int().positive(), gates: z.array(Gate), scores: ReviewScores })
     .nullable(),
+  /** The working copy went back to `<k>.md`: the next cut was not better (design §5.3). */
+  reverted: z.boolean().default(false),
 });
 export type HistoryEntry = z.infer<typeof HistoryEntry>;
 
@@ -461,6 +463,7 @@ export async function applyPatches(
     sha_before: sha256(before),
     sha_after: sha256(text),
     next: null,
+    reverted: false,
   } satisfies HistoryEntry);
   await mkdir(dir, { recursive: true });
   // 'wx': the history is the trail (D19), never overwritten
@@ -523,6 +526,45 @@ export async function recordNextCut(
   };
   await writeAtomic(path, `${JSON.stringify(HistoryEntry.parse(updated), null, 2)}\n`);
   return updated;
+}
+
+/**
+ * Puts the working copy back to the text before patch entry `k` (design §5.3: a patch stays only if the next cut is
+ * better) and marks the entry reverted. Only while the copy still holds that patch's result: a copy changed since (a
+ * later patch) is left alone. Returns what happened; a repeat after a resume finds the entry already reverted.
+ */
+export async function revertPatch(
+  workingDir: string,
+  kind: string,
+  k: number,
+): Promise<'reverted' | 'already' | 'changed'> {
+  const dir = historyDir(workingDir, kind);
+  const path = join(dir, `${String(k)}.json`);
+  const entry = HistoryEntry.parse(await readJson(path));
+  if (entry.reverted) return 'already';
+  const file = join(workingDir, `${kind}.md`);
+  const now = await shaOfFile(file);
+  // sha_before: a revert that stopped before its entry was marked
+  if (now !== entry.sha_after && now !== entry.sha_before) return 'changed';
+  if (now === entry.sha_after) {
+    const before = await readFile(join(dir, `${String(k)}.md`));
+    if (sha256(before) !== entry.sha_before) {
+      throw new Error(`${kind} history ${String(k)}.md does not match its sha_before`);
+    }
+    await writeAtomic(file, before);
+  }
+  const manifest = await readManifest(workingDir);
+  const record = manifest[`${kind}.md`];
+  if (record === undefined) throw new Error(`${kind}.md has no manifest record`);
+  manifest[`${kind}.md`] = {
+    source_sha256: record.source_sha256,
+    working_sha256: entry.sha_before,
+    // back to the original's text: sync may replace it again when the original changes (D15)
+    patched: entry.sha_before !== record.source_sha256,
+  };
+  await writeManifest(workingDir, manifest);
+  await writeAtomic(path, `${JSON.stringify({ ...entry, reverted: true }, null, 2)}\n`);
+  return 'reverted';
 }
 
 // ---------- checkpoint invalidation (§5.4) ----------

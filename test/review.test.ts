@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import { z } from 'zod';
 import { runCut, type CutResult } from '../src/engine.ts';
 import { createM3 } from '../src/minimax.ts';
-import type { Gate } from '../src/record.ts';
+import type { Gate, ShippedStep } from '../src/record.ts';
 import { reviewCut, type ReviewResult } from '../src/review.ts';
 import { startFakeMiniMax, type Step } from './fixtures/fake-minimax.ts';
 
@@ -35,7 +35,7 @@ const guide = [
   '## DIRECTOR\nALPHA DIRECTOR',
 ].join('\n\n');
 
-/** A cut from the fake engine (shot4 shipped failing), with the plan, sheet and reference a real cut has. */
+/** A cut from the fake engine (shot2 shipped failing), with the plan, sheet and reference a real cut has. */
 async function fakeCut(): Promise<CutResult> {
   const varDir = path.join(root, 'var');
   const runDir = path.join(varDir, 'runs', 'job1');
@@ -66,6 +66,12 @@ async function fakeCut(): Promise<CutResult> {
         facts: [
           { id: 'f1', text: 'The Sun is a star.', source: 'reference' },
           { id: 'f2', text: "The Sun's diameter is about 109 times Earth's.", source: 'reference' },
+          {
+            id: 'f3',
+            text: 'About 1.3 million Earths fit inside the Sun.',
+            source: 'derived',
+            calc: '109 * 109 * 109',
+          },
         ],
       },
       assets: [{ id: 'sun' }, { id: 'earth' }],
@@ -73,6 +79,49 @@ async function fakeCut(): Promise<CutResult> {
         { point: 'The Sun is big.', idea: 'STAGE: sun R 280 at x 540.' },
         { point: 'It is 109 Earths wide.', idea: 'A row of Earths crosses the Sun.' },
       ],
+    }),
+  );
+  // a real timeline: the cue word of each shot, and the voice's word times (shot 2's cue is never said)
+  const words = [
+    { w: 'How', start: 0.1, end: 0.15 },
+    { w: 'big', start: 0.18, end: 0.25 },
+    { w: 'is', start: 0.27, end: 0.32 },
+    { w: 'it?', start: 0.33, end: 0.4 },
+  ];
+  await writeFile(
+    path.join(r.dir, 'timeline.json'),
+    JSON.stringify({
+      total: 1,
+      shots: [
+        {
+          start: 0,
+          dur: 0.5,
+          cue: 'big',
+          lines: [{ who: 'narrator', text: 'How big is it?', start: 0.1, end: 0.4, words }],
+        },
+        { start: 0.5, dur: 0.5, cue: 'sun', lines: [] },
+      ],
+    }),
+  );
+  // the writer's two fact checks (engine/writer.mjs story.review): the revision's check is the last one
+  await writeFile(
+    path.join(r.workDir, 'script.json'),
+    JSON.stringify({
+      title: 'Big',
+      review: {
+        factcheck: { problems: [{ shot: 1, claim: 'old claim', problem: 'p', fix: 'f' }] },
+        factcheck2: {
+          problems: [
+            {
+              shot: 2,
+              claim: 'It is a hundred Earths wide.',
+              problem: 'The reference says 109.',
+              fix: 'It is one hundred and nine Earths wide.',
+            },
+          ],
+        },
+        revised: true,
+      },
     }),
   );
   const sheet = spawnSync('ffmpeg', [
@@ -135,9 +184,14 @@ const Body = z.object({
 });
 type Block = z.infer<typeof Block>;
 
+// what the job passes for cut 1: the steps its own log names
+const ownFailing: ShippedStep[] = cut.failingSteps.map((f) => ({ ...f, cut: cut.cut }));
+
 async function review(
   script: Step[],
   g: readonly Gate[] = gates,
+  which: CutResult = cut,
+  failing: readonly ShippedStep[] = ownFailing,
 ): Promise<{ result: ReviewResult | Error; bodies: z.infer<typeof Body>[]; outDir: string }> {
   const outDir = await mkdtemp(path.join(root, 'out-'));
   const fake = await startFakeMiniMax(script);
@@ -145,7 +199,15 @@ async function review(
     const m3 = createM3({ apiKey: 'k', endpoint: fake.url, retryWaitsMs: [5] });
     let result: ReviewResult | Error;
     try {
-      result = await reviewCut({ cut, gates: g, templatesDir, template: 'alpha', outDir, m3 });
+      result = await reviewCut({
+        cut: which,
+        failing,
+        gates: g,
+        templatesDir,
+        template: 'alpha',
+        outDir,
+        m3,
+      });
     } catch (e) {
       result = e instanceof Error ? e : new Error(String(e));
     }
@@ -193,33 +255,67 @@ await test('the packet: asset sheet, one strip per shot, every gate line, facts,
   assert.match(text, /Asset ids: sun, earth/);
 
   const images = blocks.filter((b) => b.type === 'image');
-  assert.equal(images.length, 3, 'one asset sheet and one strip per shot');
+  assert.equal(images.length, 5, 'one asset sheet, and per shot a strip and a full-size frame');
   const sheet = (await readFile(path.join(cut.dir, 'assets.jpg'))).toString('base64');
   assert.equal(blocks[1]?.source?.data, sheet, 'the sheet comes right after the opening text');
-  for (const shot of [1, 2]) {
+  const size = (file: string): string =>
+    String(
+      spawnSync('ffprobe', [
+        ...['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height'],
+        ...['-of', 'csv=p=0', file],
+      ]).stdout,
+    ).trim();
+  // shot 1 says its cue word, so its strip has two more frames: the cue and 0.8 s later; shot 2's cue is never said
+  for (const [shot, strip] of [
+    [1, '1350,480'],
+    [2, '810,480'],
+  ] as const) {
     const at = blocks.findIndex((b) => b.text?.startsWith(`Shot ${String(shot)} (`) === true);
     assert.ok(at > 0, `shot ${String(shot)} has its text`);
     const file = path.join(outDir, 'review-1', `shot${String(shot)}.jpg`);
     assert.equal(blocks[at + 1]?.source?.data, (await readFile(file)).toString('base64'));
-    const probe = spawnSync('ffprobe', [
-      ...['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height'],
-      ...['-of', 'csv=p=0', file],
-    ]);
-    assert.equal(String(probe.stdout).trim(), '810,480', 'three 270x480 frames side by side');
+    assert.equal(size(file), strip, 'its 270x480 frames side by side');
+    const full = path.join(outDir, 'review-1', `shot${String(shot)}-full.jpg`);
+    assert.match(blocks[at + 2]?.text ?? '', /full size, to read every label and number/);
+    assert.equal(blocks[at + 3]?.source?.data, (await readFile(full)).toString('base64'));
+    assert.equal(size(full), '1080,1920', 'the full-size frame keeps the reel resolution');
   }
   assert.match(
     text,
     /Shot 1 \(0\.5 s, 0\.0-0\.5 s of the reel\)\. Point: The Sun is big\. Storyboard: STAGE/,
   );
-  assert.match(text, /narrator: "How big is it\?" \(0\.1-0\.9 s\)/);
+  assert.match(text, /narrator: "How big is it\?" \(0\.1-0\.4 s\)/);
+  // the cue time is the voice's time of the word "big"; cue + 0.8 s is past the shot, so it is the shot's last frame
+  assert.match(
+    text,
+    /This shot has cue word "big" at 0\.18 s\. 5 separate vertical frames, left to right, at 0\.10 s \(20%\), 0\.18 s \(cue "big"\), 0\.28 s \(55%\), 0\.46 s \(92%\), 0\.47 s \(cue \+ 0\.8 s\):/,
+  );
+  assert.match(text, /Shot 1 at 0\.47 s \(cue \+ 0\.8 s\), full size/);
+  assert.match(text, /its cue word "sun" is never said in its lines\. 3 separate vertical frames/);
+  assert.match(text, /Shot 2 at 0\.28 s \(55%\), full size/);
 
   assert.match(text, /- PASS format \[block\]: 1080x1920 30 fps/);
   assert.match(text, /- FAIL shipped_failing \[block\]: 1 \(threshold 0\)/);
   assert.match(text, /- FAIL same_view \[info\]: 20\.5 \(threshold 14\)/);
   assert.match(text, /- PASS alive \[info\]: gap_s 1\.2, still 0\.1 \(threshold null\)/);
   assert.match(text, /\(the payoff: f2\)/);
-  assert.match(text, /- f2 \[reference\]: The Sun's diameter is about 109 times Earth's\./);
-  assert.match(text, /- shipped failing: shot4: after kit\.bg you paint/);
+  assert.match(text, /- f2 \[reference\]: The Sun's diameter is about 109 times Earth's\.\n/);
+  assert.match(
+    text,
+    /A "calc" is the arithmetic the writer did for a derived fact; it can be wrong/,
+  );
+  assert.match(
+    text,
+    /- f3 \[derived\]: About 1\.3 million Earths fit inside the Sun\. \[calc: 109 \* 109 \* 109\]/,
+  );
+  // the revision's fact check is the last one the writer ran
+  assert.match(
+    text,
+    /The writer's last fact check flagged these claims.*\n- shot 2: "It is a hundred Earths wide\.": The reference says 109\. \(its fix: "It is one hundred and nine Earths wide\."\)/,
+  );
+  assert.ok(!text.includes('old claim'), "the first check's flags were revised");
+  assert.match(text, /- shipped failing: shot2: after kit\.bg you paint/);
+  assert.ok(!text.includes('unchanged since'), "this cut's own failing step");
   assert.match(text, /- kit attempt 1: rejected: makeKit failed/);
   assert.equal(blocks.at(-1)?.text?.endsWith('Return only the JSON object.'), true);
 
@@ -324,4 +420,45 @@ await test('approve with only an info FAIL is not asked again', async () => {
   const r = ok(result);
   assert.equal(r.reasked, false);
   assert.equal(r.review.approve, true);
+});
+
+await test('a failing step carried from an earlier cut is named with the cut it failed in', async () => {
+  const carried: ShippedStep[] = [
+    { step: 'shot2', reason: 'after kit.bg you paint a solid rectangle', cut: 1 },
+  ];
+  const { result, bodies } = await review([answer(valid)], gates, { ...cut, cut: 2 }, carried);
+  ok(result);
+  const [body] = bodies;
+  assert.ok(body !== undefined);
+  const text = packet(body)
+    .map((b) => b.text ?? '')
+    .join('\n');
+  assert.match(
+    text,
+    /- shipped failing: shot2: after kit\.bg you paint a solid rectangle \(this code is unchanged since cut 1, where it failed\)/,
+  );
+});
+
+await test('fact errors and a wrong_template verdict are read; an approve that lists fact errors is asked again', async () => {
+  const infoOnly = gates.filter((g) => g.name !== 'shipped_failing');
+  const wrong = {
+    ...valid,
+    fact_errors: ['shot 2, 0.1 s: "a hundred Earths wide"; true: 109'],
+    wrong_template: 'the template draws only flat maps',
+  };
+  const saved = await review([answer(wrong)], infoOnly);
+  assert.deepEqual(ok(saved.result).review, wrong);
+  assert.equal(saved.bodies.length, 1);
+
+  const approving = { ...approved, fact_errors: wrong.fact_errors };
+  const asked = await review([answer(approving), answer(wrong)], infoOnly);
+  assert.equal(asked.bodies.length, 2);
+  const r = ok(asked.result);
+  assert.equal(r.reasked, true);
+  assert.deepEqual(r.review, wrong);
+  const [, again] = asked.bodies;
+  assert.ok(again !== undefined);
+  const ask = lastUser(again);
+  assert.match(ask, /approve is not allowed: you listed fact errors:\n- shot 2, 0\.1 s/);
+  assert.ok(!ask.includes('[block] gates FAIL'), 'no blocking gate FAILs here');
 });

@@ -5,7 +5,7 @@
 //   FAKE_ENGINE_CRASH=once|always   exit 1 mid-run (once: only the first invocation for this --out)
 //   FAKE_ENGINE_CRASH_CUT=<n>       FAKE_ENGINE_CRASH applies to cut n only
 //   FAKE_ENGINE_CRASH_EARLY=1       the crash comes before the first model call (no calls.json written)
-//   FAKE_ENGINE_FAILING_SHOT=<cuts> ship shot4 although no attempt passed (real log lines)
+//   FAKE_ENGINE_FAILING_SHOT=<cuts> ship shot2 although no attempt passed (real log lines)
 //   FAKE_ENGINE_REFUSE=<keys,...>   refuse these --voice-model keys with the engine's own error format
 //   FAKE_ENGINE_REFUSE_STATUS=402   HTTP status of that refusal (default 402)
 //   FAKE_ENGINE_SLEEP_MS=n          wait before writing outputs
@@ -187,8 +187,8 @@ log('shot2 attempt 1: rejected: fake check failed');
 if (inCut('FAKE_ENGINE_FAILING_SHOT')) {
   const reason =
     'after kit.bg you paint a solid rectangle over 92% of the frame, which hides the background';
-  log(`shot4 attempt 1: rejected: ${reason}`);
-  log(`shot4: no attempt passed every check; using the last one that runs (it failed: ${reason})`);
+  log(`shot2 attempt 1: rejected: ${reason}`);
+  log(`shot2: no attempt passed every check; using the last one that runs (it failed: ${reason})`);
 }
 
 fs.mkdirSync(dir, { recursive: true });
@@ -265,6 +265,11 @@ if (inCut('FAKE_ENGINE_NULL_PITCH')) {
   };
 }
 write(path.join(dir, 'timeline.json'), timeline);
+// like the engine, the cut's plan.json holds the code it shipped for the kit, each asset and each shot
+const code = (name) => {
+  const f = path.join(work, name);
+  return fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : null;
+};
 write(path.join(dir, 'plan.json'), {
   brief,
   seconds,
@@ -274,10 +279,11 @@ write(path.join(dir, 'plan.json'), {
     payoff: 'f1',
     facts: [{ id: 'f1', text: 'It is very big.', source: 'reference' }],
   },
-  assets: [{ id: 'sun' }],
+  kit: code('kit.js'),
+  assets: [{ id: 'sun', code: code('asset_sun.js') }],
   shots: [
-    { point: 'It is big.', idea: 'STAGE: a big circle.' },
-    { point: 'Very big.', idea: 'A small circle beside it.' },
+    { point: 'It is big.', idea: 'STAGE: a big circle.', code: code('shot_1.js') },
+    { point: 'Very big.', idea: 'A small circle beside it.', code: code('shot_2.js') },
   ],
 });
 const sheet = spawnSync(

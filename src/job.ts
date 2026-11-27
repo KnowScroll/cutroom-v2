@@ -14,18 +14,29 @@ import {
   type Spent,
   type VoiceRefused,
 } from './engine.ts';
-import { basicGates } from './gates/basic.ts';
-import { frameGates, frameSetup, measureFrames, readShots } from './gates/frames.ts';
+import { basicGates, shippedFailing } from './gates/basic.ts';
+import {
+  frameGates,
+  frameSetup,
+  measureFrames,
+  readShots,
+  type FrameSetup,
+} from './gates/frames.ts';
 import { runIntake } from './intake.ts';
 import type { M3Request, M3Result } from './minimax.ts';
 import {
   appendEvent,
   appendIndex,
+  blockingFails,
   claimJob,
   createJob,
+  factErrors,
   gateValue,
+  intakeOf,
+  isApproved,
   readJob,
   runDir,
+  scoreSum,
   setJobStage,
   setJobStatus,
   writeReport,
@@ -46,13 +57,16 @@ import { reviewCut } from './review.ts';
 import { readLoop, writeLoop, type LoopState } from './loop.ts';
 import {
   PATCHABLE_SECTIONS,
+  RERUN_FROM,
   applyPatches,
   findAppliedPatch,
   invalidateCheckpoints,
   recordNextCut,
+  revertPatch,
   syncTemplates,
   type PatchResult,
   type PatchableSection,
+  type RejectedPatch,
 } from './templates.ts';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
@@ -95,20 +109,28 @@ function sha256(data: string | Buffer): string {
   return createHash('sha256').update(data).digest('hex');
 }
 
-function blockingFails(cut: CutRecord): number {
-  return cut.gates.filter((g) => g.mode === 'block' && !g.pass).length;
+/**
+ * Design §6.5, below 0 when `a` ranks before `b`: approved first, then no fact error (a factual error blocks like a
+ * gate, and a wrong cut never beats a correct one), then fewest blocking FAILs, then the highest score sum (an
+ * unreviewed cut has none).
+ */
+function compareCuts(a: CutRecord, b: CutRecord): number {
+  const keys = (c: CutRecord): number[] => [
+    isApproved(c) ? 0 : 1,
+    factErrors(c).length > 0 ? 1 : 0,
+    blockingFails(c),
+    -(scoreSum(c) ?? 0),
+  ];
+  const ka = keys(a);
+  const kb = keys(b);
+  for (let i = 0; i < ka.length; i++) {
+    const d = (ka[i] ?? 0) - (kb[i] ?? 0);
+    if (d !== 0) return d;
+  }
+  return 0;
 }
 
-/** Approved means the review approved and no blocking gate FAILs (design §6.5); a re-asked approve is not enough. */
-function isApproved(cut: CutRecord): boolean {
-  return cut.review?.approve === true && blockingFails(cut) === 0;
-}
-
-function scoreSum(cut: CutRecord): number | null {
-  return cut.review === null ? null : Object.values(cut.review.scores).reduce((a, b) => a + b, 0);
-}
-
-/** Design §6.5: fewest blocking FAILs, then the highest score sum (an unreviewed cut has none), then the later cut. */
+/** Design §6.5: the order of compareCuts, then the later cut. */
 export function bestCut(cuts: readonly CutRecord[]): CutRecord | undefined {
   let best: CutRecord | undefined;
   for (const c of cuts) {
@@ -116,9 +138,8 @@ export function bestCut(cuts: readonly CutRecord[]): CutRecord | undefined {
       best = c;
       continue;
     }
-    const fails = blockingFails(c) - blockingFails(best);
-    const score = (scoreSum(c) ?? 0) - (scoreSum(best) ?? 0);
-    if (fails < 0 || (fails === 0 && (score > 0 || (score === 0 && c.n > best.n)))) best = c;
+    const d = compareCuts(c, best);
+    if (d < 0 || (d === 0 && c.n > best.n)) best = c;
   }
   return best;
 }
@@ -285,6 +306,39 @@ function restoreRound(state: LoopState): Round | null {
   };
 }
 
+/**
+ * Design §5.3 when a job ends: every patch it applied whose next cut was not better, or was never reviewed (the job
+ * failed first), goes out of the working copy, latest first so each finds its own result there. Not sooner: the job's
+ * later cuts resume from checkpoints built with the patch. A patch that a kept later patch builds on stays (logged).
+ */
+async function revertUnkept(
+  workingDir: string,
+  cuts: readonly CutRecord[],
+  rounds: readonly FixRound[],
+  event: (stage: string, name: string, data: unknown) => Promise<void>,
+  log: (line: string) => void,
+): Promise<void> {
+  for (const r of [...rounds].reverse()) {
+    const p = r.patch;
+    if (p === null || p.kept === true) continue;
+    // round n patches the template cut n was made with
+    const kind = cuts.find((c) => c.n === r.n)?.template;
+    if (kind === undefined) throw new Error(`round ${String(r.n)} has no cut ${String(r.n)}`);
+    const res = await revertPatch(workingDir, kind, p.k);
+    p.reverted = res !== 'changed';
+    const why =
+      p.kept === false
+        ? `cut ${String(r.cut)} was not better than cut ${String(r.n)}`
+        : `cut ${String(r.cut)} was never reviewed`;
+    await event('round', p.reverted ? 'patch.reverted' : 'patch.not_reverted', {
+      k: p.k,
+      round: r.n,
+      why: p.reverted ? why : `${why}, but a later patch builds on it; left in the working copy`,
+    });
+    if (p.reverted) log(`template patch ${String(p.k)} reverted: ${why}`);
+  }
+}
+
 /** A new job, or the queued / running job `options.jobId` names (a running one is a resume). */
 async function openJob(
   varDir: string,
@@ -316,9 +370,75 @@ interface RoundInput {
   cut: CutRecord;
   review: Review;
   voice: { from: string; to: string } | null;
+  /** The intake fit of the template cut n was made with: a patch may not widen a template to a request it does not fit. */
+  fit: Intake['fit'];
   /** Notes rounds since the last template round: a template round's rerun drops their changes. */
   notesRounds: readonly number[];
   event: (stage: string, name: string, data: unknown) => Promise<void>;
+}
+
+const isPatchable = (s: string): s is PatchableSection =>
+  (PATCHABLE_SECTIONS as readonly string[]).includes(s);
+
+function newRound(i: RoundInput): FixRound {
+  return {
+    n: i.n,
+    cut: i.n + 1,
+    kind: 'notes',
+    intake: null,
+    notes_file: null,
+    ignored_notes: [],
+    patch: null,
+    rejected_patches: [],
+    drops_rounds: [],
+    voice: i.voice,
+    changed: null,
+    unchanged: null,
+  };
+}
+
+/**
+ * Design §5.3 round rules for a review's patches, before any is applied: none when the template does not fit the
+ * request or the review calls it the wrong template (a patch would widen what it is for); and a look/shots patch must
+ * not re-roll the writer, so writer-section patches (story, plan, sound) wait when production patches come with them.
+ */
+function screenPatches(
+  patches: readonly TemplatePatch[],
+  i: RoundInput,
+): { keep: TemplatePatch[]; rejected: RejectedPatch[] } {
+  if (i.review.wrong_template !== undefined || i.fit !== 'good') {
+    const why =
+      i.review.wrong_template !== undefined
+        ? 'the review found the template wrong for this request'
+        : `the intake fit is "${i.fit}"`;
+    return {
+      keep: [],
+      rejected: patches.map((patch) => ({
+        patch,
+        reason: `${why}: a patch may not widen what the template is for`,
+      })),
+    };
+  }
+  const section = (p: TemplatePatch): string => p.section.trim().toLowerCase();
+  const rerunFrom = (p: TemplatePatch): string | undefined => {
+    const s = section(p);
+    return isPatchable(s) ? RERUN_FROM[s] : undefined;
+  };
+  // sections read before the production plan (design §5.4): their checkpoints are the writer's
+  const writer = (p: TemplatePatch): boolean => {
+    const from = rerunFrom(p);
+    return from !== undefined && from !== 'plan.json';
+  };
+  if (!patches.some((p) => rerunFrom(p) === 'plan.json')) {
+    return { keep: [...patches], rejected: [] };
+  }
+  return {
+    keep: patches.filter((p) => !writer(p)),
+    rejected: patches.filter(writer).map((patch) => ({
+      patch,
+      reason: `a look/shots patch must not re-roll the writer: the ${section(patch)} patch waits for a round of its own`,
+    })),
+  };
 }
 
 /**
@@ -332,9 +452,7 @@ async function appliedOrApply(
 ): Promise<PatchResult> {
   const prior = await findAppliedPatch(i.workingDir, i.kind, i.job, i.n);
   if (prior !== null) {
-    const sections = prior.patches
-      .map((p) => p.section.trim().toLowerCase())
-      .filter((s): s is PatchableSection => (PATCHABLE_SECTIONS as readonly string[]).includes(s));
+    const sections = prior.patches.map((p) => p.section.trim().toLowerCase()).filter(isPatchable);
     return { k: prior.k, applied: prior.patches, rejected: prior.rejected, sections };
   }
   return applyPatches(i.workingDir, i.kind, patches, {
@@ -348,33 +466,68 @@ async function appliedOrApply(
 }
 
 /**
+ * Round n after a review that found the template cannot show the subject (design §6.1, once per job): intake again
+ * without that template, a new brief.txt, and every checkpoint from the facts on deleted, so the next cut is made from
+ * the start with the new template. The review's notes and patches were for the old template: none is passed on.
+ */
+async function planIntakeRound(
+  i: RoundInput,
+  why: string,
+  intakeOpts: { seconds: number | undefined; m3: (req: M3Request) => Promise<M3Result> },
+): Promise<Round> {
+  const record = newRound(i);
+  record.kind = 'intake';
+  const result = await runIntake({
+    request: i.request,
+    seconds: intakeOpts.seconds,
+    exclude: { template: i.kind, why },
+    templatesDir: i.workingDir,
+    m3: intakeOpts.m3,
+  });
+  record.intake = result.intake;
+  await writeFile(path.join(i.runDir, 'brief.txt'), result.brief);
+  const inv = await invalidateCheckpoints(i.workDir, ['story']);
+  record.drops_rounds = [...i.notesRounds];
+  record.ignored_notes = noteList(i.review.notes).map((t) => `${t}: skipped by the intake round`);
+  record.rejected_patches = screenPatches(i.review.template_patch ?? [], i).rejected;
+  await i.event('round', 'intake.again', {
+    round: i.n,
+    from: i.kind,
+    why,
+    intake: result.intake,
+    deleted: inv.deleted,
+  });
+  return { record, notes: null, patches: null, before: null };
+}
+
+/**
  * Round n after the review of cut n (design §6.1): a valid template patch makes a template round (patch, invalidate,
  * rerun with no notes); otherwise the notes make a notes round (notes-<n+1>.json for --apply-notes); a voice_pitch
  * switch alone makes a voice round. `none`: no valid fix (why), the loop stops.
  */
 async function planRound(i: RoundInput): Promise<Round | { none: string }> {
-  const record: FixRound = {
-    n: i.n,
-    cut: i.n + 1,
-    kind: 'notes',
-    notes_file: null,
-    ignored_notes: [],
-    patch: null,
-    rejected_patches: [],
-    drops_rounds: [],
-    voice: i.voice,
-    changed: null,
-    unchanged: null,
-  };
+  const record = newRound(i);
   const patches = i.review.template_patch ?? [];
   if (patches.length > 0) {
-    const res = await appliedOrApply(i, patches);
-    record.rejected_patches = res.rejected;
-    for (const r of res.rejected) await i.event('round', 'patch.rejected', { round: i.n, ...r });
+    const screened = screenPatches(patches, i);
+    const res: PatchResult =
+      screened.keep.length > 0
+        ? await appliedOrApply(i, screened.keep)
+        : { k: null, applied: [], rejected: [], sections: [] };
+    record.rejected_patches = [...screened.rejected, ...res.rejected];
+    for (const r of record.rejected_patches) {
+      await i.event('round', 'patch.rejected', { round: i.n, ...r });
+    }
     if (res.k !== null) {
       const inv = await invalidateCheckpoints(i.workDir, res.sections);
       record.kind = 'template';
-      record.patch = { k: res.k, from: inv.from, deleted: inv.deleted };
+      record.patch = {
+        k: res.k,
+        from: inv.from,
+        deleted: inv.deleted,
+        kept: null,
+        reverted: false,
+      };
       record.drops_rounds = [...i.notesRounds];
       // a round is never both (§6.1): the patch makes the shots regenerate anyway
       record.ignored_notes = noteList(i.review.notes).map(
@@ -573,13 +726,22 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
       await event('sync', 'job.resume', { cuts: cuts.length, rounds: rounds.length });
       log(`resuming after ${String(cuts.length)} cut(s)`);
     }
-    const kind = intake.template;
-    const seconds = intake.seconds;
+    const firstIntake = intake;
     const briefFile = path.join(dir, 'brief.txt');
-    // ## checks may not be patched (D16), so the setup holds for every cut (and is recomputed on resume); a bad gate
-    // line stops the job here, before the engine spends anything
-    const frames = frameSetup(await readFile(path.join(workingDir, `${kind}.md`), 'utf8'));
-    await event('gates', 'gates.setup', frames);
+    // ## checks may not be patched (D16), so a template's setup holds for every cut made with it (recomputed on resume
+    // and after an intake round); a bad gate line stops the job before the engine spends anything on that template
+    const setups = new Map<string, FrameSetup>();
+    const framesFor = async (k: string): Promise<FrameSetup> => {
+      const known = setups.get(k);
+      if (known !== undefined) return known;
+      const s = frameSetup(await readFile(path.join(workingDir, `${k}.md`), 'utf8'));
+      setups.set(k, s);
+      await event('gates', 'gates.setup', s);
+      return s;
+    };
+    // one intake round per job (design §6.1), and none when the caller named the template
+    const reintakeLeft = (): boolean =>
+      options.request.template === undefined && !rounds.some((r) => r.kind === 'intake');
 
     const untried = (): VoiceModelKey | undefined =>
       config.voiceModels.find((m) => !tried.has(m) && !ruledOut.has(m));
@@ -600,6 +762,10 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
     const workDir = path.join(dir, 'reel-work');
     for (let n = startN; ; n++) {
       await stage(`cut-${String(n)}`);
+      const cutIntake = intakeOf({ intake: firstIntake, rounds }, n) ?? firstIntake;
+      const kind = cutIntake.template;
+      const seconds = cutIntake.seconds;
+      const frames = await framesFor(kind);
       const resumed = cuts.find((c) => c.n === n);
       let record: CutRecord;
       let cut: CutResult | undefined;
@@ -697,6 +863,7 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
             ...cut.failingSteps.map((f) => `shipped failing: ${f.step}: ${f.reason}`),
             ...cut.rejections,
           ],
+          shipped_failing: [],
           credits: await readFile(cut.creditsPath, 'utf8'),
         };
         cuts.push(record);
@@ -717,7 +884,15 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
         cut ??= await parseOutputs(dir, n, path.join(dir, `engine-${String(n)}.log`));
         await stage('gates');
         const measures = await measureFrames(cut.reelPath, frames.band, await readShots(cut.dir));
-        record.gates = [...(await basicGates(cut)), ...frameGates(measures, frames.settings)];
+        const prev = cuts.find((c) => c.n === n - 1);
+        record.shipped_failing = await shippedFailing(
+          cut,
+          prev === undefined ? null : { dir: prev.dir, failing: prev.shipped_failing },
+        );
+        record.gates = [
+          ...(await basicGates(cut, record.shipped_failing)),
+          ...frameGates(measures, frames.settings),
+        ];
         await event('gates', 'gates.done', { cut: n, gates: record.gates, frames: measures });
         log(
           `gates: ${record.gates.map((g) => `${g.name} ${g.pass ? 'pass' : 'FAIL'}${g.mode === 'info' ? ' (info)' : ''}`).join(', ')}`,
@@ -726,6 +901,7 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
         await stage(`review-${String(n)}`);
         const reviewed = await reviewCut({
           cut,
+          failing: record.shipped_failing,
           gates: record.gates,
           templatesDir: workingDir,
           template: kind,
@@ -747,13 +923,23 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
       }
       // recordNextCut rewrites the entry's `next`, so a resume may repeat it
       const patched = made?.record.patch ?? null;
-      if (patched !== null) {
+      const asked = cuts.find((c) => c.n === made?.record.n);
+      if (patched !== null && asked !== undefined) {
         await recordNextCut(workingDir, kind, patched.k, {
           cut: n,
           gates: record.gates,
           scores: review.scores,
         });
-        await event('round', 'patch.graded', { k: patched.k, cut: n });
+        // design §5.3: a patch stays only if the cut it made ranks better than the cut that asked for it; one that
+        // does not is undone when the job ends (revertUnkept), since this job's later cuts resume from its checkpoints
+        patched.kept = compareCuts(record, asked) < 0;
+        await event('round', 'patch.graded', {
+          k: patched.k,
+          cut: n,
+          than: asked.n,
+          better: patched.kept,
+        });
+        await save();
       }
 
       if (isApproved(record)) {
@@ -778,7 +964,7 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
           ruled_out: [...ruledOut],
         });
       }
-      const planned = await planRound({
+      const roundInput: RoundInput = {
         n,
         job: id,
         request: options.request.request,
@@ -789,9 +975,28 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
         cut: record,
         review,
         voice: pitchFails && next !== undefined ? { from: voiceKey, to: next } : null,
+        fit: cutIntake.fit,
         notesRounds,
         event,
-      });
+      };
+      const wrongTemplate = review.wrong_template;
+      if (wrongTemplate !== undefined && !reintakeLeft()) {
+        await event('round', 'intake.not_again', {
+          cut: n,
+          why: wrongTemplate,
+          because:
+            options.request.template === undefined
+              ? 'this job already had its intake round'
+              : 'the caller named the template',
+        });
+      }
+      const planned =
+        wrongTemplate !== undefined && reintakeLeft()
+          ? await planIntakeRound(roundInput, wrongTemplate, {
+              seconds: options.request.seconds,
+              m3: counted,
+            })
+          : await planRound(roundInput);
       if ('none' in planned) {
         loopEnd = `no valid fix after cut ${String(n)} (${planned.none})${reasked ? '; the review was asked again after approving with a blocking gate FAIL' : ''}`;
         await event('round', 'round.none', { cut: n, why: planned.none });
@@ -810,11 +1015,12 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
         await event('round', 'voice.switch', sw);
       }
       if (made.record.kind === 'notes') notesRounds.push(n);
-      if (made.record.kind === 'template') notesRounds = [];
+      if (made.record.kind === 'template' || made.record.kind === 'intake') notesRounds = [];
       await save();
       await event('round', 'round.planned', made.record);
+      const to = made.record.intake === null ? '' : ` -> ${made.record.intake.template}`;
       log(
-        `round ${String(n)}: ${made.record.kind}${made.record.voice === null ? '' : `, voice ${made.record.voice.from} -> ${made.record.voice.to}`}`,
+        `round ${String(n)}: ${made.record.kind}${to}${made.record.voice === null ? '' : `, voice ${made.record.voice.from} -> ${made.record.voice.to}`}`,
       );
     }
   } catch (e) {
@@ -823,6 +1029,14 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
     loopEnd = `stopped by an error after ${String(cuts.length)} cut(s)`;
     await event('error', 'job.error', { error });
     log(`error: ${error}`);
+  }
+  try {
+    await revertUnkept(workingDir, cuts, rounds, event, log);
+  } catch (e) {
+    const why = `template patch revert failed: ${describe(e)}`;
+    error ??= why;
+    await event('error', 'job.error', { error: why });
+    log(`error: ${why}`);
   }
   await event('done', 'loop.end', { reason: loopEnd, cuts: cuts.length, rounds: rounds.length });
 
@@ -873,12 +1087,13 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
 function selectionWhy(chosen: CutRecord, cuts: number, approved: boolean): string {
   if (approved) return 'approved by the review with no blocking gate FAIL';
   const fails = blockingFails(chosen);
+  const wrong = factErrors(chosen).length;
   const sum = scoreSum(chosen);
   const review =
     chosen.review === null
       ? 'not reviewed'
       : chosen.review.approve
-        ? 'review approve overruled by the gates'
+        ? 'review approve overruled by the gates or its fact errors'
         : 'review wants fixes';
-  return `best of ${String(cuts)} cut(s) by fewest blocking gate FAILs, then highest score sum, then the later cut: ${String(fails)} blocking gate FAIL(s), score sum ${sum === null ? 'none' : String(sum)}, ${review}`;
+  return `best of ${String(cuts)} cut(s) by no fact error, then fewest blocking gate FAILs, then highest score sum, then the later cut: ${String(wrong)} fact error(s), ${String(fails)} blocking gate FAIL(s), score sum ${sum === null ? 'none' : String(sum)}, ${review}`;
 }

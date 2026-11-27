@@ -45,6 +45,10 @@ const intake = reply({
   template: 'alpha',
   fit: 'good',
   reason: 'fits',
+  subject: 'the Sun, a star',
+  subject_kind: 'data',
+  covers: 'ALPHA ABOUT',
+  excludes: '',
   audience: 'curious adults',
   goal: 'show the size',
   tone: 'wondering',
@@ -58,6 +62,8 @@ const answer = (
     scores?: ReviewScores;
     notes?: ReviewNotes;
     patch?: TemplatePatch[];
+    facts?: string[];
+    wrongTemplate?: string;
   } = {},
 ): Step => {
   const approve = o.approve ?? false;
@@ -67,6 +73,8 @@ const answer = (
     scores: o.scores ?? SCORES,
     notes: o.notes ?? (approve ? {} : NOTES),
     ...(o.patch === undefined ? {} : { template_patch: o.patch }),
+    ...(o.facts === undefined ? {} : { fact_errors: o.facts }),
+    ...(o.wrongTemplate === undefined ? {} : { wrong_template: o.wrongTemplate }),
   });
 };
 const review = (approve: boolean): Step => answer({ approve });
@@ -274,7 +282,7 @@ await test('audio gates read audio.json: a null pitch and a shipped-failing shot
   assert.equal(by('voice_pitch')?.pass, false);
   assert.equal(by('voice_pitch')?.value, null);
   assert.equal(by('shipped_failing')?.pass, false);
-  assert.match(gateValue(by('shipped_failing')?.value ?? null), /shot4/);
+  assert.match(gateValue(by('shipped_failing')?.value ?? null), /shot2/);
   assert.equal(by('music_fit')?.pass, true);
   assert.equal(by('voice_over_music')?.pass, true);
   assert.equal(by('format')?.pass, true);
@@ -606,6 +614,9 @@ await test('a template round deletes the invalidated checkpoints and passes no n
   assert.equal(entry.round, 2);
   assert.equal(entry.next?.cut, 3);
   assert.deepEqual(entry.next.scores, SCORES);
+  // cut 3 (approved) ranks better than cut 2, which asked for the patch: it stays
+  assert.equal(r.patch.kept, true);
+  assert.equal(entry.reverted, false);
   const names = (await readEvents(varDir, run.id)).map((e) => e.event);
   for (const e of ['patch.applied', 'patch.drops_notes', 'notes.skipped', 'patch.graded']) {
     assert.ok(names.includes(e), e);
@@ -635,6 +646,310 @@ await test('an invalid patch and no notes is no valid fix: the loop stops', asyn
   const { run } = await job([intake, answer({ notes: {}, patch: [bad] })]);
   assert.equal(run.cuts.length, 1);
   assert.match(run.loop_end, /no valid fix after cut 1 \(1 patch\(es\) rejected, no notes\)/);
+});
+
+await test('a patch whose next cut is not better is reverted when the job ends; its later cuts keep it', async () => {
+  // cut 1 (sum 24) asks for a look patch; cut 2, made with it, scores 20; a notes round makes cut 3 from cut 2's
+  // checkpoints, which were built with the patch
+  const { run, varDir, dir } = await job([
+    intake,
+    answer({ scores: sum(24), patch: [LOOK_PATCH] }),
+    answer({ scores: sum(20) }),
+    review(true),
+  ]);
+  assert.equal(run.cuts.length, 3);
+  const r = run.rounds[0];
+  assert.equal(r?.kind, 'template');
+  assert.equal(r.patch?.kept, false);
+  assert.equal(r.patch.reverted, true);
+  assert.equal(run.rounds[1]?.kind, 'notes');
+  // cut 3 was made with the patched text its checkpoints came from, and says so
+  const [, cut2, cut3] = run.cuts;
+  assert.notEqual(cut2?.template_sha, sha(ALPHA));
+  assert.equal(cut3?.template_sha, cut2?.template_sha);
+  const working = path.join(varDir, 'templates');
+  assert.equal(await readFile(path.join(working, 'alpha.md'), 'utf8'), ALPHA);
+  assert.deepEqual((await readManifest(working))['alpha.md'], {
+    source_sha256: sha(ALPHA),
+    working_sha256: sha(ALPHA),
+    patched: false,
+  });
+  const entry = HistoryEntry.parse(
+    JSON.parse(await readFile(path.join(working, 'history', 'alpha', '1.json'), 'utf8')),
+  );
+  assert.equal(entry.reverted, true);
+  assert.equal(entry.next?.cut, 2);
+  const events = await readEvents(varDir, run.id);
+  const names = events.map((e) => e.event);
+  assert.ok(
+    names.indexOf('patch.reverted') > names.lastIndexOf('review.done'),
+    'after the last cut',
+  );
+  const ev = events.find((e) => e.event === 'patch.reverted');
+  assert.deepEqual(ev?.data, { k: 1, round: 1, why: 'cut 2 was not better than cut 1' });
+  assert.match(
+    await readFile(path.join(dir, 'report.md'), 'utf8'),
+    /patch reverted: the next cut was not better/,
+  );
+});
+
+await test('a patch whose next cut is never reviewed (the job fails) is reverted too', async () => {
+  const { run, varDir, dir } = await job(
+    [intake, answer({ scores: sum(24), patch: [LOOK_PATCH] })],
+    { FAKE_ENGINE_CRASH: 'always', FAKE_ENGINE_CRASH_CUT: '2' },
+  );
+  assert.equal(run.status, 'failed');
+  assert.equal(run.cuts.length, 1);
+  assert.equal(run.rounds[0]?.patch?.kept, null);
+  assert.equal(run.rounds[0].patch.reverted, true);
+  assert.equal(await readFile(path.join(varDir, 'templates', 'alpha.md'), 'utf8'), ALPHA);
+  assert.match(
+    await readFile(path.join(dir, 'report.md'), 'utf8'),
+    /patch reverted: the next cut was never reviewed/,
+  );
+});
+
+await test('no patch for a template the intake rated "partial": a patch may not widen it', async () => {
+  const partial = reply({
+    template: 'alpha',
+    fit: 'partial',
+    reason: 'alpha can carry it with a compromise',
+    subject: 'the Sun, a star',
+    subject_kind: 'data',
+    covers: 'ALPHA ABOUT',
+    excludes: '',
+    audience: 'curious adults',
+    goal: 'show the size',
+    tone: 'wondering',
+    seconds: 45,
+  });
+  const { run, varDir } = await job([partial, answer({ patch: [LOOK_PATCH] }), review(true)]);
+  const r = run.rounds[0];
+  assert.equal(r?.kind, 'notes');
+  assert.equal(r.patch, null);
+  assert.match(
+    r.rejected_patches[0]?.reason ?? '',
+    /the intake fit is "partial": a patch may not widen what the template is for/,
+  );
+  assert.equal(await readFile(path.join(varDir, 'templates', 'alpha.md'), 'utf8'), ALPHA);
+});
+
+await test('a look patch with a story patch: the look patch alone is applied and the writer is not re-rolled', async () => {
+  const story: TemplatePatch = {
+    section: 'story',
+    op: 'append',
+    text: 'Name one number per shot.',
+    reason: 'scripts crowd numbers on any topic',
+  };
+  const { run, dir } = await job([intake, answer({ patch: [story, LOOK_PATCH] }), review(true)]);
+  const r = run.rounds[0];
+  assert.equal(r?.kind, 'template');
+  assert.equal(r.patch?.from, 'plan.json');
+  assert.deepEqual(run.cuts[1]?.patch_applied, [LOOK_PATCH]);
+  assert.deepEqual(
+    r.rejected_patches.map((p) => [p.patch.section, p.reason]),
+    [
+      [
+        'story',
+        'a look/shots patch must not re-roll the writer: the story patch waits for a round of its own',
+      ],
+    ],
+  );
+  const present = (await invocations(dir))[1]?.present ?? [];
+  for (const f of ['facts.json', 'spine.json', 'script.json']) assert.ok(present.includes(f), f);
+});
+
+await test('a cut with a fact error never beats a correct cut (the Venus cut 1 vs cut 4 shape)', async () => {
+  // cut 1 is right (sum 17); cut 4 inverted the central fact but scored 18
+  const { run, dir } = await job([
+    intake,
+    answer({ scores: sum(17) }),
+    answer({ scores: sum(16) }),
+    answer({
+      scores: sum(16),
+      facts: ['shot 1, 0-4 s: "a day shorter than its year"; true: longer'],
+    }),
+    answer({
+      scores: sum(18),
+      facts: ['shot 1, 0-4 s: "a day shorter than its year"; true: longer'],
+    }),
+  ]);
+  assert.equal(run.cuts.length, 4);
+  assert.deepEqual(
+    run.cuts.map((c) => c.gates.filter((g) => g.mode === 'block' && !g.pass).length),
+    [0, 0, 0, 0],
+  );
+  assert.equal(run.selected?.cut, 1);
+  assert.match(run.selected.why, /0 fact error\(s\), 0 blocking gate FAIL\(s\), score sum 17/);
+  const report = await readFile(path.join(dir, 'report.md'), 'utf8');
+  assert.match(report, /\| 4 \| alpha \| [^|]+ \| 18 \| 0 \| 1 \| no \|/);
+});
+
+await test('an approve with a fact error is not approved', async () => {
+  const facts = ['shot 2, 0.2 s: "a hundred Earths"; true: 109'];
+  // the re-ask approves again, with the error still listed and no notes: no valid fix
+  const { run } = await job([intake, answer({ approve: true, facts })]);
+  assert.equal(run.cuts[0]?.review?.approve, true);
+  assert.deepEqual(
+    run.harness_calls.map((c) => c.step),
+    ['intake', 'review-1', 'review-1'],
+  );
+  assert.equal(run.approved, false);
+  assert.match(run.loop_end, /no valid fix after cut 1/);
+});
+
+await test('shipped_failing counts a failing shot carried forward unchanged (the Sun cuts 2-4 shape)', async () => {
+  // shot 2 ships failing in cut 1; cut 2 notes another shot, cut 3's redraw of shot 2 fails and keeps its code
+  const { run, dir } = await job(
+    [
+      intake,
+      answer({ notes: { shots: { '1': 'Start wider.' } } }),
+      answer({ notes: { shots: { '2': 'Give the small circle room.' } } }),
+      answer({ notes: { shots: { '1': 'Start wider still.' } } }),
+      answer(),
+    ],
+    { FAKE_ENGINE_FAILING_SHOT: '1', FAKE_ENGINE_KEEP_CODE: '2' },
+  );
+  assert.equal(run.cuts.length, 4);
+  const shipped = run.cuts.map((c) => c.gates.find((g) => g.name === 'shipped_failing'));
+  assert.deepEqual(
+    shipped.map((g) => [g?.pass, g?.value]),
+    [
+      [false, 'shot2'],
+      [false, 'shot2 (from cut 1)'],
+      [false, 'shot2 (from cut 1)'],
+      [false, 'shot2 (from cut 1)'],
+    ],
+  );
+  assert.deepEqual(
+    run.cuts.map((c) => c.shipped_failing.map((s) => `${s.step}@${String(s.cut)}`)),
+    [['shot2@1'], ['shot2@1'], ['shot2@1'], ['shot2@1']],
+  );
+  // only cut 1's engine log names it
+  assert.deepEqual(
+    run.cuts.map((c) => c.engine_rejections.some((r) => r.startsWith('shipped failing:'))),
+    [true, false, false, false],
+  );
+  assert.match(
+    await readFile(path.join(dir, 'report.md'), 'utf8'),
+    /- shipped failing: shot2: after kit\.bg you paint .* \(unchanged since cut 1\)/,
+  );
+});
+
+await test('an empty or null wrong_template or fact error is no verdict: no intake round, the patch still applies', async () => {
+  // M3 sends empty fields instead of leaving them out ("template_patch": [] in 16 of 18 real reviews)
+  for (const [wrongTemplate, factErrors] of [
+    ['', ['']],
+    ['  ', ['  ']],
+    [null, null],
+  ] as const) {
+    const { run, varDir, dir } = await job([
+      intake,
+      reply({
+        approve: false,
+        summary: 'Labels clip.',
+        scores: SCORES,
+        notes: NOTES,
+        template_patch: [LOOK_PATCH],
+        wrong_template: wrongTemplate,
+        fact_errors: factErrors,
+      }),
+      review(true),
+    ]);
+    const what = JSON.stringify(wrongTemplate);
+    assert.equal(run.status, 'done', run.error ?? '');
+    assert.deepEqual(
+      run.harness_calls.map((c) => c.step),
+      ['intake', 'review-1', 'review-2'],
+      what,
+    );
+    assert.equal(run.rounds[0]?.kind, 'template', what);
+    assert.equal(run.cuts[0]?.review?.wrong_template, undefined, what);
+    assert.deepEqual(run.cuts[0]?.review?.fact_errors, factErrors === null ? undefined : [], what);
+    const names = (await readEvents(varDir, run.id)).map((e) => e.event);
+    assert.ok(!names.includes('intake.again') && !names.includes('intake.not_again'), what);
+    assert.ok(!(await readFile(path.join(dir, 'report.md'), 'utf8')).includes('wrong template'));
+    assert.equal(run.approved, true, what);
+  }
+});
+
+await test('a wrong_template verdict re-runs intake once without that template, and the next cut starts over', async () => {
+  const originals = path.join(root, 'templates-two');
+  await mkdir(originals);
+  await writeFile(path.join(originals, '_base.md'), '# base\n\n## story\nBASE STORY\n');
+  await writeFile(path.join(originals, 'alpha.md'), ALPHA);
+  await writeFile(
+    path.join(originals, 'beta.md'),
+    '# beta\n\n## about\nBETA ABOUT\n\n## look\nB\n',
+  );
+  const beta = reply({
+    template: 'beta',
+    fit: 'good',
+    reason: 'beta draws it',
+    subject: 'the Sun, a star',
+    subject_kind: 'data',
+    covers: 'BETA ABOUT',
+    excludes: '',
+    audience: 'curious teens',
+    goal: 'see how big it is',
+    tone: 'calm',
+    seconds: 40,
+  });
+  const wrong = 'alpha draws only flat maps';
+  const { run, varDir, dir } = await job(
+    [
+      intake,
+      answer({ wrongTemplate: wrong, patch: [LOOK_PATCH] }),
+      beta,
+      answer({ wrongTemplate: 'beta is wrong too' }),
+      review(true),
+    ],
+    {},
+    'heygen',
+    { originals },
+  );
+  assert.equal(run.status, 'done', run.error ?? '');
+  assert.deepEqual(
+    run.harness_calls.map((c) => c.step),
+    ['intake', 'review-1', 'reintake', 'review-2', 'review-3'],
+  );
+  assert.deepEqual(
+    run.rounds.map((r) => [r.kind, r.intake?.template ?? null]),
+    [
+      ['intake', 'beta'],
+      ['notes', null],
+    ],
+  );
+  assert.deepEqual(
+    run.cuts.map((c) => c.template),
+    ['alpha', 'beta', 'beta'],
+  );
+  assert.equal(run.intake?.template, 'alpha', 'run.json keeps the first intake');
+  // the review's patch was for the template it found wrong
+  assert.match(run.rounds[0]?.rejected_patches[0]?.reason ?? '', /found the template wrong/);
+  assert.equal(await readFile(path.join(varDir, 'templates', 'alpha.md'), 'utf8'), ALPHA);
+  assert.match(await readFile(path.join(dir, 'brief.txt'), 'utf8'), /Audience: curious teens/);
+
+  const inv = await invocations(dir);
+  assert.equal(argOf(inv[1]?.argv ?? [], '--template'), 'beta');
+  assert.equal(argOf(inv[1]?.argv ?? [], '--seconds'), '40');
+  assert.ok(!(inv[1]?.argv ?? []).includes('--apply-notes'));
+  for (const f of ['facts.json', 'spine.json', 'plan.json', 'shot_1.js']) {
+    assert.ok(!(inv[1]?.present ?? []).includes(f), f);
+  }
+  assert.ok(inv[1]?.present.includes('reference.txt'));
+
+  const events = await readEvents(varDir, run.id);
+  assert.ok(events.some((e) => e.event === 'intake.again'));
+  assert.ok(events.some((e) => e.event === 'intake.not_again'));
+  assert.equal(events.filter((e) => e.event === 'gates.setup').length, 2);
+  const report = await readFile(path.join(dir, 'report.md'), 'utf8');
+  assert.match(report, /- wrong template alpha \(review of cut 1\): alpha draws only flat maps/);
+  assert.match(report, /round 1 -> cut 2: intake; intake again: template beta, fit good/);
+  const line = IndexLine.parse(
+    JSON.parse((await readFile(path.join(varDir, 'runs', 'index.jsonl'), 'utf8')).trim()),
+  );
+  assert.equal(line.template, 'beta');
 });
 
 await test('a voice_pitch FAIL switches the voice in the next round, and later cuts keep it', async () => {
@@ -830,6 +1145,10 @@ await test('cutroom make runs a job from the command line', async () => {
       template: 'kurzgesagt',
       fit: 'good',
       reason: 'fits',
+      subject: 'the Sun, a star',
+      subject_kind: 'data',
+      covers: 'sizes, distances, numbers and life stories of things in space',
+      excludes: '',
       audience: 'a',
       goal: 'g',
       tone: 't',
