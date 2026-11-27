@@ -73,14 +73,29 @@ Voice refusals not counted as cuts (#18): 4 eleven-v4 HTTP 402 invocations; thei
 | 42 | 2026-11-27 | #18 | CP5 job 5 cut 3, notes | heygen-paid | 0.0417 | same |
 | 43 | 2026-11-27 | #18 | CP5 job 5 cut 4, notes (job total 0.2664 incl. harness 0.0370) | heygen-paid | 0.0425 | same |
 
-## Next phase: reel quality (from 2026-11-27)
+## Phase Q: reel quality (from 2026-11-27)
 
-Investigation done (read-only): HANDOFF.md, docs/reel-quality-brief.md (the user's brief), docs/reel-quality-findings.md; evidence in var/investigation-2026-11-27/ (gitignored). User decisions 2026-11-27:
-- D24: repairs in cutroom-v2, fastreel frozen. T0 records it in design §1.
-- Budget: 80 cuts for this phase, counted in a new table that T0 adds.
+Plan: HANDOFF.md (T0-T11), the user's brief docs/reel-quality-brief.md, evidence docs/reel-quality-findings.md. Milestone "Q: Reel quality", issues #44-#60:
+T0 #44, T1 #45, T2 #46, T3 #47, T5 #48, T5b #49, T6 #50, T4 #51, T7 #52, T8 #53, T9 #54, T10a #55, T10b #56, T10c #57, T10d #58, T10e #59, T11 #60.
 
-Open user item: voice credit. The free heygen tier ends 2026-11-30, OpenRouter credit was low, and eleven-v4 returned 402 in CP5.
+User decisions 2026-11-27: D24 (repairs in cutroom-v2, fastreel frozen; #44 records it), 80-cut budget, remove script-sketch, globe-zoom supports other planets.
+
+Preflight 2026-11-27: main clean, `npm run check` green (140 tests, 139 pass, 1 skipped), no engine.lock, WSL clone pulled to 575cabb.
+QC0 items done directly: patched working copies reset (Windows globe-zoom-explainer.md and kurzgesagt.md, WSL globe-zoom-explainer.md: deleted, then `sync`; no `patched: true` left in either manifest).
+
+**Voice credit (2026-11-27):** OpenRouter credit is 0 (usage 0.18 over a 0 total), so heygen-paid, minimax, gemini-tts and eleven-v* through OpenRouter will refuse. The free `heygen` voice answers (200). It ends 2026-11-30. Real runs use `--voice-model heygen`. User item: add OpenRouter credit before 2026-11-30, or the phase stops for voice.
+
+### In flight
+
+(see below, updated per merge)
+
+### Real cuts, phase Q (budget 80)
+
+A cut is one engine invocation that makes model calls (`--until script` counts). Free re-renders from checkpoints are not counted.
+
+| # | date | issue | purpose | voice | cost USD | run folder |
+|---|---|---|---|---|---|---|
 
 ## Next action
 
-The build is complete. Next: a new session starts from HANDOFF.md (reel-quality repair, tasks T0-T11).
+Phase Q: T0 doc PR, then the lanes (HANDOFF §11).
