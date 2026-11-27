@@ -20,11 +20,12 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 
 | issue | agent / model | branch or worktree | started | note |
 |---|---|---|---|---|
-| #18 | acceptance / opus | WSL ~/cutroom-v2 (main 6e99c7f), var ~/cutroom-var | 2026-11-27 | jobs 1-4 done (issuecomment-7210058911); job 5 running, cap 44 |
+| #18 | acceptance / opus | WSL ~/cutroom-v2, var ~/cutroom-var | 2026-11-27 | 5 jobs done: issuecomment-7210058911 (1-4), issuecomment-7211320378 (5); 43 of 44 cuts; open until #38 merges |
+| #38 | implementer / opus | claude/38-run-record-flake | 2026-11-27 | flaky RunRecord.parse failure in job.test.ts (found by #18) |
 
 ## Real cuts (budget: 44 cuts with model calls; docs/plan.md said 40, user raised it to 44 on 2026-11-27 for #18 job 5)
 
-Voice refusals not counted as cuts (#18): 3 eleven-v4 HTTP 402 invocations, their pre-voice spend ($0, $0.042, $0.105) is in the next cut's cost. Free re-renders (no model calls) not counted: #16 radio-lp-e4 resume (fonts-radio-lp-e4); #9 `--cut 3` on e2-check, `--cut 4` (empty notes) on e2-fix; two #9 failed notes reads.
+Voice refusals not counted as cuts (#18): 4 eleven-v4 HTTP 402 invocations; their pre-voice spend is in the next cut's cost. Free re-renders (no model calls) not counted: #16 radio-lp-e4 resume (fonts-radio-lp-e4); #9 `--cut 3` on e2-check, `--cut 4` (empty notes) on e2-fix; two #9 failed notes reads.
 
 | # | date | issue | purpose | voice | cost USD | run folder |
 |---|---|---|---|---|---|---|
@@ -67,7 +68,12 @@ Voice refusals not counted as cuts (#18): 3 eleven-v4 HTTP 402 invocations, thei
 | 37 | 2026-11-27 | #18 | CP5 job 4 cut 2, notes | heygen-paid | 0.0559 | same |
 | 38 | 2026-11-27 | #18 | CP5 job 4 cut 3, notes (selected) | heygen-paid | 0.0273 | same |
 | 39 | 2026-11-27 | #18 | CP5 job 4 cut 4, template round (plan patch, history 1; job total 0.4090) | heygen-paid | 0.1270 | same |
+| - | 2026-11-27 | #18 | CP5 job 5 first post "atom vs grain of sand": intake picked mirror-parable, engine writer gave up (no usable fact sheet, then no usable script); job `failed`, 0 cuts, not counted | none | 0.021 | WSL ~/cutroom-var/runs/20261127-055821-how-small-is-an-atom-compared-to-a-grain |
+| 40 | 2026-11-27 | #18 | CP5 job 5 re-posted with `template: kurzgesagt`, cut 1 (incl. 0.0524 from a refused eleven-v4 invocation, 402 weight_exceeds_budget) | heygen-paid | 0.1027 | WSL ~/cutroom-var/runs/20261127-060125-how-small-is-an-atom-compared-to-a-grain |
+| 41 | 2026-11-27 | #18 | CP5 job 5 cut 2, notes (selected) | heygen-paid | 0.0423 | same |
+| 42 | 2026-11-27 | #18 | CP5 job 5 cut 3, notes | heygen-paid | 0.0417 | same |
+| 43 | 2026-11-27 | #18 | CP5 job 5 cut 4, notes (job total 0.2664 incl. harness 0.0370) | heygen-paid | 0.0425 | same |
 
 ## Next action
 
-#18 job 5 running in WSL (cap 44). Then log its cuts, close #18, PROGRESS complete, report to the user.
+#38 in flight (found by #18). Merge it, then close #18 (CP5), PROGRESS complete, report to the user. No more real cuts: 43 of 44 used.
