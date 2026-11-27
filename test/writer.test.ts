@@ -81,13 +81,17 @@ await test("the Moon's mixed-units calc is rejected; the same walk with units co
     'm4',
   );
   assert.equal(mixed.length, 1);
-  assert.match(mixed[0] ?? '', /uses 24 as a unit conversion beside quantities with units/);
-  assert.match(mixed[0] ?? '', /reads 378000 as 378000 km, 5 as 5 km\/h, 29\.5 as 29\.5 days/);
+  assert.match(mixed[0] ?? '', /gives 3120\.5 days/);
+  assert.match(
+    mixed[0] ?? '',
+    /reads 378000 as 378000 km, 5 as 5 km\/h, 29\.5 as 29\.5 days, as the sheet states them, 24 as the unit conversion the units already make/,
+  );
 
   for (const [text, calc] of [
     ['Walking to the Moon non-stop takes about 75,600 hours', '378000 km / (5 km/h)'],
     ['Walking to the Moon non-stop takes about 8.6 years', '378000 km / (5 km/h)'],
     ['Walking to the Moon non-stop takes about 3,150 days', '378000 / 5'],
+    ['Walking to the Moon non-stop takes about 3,150 days', '378000 / 5 / 24'],
     ['The Moon is about 30 Earths away', '378000 / 12742'],
   ] as const)
     assert.deepEqual(errorsOf(sheet([derived('m4', text, calc)])), [], `${text} = ${calc}`);
@@ -113,9 +117,9 @@ await test("the Moon's mixed-units calc is rejected; the same walk with units co
   for (const [text, calc] of [
     ['It takes 2,442 days longer than a lunar month', '75600/24 - 29.5*24'],
     ['It takes 1.8 million days', '75600 * 24'],
-    ['A lunar month is about 708 hours', '29.5 * 24'],
   ] as const)
-    assert.match(timeOnly(text, calc)[0] ?? '', /drop the factor 24/, `${text} = ${calc}`);
+    assert.match(timeOnly(text, calc)[0] ?? '', /24 as the unit conversion/, `${text} = ${calc}`);
+  assert.deepEqual(timeOnly('A lunar month is about 708 hours', '29.5 * 24'), []);
   assert.deepEqual(
     timeOnly('It takes about 3,120 days longer than a lunar month', '75600 - 29.5'),
     [],
@@ -173,6 +177,7 @@ await test('rates, magnitude words and plain counts compute; a chain of 100s doe
     ['12 / 4', 'That is 3 albums per member'],
     ['26000 * 2.08', 'Monaco has about 54,000 people'],
     ['53000000 * 13', 'The contract is worth about $690 million'],
+    ['53000000 / 365', 'That is about $145,000 a day'],
     ['100000 * 80', 'A person blinks about 2.9 billion times in a life'],
     ['100000 * 365 * 80', 'A person blinks about 2.9 billion times in a life'],
   ] as const)
@@ -185,6 +190,13 @@ await test('rates, magnitude words and plain counts compute; a chain of 100s doe
     [],
     'an ordinal is not a count',
   );
+  // a calendar factor the wrong way round
+  for (const [calc, text] of [
+    ['100000 * 24', 'That is 2.4 million blinks an hour'],
+    ['100000 / 365', 'That is 274 blinks a year'],
+    ['53000000 * 365', 'That is $19 billion a day'],
+  ] as const)
+    assert.equal(errorsOf(rates(calc, text)).length, 1, `${text} = ${calc}`);
   const chained = errorsFor(sheet([derived('f3', '1 mm = 1,000,000 pm', '100 * 100 * 100')]), 'f3');
   assert.match(chained[0] ?? '', /uses 100 more than once/);
 });
