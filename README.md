@@ -46,22 +46,25 @@ Verified on Ubuntu 22.04 in WSL. Deploying to a VM (service unit, hosting) is ou
 | FFmpeg + ffprobe | 5.1     | The frame audit uses `-fps_mode`. Ubuntu 22.04's apt FFmpeg is 4.4 and fails with `Unrecognized option 'fps_mode'`; use a newer build. Tested with n8.1. |
 | Google Chrome    | stable  | Any current stable; tested with 158. The engine finds `/usr/bin/google-chrome`; set `CHROME_PATH` for another binary.                                  |
 
-Install as root:
+Install as root (only this block needs root; run everything after it as a normal user, because Chrome refuses to run as root without `--no-sandbox`, which the engine does not pass):
 
 ```sh
 apt-get update && apt-get install -y curl ca-certificates gnupg git xz-utils
 
-# Node 22 (latest 22.x tarball)
-V=$(curl -fsSL https://nodejs.org/dist/latest-v22.x/SHASUMS256.txt | grep -o 'node-v[0-9.]*-linux-x64.tar.xz' | head -1 | sed 's/node-//; s/-linux.*//')
-curl -fsSL https://nodejs.org/dist/$V/node-$V-linux-x64.tar.xz | tar -xJ -C /usr/local --strip-components=1
+# Node 22.23.5, checked against the sha256 from https://nodejs.org/dist/v22.23.5/SHASUMS256.txt
+curl -fsSL -o /tmp/node.tar.xz https://nodejs.org/dist/v22.23.5/node-v22.23.5-linux-x64.tar.xz
+echo "cdeb8670a0c81f51b4dc4ac61919f9b1ad917b304bf8221eb939570663d240f8  /tmp/node.tar.xz" | sha256sum -c -
+tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1
 
-# FFmpeg n8.1 (static build; the apt package is too old)
-curl -fsSL -o /tmp/ff.tar.xz https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n8.1-latest-linux64-gpl-8.1.tar.xz
-tar -xJf /tmp/ff.tar.xz -C /tmp && cp /tmp/ffmpeg-n8.1-*/bin/ffmpeg /tmp/ffmpeg-n8.1-*/bin/ffprobe /usr/local/bin/
+# FFmpeg n8.1.3 (static build, release autobuild-2026-10-31-12-59; the apt package is too old),
+# sha256 from that release's checksums.sha256
+curl -fsSL -o /tmp/ff.tar.xz https://github.com/FFmpeg-Builds/FFmpeg-Builds/releases/download/autobuild-2026-10-31-12-59/ffmpeg-n8.1.3-27-g8dca1586f4-linux64-gpl-8.1.tar.xz
+echo "41e9c565594c390622cf968d82fa4135d9e9a11d06c1515644288cbc844e3380  /tmp/ff.tar.xz" | sha256sum -c -
+tar -xJf /tmp/ff.tar.xz -C /tmp && cp /tmp/ffmpeg-n8.1.3-*/bin/ffmpeg /tmp/ffmpeg-n8.1.3-*/bin/ffprobe /usr/local/bin/
 
 # Google Chrome stable
 curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor --yes -o /usr/share/keyrings/google-chrome.gpg
-echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] https://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list
 apt-get update && apt-get install -y google-chrome-stable
 ```
 
