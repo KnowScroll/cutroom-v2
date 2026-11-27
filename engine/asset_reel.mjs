@@ -14,7 +14,7 @@ import { report } from './cost_report.mjs';
 import { pathToFileURL } from 'node:url';
 import { HERE, VAR, TEMPLATE_DIR, SR, log, sha1, clamp, slugify, stamp, run, pool, withRetry, loadKeys, decodeMono, trimSilence, renderVideo, addSfx, writeWavStereo, extractJson, extractCode, launchStage, BANNED } from './lib.mjs';
 import { voiceModel, normVoice, voiceGuide, speak, voiceCacheKey, voiceRate, recordRate, voiceCheck, wordTimes, MUSIC_FEELS, pickMusic, mixReel } from './audio.mjs';
-import { createWriter, words, numWords, DEVICES, numbersNotInSource } from './writer.mjs';
+import { createWriter, words, numWords, DEVICES, numbersNotInSource, requestOf } from './writer.mjs';
 import { findPhotos, snapQuote } from './photos.mjs';
 
 const MODEL = 'MiniMax-M3', PRICE = { in: 0.30, cached: 0.06, out: 1.20 };
@@ -518,7 +518,7 @@ const fitValidate = (page, a, plan) => async c => {
 
 // numbers on screen or in a fact that the reference and the brief never state (engine/writer.mjs numbersNotInSource: digits without
 // separators, a magnitude by value so "1 million" matches "a million", a full date as one unit; one-digit numbers alone pass)
-function numbersNotIn(texts) { return numbersNotInSource(`${REF || ''} ${brief}`, texts); }
+function numbersNotIn(texts) { return numbersNotInSource(`${REF || ''} ${requestOf(brief)}`, texts); } // the intake's Goal lines are no source
 // ---------- poses: after the storyboard, M3 lists only the body poses each character's shots need ----------
 async function planPoses(plan) {
   const saved = ckLoad('poses.json'); if (saved) { log('poses: restored from checkpoint'); return JSON.parse(saved); }

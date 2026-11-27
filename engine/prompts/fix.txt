@@ -6,6 +6,7 @@ OUTPUT: one JSON object and nothing else.
 
 RULES
 - Fix every listed problem: say the claim the way its fix says it, or cut the claim when the fix says "cut" or no correct version fits.
+- A problem may quote the brief's Audience, Goal or Tone line: that is the intake's reading of the request, never a fact; the FACT SHEET decides.
 - The fact checker can be wrong too. Check each fix against the FACT SHEET (a derived fact shows its calc, which the engine computed and checked) and the REFERENCE below: apply it only when they support it; when the fix contradicts them, say the claim the way the fact sheet does instead (or keep the line if it already does).
 - The fact sheet can be wrong as well: when the fix restates standard textbook knowledge or the REFERENCE and the sheet fact contradicts it (a cause that would produce the opposite result, an everyday observation stated backwards), the true claim wins: apply the fix.
 - Every number you say is one the FACT SHEET states (rounding is fine). The engine does not take a line with any other number: when the true number is not on the sheet, cut the claim instead.

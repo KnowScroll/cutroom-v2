@@ -295,6 +295,16 @@ const sameLine = (script, line) => {
   return k === plain.length && b.length >= plain.length;
 };
 
+// ---------- the brief ----------
+// brief.txt from the harness is the user's request, then the intake's Audience, Goal and Tone lines (src/intake.ts briefText):
+// its reading of the request, never facts (a Goal line's "a lifetime or more" was defended against the sheet's own 9 years)
+const NOTE = /^(Audience|Goal|Tone):/;
+export const requestOf = brief => String(brief).split(/\r?\n/).filter(l => !NOTE.test(l.trim())).join('\n').trim();
+const briefFor = brief => {
+  const notes = String(brief).split(/\r?\n/).filter(l => NOTE.test(l.trim())).join('\n');
+  return `${requestOf(brief)}${notes ? `\n(The lines below are the intake's reading of the request, never facts: the facts come from the fact sheet and the reference.)\n${notes}` : ''}`;
+};
+
 // ---------- the fact sheet's checks ----------
 // E: brief, hasRef(), numbersNotIn(texts)
 export function factErrors(f, E) {
@@ -314,7 +324,7 @@ export function factErrors(f, E) {
   if (!f.question || !f.answer) Er.push('need "question" and "answer"');
   if (!ids.has(f.payoff)) Er.push(`"payoff" must be the id of the fact that answers the question, got "${f.payoff}"`);
   // a fact the sheet says comes from the brief must have its numbers in the brief (M3 marked an invented present-day value "brief")
-  const briefVals = valuesIn(E.brief);
+  const briefVals = valuesIn(requestOf(E.brief));
   for (const x of f.facts.filter(x => x.source === 'brief')) {
     const nums = valuesIn(x.text).filter(n => n >= 10 && !briefVals.some(b => Math.abs(b - n) <= n * 0.005)).map(fmtNum);
     if (nums.length) bad(x, `fact ${x.id} ("${x.text}") is marked "brief", but the brief never states ${nums.join(', ')}: take it from the REFERENCE (source "reference"), derive it from the sheet's numbers (source "derived" with "calc"), or drop it`);
@@ -385,7 +395,7 @@ export function createWriter(E) {
     const system = () => `${E.prompt('facts')}\n\n${E.guide('about', 'story')}${E.refBlock()}`;
     const check = x => factErrors(x, E);
     const clean = x => { if (!x) return x; const drop = new Set(check(x).map(e => e.drop).filter(Boolean)); if (drop.has('yardstick')) { log(`facts: dropped the yardstick "${x.yardstick}" (a number not on the sheet)`); x.yardstick = ''; drop.delete('yardstick'); } if (drop.size) { log(`facts: dropped ${[...drop].join(', ')} (failed their check)`); x.facts = x.facts.filter(y => !drop.has(y.id)); } return x; };
-    let f = clean(await ask('facts', system(), [{ role: 'user', content: `Brief: ${brief}\nReturn only the JSON object.` }], check));
+    let f = clean(await ask('facts', system(), [{ role: 'user', content: `Brief: ${briefFor(brief)}\nReturn only the JSON object.` }], check));
     if (!f) throw new Error('no usable fact sheet');
     // "need": {article, look_for} (its passages holding those words) or an article title (its first 4000 chars)
     const need = (Array.isArray(f.need) ? f.need : []).filter(t => (typeof t === 'string' && t.trim()) || (typeof t?.article === 'string' && t.article.trim())).slice(0, 2);
@@ -393,7 +403,7 @@ export function createWriter(E) {
     if (need.length) { // the answer needs a fact the reference lacks: fetch it once and build the sheet again
       const added = await E.addArticles(need);
       log(`facts: fetched ${names} (${added} chars) for missing facts`);
-      if (added) { const f2 = await ask('facts-more', system(), [{ role: 'user', content: `Brief: ${brief}\nThe REFERENCE now also holds what you asked for: ${names}. Return only the JSON object, with "need" empty.` }], check); if (f2) f = clean(f2); }
+      if (added) { const f2 = await ask('facts-more', system(), [{ role: 'user', content: `Brief: ${briefFor(brief)}\nThe REFERENCE now also holds what you asked for: ${names}. Return only the JSON object, with "need" empty.` }], check); if (f2) f = clean(f2); }
     }
     E.ckSave('facts.json', f);
     log(`facts: ${f.facts.length} (${['reference', 'brief', 'general', 'derived'].map(s => `${f.facts.filter(x => x.source === s).length} ${s}`).join(', ')}); Q: ${f.question} | payoff ${f.payoff}`);
@@ -436,7 +446,7 @@ export function createWriter(E) {
     const saved = E.ckLoad('spine.json'); if (saved) { log('spine: restored from checkpoint'); return JSON.parse(saved); }
     const [smin, smax] = shotRange(), beats = beatsOf();
     const system = `${E.prompt('spine').replace('{{DEVICES}}', DEVICE_TEXT).replace('{{DEVICE_NAMES}}', Object.keys(DEVICES).join(', '))}\n\n${storyGuide()}${beats.length ? `\n\nBEATS: give every shot a "beat" from: ${beats.join(', ')}. Required: ${needBeats().join(', ') || 'none'}.` : ''}`;
-    const user = `Brief: ${brief}\nTarget length: ${seconds} seconds: ${smin === smax ? smin : `${Math.max(smin, 6)} to ${Math.min(smax, Math.max(smin, 8))}`} shots, about ${E.budget} spoken words in all.\n\nFACT SHEET\nQuestion: ${f.question}\nAnswer: ${f.answer}\nPayoff fact: ${f.payoff}\nYardstick: ${f.yardstick || '(none)'}\n${factList(f)}\n\nReturn only the JSON object.`;
+    const user = `Brief: ${briefFor(brief)}\nTarget length: ${seconds} seconds: ${smin === smax ? smin : `${Math.max(smin, 6)} to ${Math.min(smax, Math.max(smin, 8))}`} shots, about ${E.budget} spoken words in all.\n\nFACT SHEET\nQuestion: ${f.question}\nAnswer: ${f.answer}\nPayoff fact: ${f.payoff}\nYardstick: ${f.yardstick || '(none)'}\n${factList(f)}\n\nReturn only the JSON object.`;
     const sp = await ask('spine', system, [{ role: 'user', content: user }], o => spineErrors(o, f));
     if (!sp) throw new Error('no usable story spine');
     E.ckSave('spine.json', sp);
@@ -587,7 +597,7 @@ export function createWriter(E) {
     let user;
     if (sp) {
       const est = sp.shots.map(s => ({ hold: s.hold, lines: [{}] })), allowed = budgetFor(est, null);
-      user = `Brief: ${brief}\nTarget length: ${seconds} seconds. Word budget for ALL spoken lines together: at most ${allowed} words (the narrator speaks about ${wps(null)} words a second). Word target per shot: ${Math.floor(allowed / sp.shots.length)} (a short punch shot may take fewer and give them to an explaining shot; the total stays within ${allowed}). Most shots are one line; each extra line costs a breath.\n\nFACT SHEET (the only claims you may use; every number you say is one of its numbers, rounding is fine)\nQuestion: ${f.question}\nAnswer: ${f.answer}\nYardstick: ${f.yardstick || '(none)'}\n${factList(f)}\n\nSPINE\n${JSON.stringify({ shots: sp.shots.map((s, i) => ({ shot: i + 1, beat: s.beat, point: s.point, facts: s.facts, link: s.link, device: s.device, hold: s.hold })), payoff_shot: sp.payoff_shot, callback: sp.callback }, null, 1)}\n\nReturn only the JSON object.`;
+      user = `Brief: ${briefFor(brief)}\nTarget length: ${seconds} seconds. Word budget for ALL spoken lines together: at most ${allowed} words (the narrator speaks about ${wps(null)} words a second). Word target per shot: ${Math.floor(allowed / sp.shots.length)} (a short punch shot may take fewer and give them to an explaining shot; the total stays within ${allowed}). Most shots are one line; each extra line costs a breath.\n\nFACT SHEET (the only claims you may use; every number you say is one of its numbers, rounding is fine)\nQuestion: ${f.question}\nAnswer: ${f.answer}\nYardstick: ${f.yardstick || '(none)'}\n${factList(f)}\n\nSPINE\n${JSON.stringify({ shots: sp.shots.map((s, i) => ({ shot: i + 1, beat: s.beat, point: s.point, facts: s.facts, link: s.link, device: s.device, hold: s.hold })), payoff_shot: sp.payoff_shot, callback: sp.callback }, null, 1)}\n\nReturn only the JSON object.`;
     } else {
       const beats = beatsOf();
       user = `Brief (a SCRIPT): ${brief}\n\nThe brief is a SCRIPT: keep every spoken line verbatim and in order (numbers and symbols written as words for the voice). Use ${ck().shots || '8 to 12'} shots, one per beat of the script (usually 1 to 3 lines each). There is no spine, so also give each shot "beat"${beats.length ? ` (from: ${beats.join(', ')}; required: ${needBeats().join(', ') || 'none'})` : ''}, "point" (what the viewer gets from it), "device" (from: ${Object.keys(DEVICES).join(', ')}) and "hold" (seconds of silent screen time after its lines, 0 normally). Also give "payoff_shot" at the top level. Word budget for ALL lines together: at most ${E.budget} words.\nReturn only the JSON object.`;
@@ -603,8 +613,10 @@ export function createWriter(E) {
   const json = async (step, system, user) => { for (let a = 1; a <= 2; a++) { const t = await E.m3(`${step}${a > 1 ? `#${a}` : ''}`, system, [{ role: 'user', content: user }], 16000); try { return E.extractJson(t); } catch { } } return null; };
   // the fact checker sees the brief (it flipped a brief's true premise it could not find in the reference) and each derived fact's
   // calc (it took a sheet ratio with a wrong unit factor as true and "corrected" a right line to match it)
-  const factcheck = (step, o, sp, f) => json(step, `${E.prompt('factcheck')}${E.refBlock()}`, `BRIEF\n${brief}\n\nFACT SHEET (a derived fact shows the engine's arithmetic: its calc and result)\n${calcList(f)}\n\nSCRIPT\n${readAloud(o, sp)}\n\nReturn only the JSON object.`);
-  // a conflict (the brief against the reference) is reported, never fixed: a fix would flip the brief's premise
+  const factcheck = (step, o, sp, f) => json(step, `${E.prompt('factcheck')}${E.refBlock()}`, `BRIEF\n${briefFor(brief)}\n\nFACT SHEET (a derived fact shows the engine's arithmetic: its calc and result)\n${calcList(f)}\n\nSCRIPT\n${readAloud(o, sp)}\n\nReturn only the JSON object.`);
+  // a conflict (the brief against the reference) is reported, never fixed: a fix would flip the brief's premise. One the checker
+  // says a sheet fact settles ("settled_by") is no conflict: the line is wrong and is fixed toward the sheet
+  const settle = (step, fc, f) => { for (const p of fc?.problems || []) { const ids = [].concat(p?.settled_by || []).filter(id => f.facts.some(x => x.id === id)); if (p?.kind === 'conflict' && ids.length) { p.kind = 'wrong'; p.fix ||= `say it the way the fact sheet does (${ids.join(', ')})`; log(`${step}: shot ${p.shot}'s conflict is settled by ${ids.join(', ')}; fixed toward the sheet`); } } };
   const toFix = fc => (fc?.problems || []).filter(p => p?.kind !== 'conflict');
   const conflicts = (step, fc) => { const c = (fc?.problems || []).filter(p => p?.kind === 'conflict'); for (const p of c) if (!/^a conflict/.test(p.problem || '')) p.problem = `a conflict between the brief and the reference, reported, not fixed: ${p.problem || ''}`; if (c.length) log(`${step}: ${c.length} conflict(s) reported, not fixed: ${c.map(p => `shot ${p.shot}: ${p.problem}`).join('; ')}`); return c; };
   async function reviewScript(o, sp, f) {
@@ -628,6 +640,7 @@ export function createWriter(E) {
       let { o, messages } = await writeScript(f, sp);
       o = await fitWords(o, sp, f); messages[messages.length - 1] = { role: 'assistant', content: JSON.stringify(o) }; // the revision starts from the cut script
       const review = await reviewScript(o, sp, f), v = review.viewer;
+      settle('fact check', review.factcheck, f);
       log(`test viewer: ${v ? `scores ${JSON.stringify(v.scores || {})}, lost ${v.lost?.length || 0}, flat ${v.flat?.length || 0}; Q "${v.question}" A "${v.answer}"` : 'no answer'} | fact check: ${review.factcheck ? `${review.factcheck.problems?.length || 0} problems` : 'no answer'}`);
       conflicts('fact check', review.factcheck);
       let revised = false;
@@ -640,7 +653,7 @@ export function createWriter(E) {
       }
       // a revision can bring new claims (one added "about twenty cents each" after the check): check the facts again, fix once
       if (revised) {
-        const fc2 = await factcheck('factcheck-2', o, sp, f); review.factcheck2 = fc2;
+        const fc2 = await factcheck('factcheck-2', o, sp, f); review.factcheck2 = fc2; settle('fact check of the revision', fc2, f);
         log(`fact check of the revision: ${fc2 ? `${fc2.problems?.length || 0} problems` : 'no answer'}`);
         // the harness reads the last fact check (script.json review.factcheck2): the first one's conflicts stay in it
         const seen = new Set(conflicts('fact check of the revision', fc2).map(p => `${p.shot}|${p.claim}`)), carry = (review.factcheck?.problems || []).filter(p => p?.kind === 'conflict' && !seen.has(`${p.shot}|${p.claim}`));

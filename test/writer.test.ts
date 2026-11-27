@@ -405,11 +405,12 @@ interface Call {
 }
 async function runWriter(
   answers: Record<string, unknown>,
+  brief = BRIEF,
 ): Promise<{ story: Story; calls: Call[]; logs: string[] }> {
   const calls: Call[] = [];
   const logs: string[] = [];
   const E: WriterEnv = {
-    brief: BRIEF,
+    brief,
     seconds: 24,
     budget: 60,
     m3: (step, _system, messages) => {
@@ -522,6 +523,49 @@ await test('a conflict the first fact check reported stays in the last one, mark
     /^a conflict between the brief and the reference, reported, not fixed: /,
   );
   assert.equal(last.length, first.length);
+});
+
+await test("the brief's Audience, Goal and Tone lines reach the model as the intake's reading, not as facts", async () => {
+  const goal = 'Goal: The viewer should grasp that an atom is a lifetime of steps smaller.';
+  const { calls } = await runWriter(
+    reviewed({ shots: [] }),
+    `${BRIEF}\n\nAudience: anyone\n${goal}\nTone: calm\n`,
+  );
+  for (const step of ['facts#1', 'spine#1', 'script#1', 'factcheck']) {
+    const input = userMessage(calls, step);
+    assert.match(
+      input,
+      /\(The lines below are the intake's reading of the request, never facts/,
+      step,
+    );
+    assert.ok(input.includes(goal), step);
+  }
+});
+
+await test('a conflict the checker says a sheet fact settles is fixed toward the sheet', async () => {
+  const settled = {
+    problems: [
+      {
+        shot: 5,
+        kind: 'conflict',
+        claim: 'ten thousand kilometres',
+        problem: 'the brief says otherwise',
+        fix: '',
+        settled_by: ['f6'],
+      },
+    ],
+  };
+  const { calls, logs } = await runWriter({
+    ...reviewed({ shots: [] }),
+    factcheck: settled,
+    'factcheck-2': settled,
+  });
+  assert.ok(
+    logs.includes("fact check: shot 5's conflict is settled by f6; fixed toward the sheet"),
+    logs.join('\n'),
+  );
+  assert.ok(!logs.some((l) => l.includes('conflict(s) reported, not fixed')), logs.join('\n'));
+  assert.match(userMessage(calls, 'script-fix'), /"shot": 5/);
 });
 
 await test('a fix that changes nothing is not logged as a rewrite', async () => {
