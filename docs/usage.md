@@ -15,7 +15,7 @@ One request becomes one job:
    - a *voice* round switches voice.
 5. **The best cut** is selected and the job writes `run.json` and `report.md`. Best means the fewest blocking gate FAILs, then the highest review score, then the later cut.
 
-A job ends `done` even when no cut is approved: you still get the best cut and a report that says why it was not approved. It ends `failed` only when no cut could be made, for example when the engine crashes twice or the writer gives up.
+A job ends `done` even when no cut is approved: you still get the best cut and a report that says why it was not approved. It ends `failed` when an error stops it: the engine exits non-zero twice on a cut, the writer gives up, or every voice is refused. Cuts made before the error stay recorded, and the best of them is still selected and served (report.md flags the failure).
 
 **Cost and time.** The five CP5 jobs (2026-11-27, four cuts each) took 10-24 minutes and cost $0.27-0.55 each. Real jobs cost money: there is one engine run at a time per machine (`$CUTROOM_VAR/engine.lock`), and other jobs wait their turn.
 
@@ -86,14 +86,14 @@ curl http://127.0.0.1:8080/health                              # {"ok":true}, no
 - **`status`** is `queued`, `running`, `done` or `failed`.
 - **`stage`** says where a running job is: `queued`, `sync`, `intake`, `cut-<n>`, `gates`, `review-<n>`, `round-<n>`, then `done` or `failed`.
 
-Jobs run one at a time in the order they were posted. If `serve` stops (Ctrl+C, SIGTERM, a crash), it kills the engine's process tree. The next `serve` resumes the job that was running, from its last checkpoint.
+Jobs run one at a time in the order they were posted. Ctrl+C or SIGTERM on `serve` kills the engine's process tree. After a crash of `serve` itself, the engine can keep running (and spending) until the next `serve` or `make` takes `engine.lock`, which kills the orphaned engine first. The next `serve` resumes the job that was running, from its last checkpoint.
 
 ## Writing a good request
 
 - **One subject, one question.** "Why is a day on Venus longer than its year?" works better than a list of topics.
 - **Say what kind of reel you want** when it isn't obvious: "a funny 30-second sketch about...", "explain to a 10-year-old...". Intake reads the audience, goal and tone from the request.
 - **Name a template when you know which one fits.** Intake picks one otherwise, and sometimes picks badly. In CP5 it routed a scale question to mirror-parable and the engine failed; the same request with `template: kurzgesagt` worked.
-- **Length:** `seconds` is clamped to 30-90. Without it, intake uses what the request asks for, else 45 s.
+- **Length:** the CLI clamps `--seconds` to 30-90; the API returns 400 outside 30-90. Without a length, intake uses one the request states, else picks 30-90 s for the subject (45 s if it gives none).
 - **Fit:** check the intake's `fit` in the report. `none` means no template really suits the request, and the report flags it (the CP5 ad request got script-sketch with fit `none`). Rephrase the request or name a template.
 - **Plain text only.** The request goes into the engine as the brief, so put no instructions to the harness in it.
 
@@ -195,7 +195,7 @@ With the API, `reel.mp4` and `report` serve the same files, so you never need th
 - **Still wrong:** for the selected cut, its failing gates, the steps the engine shipped failing, and the review's fixes that were not applied.
 - **Voice switches, credits, cost and time.**
 
-**Gates.** Gates are measured in code. A `block` gate that fails stops a cut from being approved. An `info` gate is reported only. Which frame gates are `info`, and any other threshold, is set per template by `gate <name>: off | info | <threshold>` lines in its `## checks`. The thresholds below are the defaults.
+**Gates.** Gates are measured in code. A `block` gate that fails stops a cut from being approved. An `info` gate is reported only. The first 5 gates are always `block` at the thresholds shown. The 7 frame gates (`same_view` to `alive`) can be set per template by `gate <name>: off | info | <threshold>` lines in its `## checks`; the thresholds shown are their defaults.
 
 | gate               | passes when                                                                     |
 | ------------------ | ------------------------------------------------------------------------------- |
@@ -227,7 +227,7 @@ With the API, `reel.mp4` and `report` serve the same files, so you never need th
 | symptom                                                          | cause and fix                                                                                                                                  |
 | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `missing MINIMAX_API_KEY` / `missing CUTROOM_API_TOKEN`          | The key is not in `.env`, or `CUTROOM_ENV_FILE` points at the wrong file.                                                                      |
-| A job stays `queued`                                             | Another job, or another process, holds the engine. It runs when that finishes.                                                                 |
+| A job stays `queued`                                             | The worker is busy with an earlier job, or no `serve` is running on this `CUTROOM_VAR`. (A job waiting for another process's engine shows `running`, stage `cut-<n>`, with `engine.wait` in events.jsonl.) |
 | `HTTP 402` ... `budget` in `engine-<n>.log`                      | The voice provider is out of credit. The job falls back to the next voice; top up OpenRouter or add `ELEVENLABS_API_KEY`.                      |
 | Job `failed`: "no usable script" / "no usable fact sheet"        | The engine's writer could not fit the request to the template. Re-post naming a better template, or narrow the request.                        |
 | `Unrecognized option 'fps_mode'`                                 | FFmpeg is older than 5.1 (Ubuntu 22.04's apt build). Install the build in the README.                                                          |
