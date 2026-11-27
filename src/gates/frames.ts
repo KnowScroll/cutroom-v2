@@ -3,6 +3,9 @@
 // Pixel and cell indexes below are bounded by the frame size by construction; their `?? 0` only
 // satisfies noUncheckedIndexedAccess.
 import { spawn } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { z } from 'zod';
 import type { Gate } from '../record.ts';
 import { sectionsOf } from '../templates.ts';
 
@@ -31,12 +34,52 @@ export function captionBand(captions: string): CaptionBand {
 
 type StaticBand = { seconds: number; fromS: number };
 
+// The engine's neutral cut transition: the first 0.2 s of every shot after the first is a horizontal
+// smear of the shot's background, drawn before its subject (engine/stage_asset.html:801-803,
+// `k = i ? lt / 0.2 : 1`). A sample in it can be blank on a good reel, so blank does not count it.
+const TRANSITION_S = 0.2;
+// The engine renders every reel at 30 fps (engine/asset_reel.mjs:460; frame f at f / 30 s,
+// engine/lib.mjs:191). The reel's own timeline.json does not record it.
+const ENGINE_FPS = 30;
+
+/** A cut's shots, to tell the engine's cut transitions from blank pictures. */
+export interface Shots {
+  fps: number;
+  shots: readonly { start: number; dur: number }[];
+}
+
+const TimelineShots = z.object({
+  shots: z.array(z.object({ start: z.number(), dur: z.number() })),
+});
+
+/** The shots of a cut from its timeline.json (the engine's reel-v<n>/timeline.json). */
+export async function readShots(cutDir: string): Promise<Shots> {
+  const file = path.join(cutDir, 'timeline.json');
+  const parsed = TimelineShots.safeParse(JSON.parse(await readFile(file, 'utf8')));
+  if (!parsed.success) throw new Error(`${file}: ${z.prettifyError(parsed.error)}`);
+  return { fps: ENGINE_FPS, shots: parsed.data.shots };
+}
+
+// Whether sample i shows a frame of the engine's cut transition. fps=1/SAMPLE_S keeps, for sample i,
+// the last source frame before (i + 0.5) * SAMPLE_S (measured with ffmpeg 8.1 at 25 and 30 fps); the
+// shot and its local time are found as stage_asset.html render() finds them, in the same arithmetic.
+function inTransition(i: number, cut: Shots): boolean {
+  const t = (Math.ceil((i + 0.5) * SAMPLE_S * cut.fps) - 1) / cut.fps;
+  let k = cut.shots.findIndex((s) => t >= s.start && t < s.start + s.dur);
+  if (k < 0) k = cut.shots.length - 1;
+  const shot = cut.shots[k];
+  return k > 0 && shot !== undefined && (t - shot.start) / TRANSITION_S < 1;
+}
+
 // Rounded where frame_audit.py rounds before it judges; the balance and flat shares stay exact, as
 // it judges them. Times are seconds from the start.
 export type FrameMeasures = {
   samples: number;
   frame0Detail: number;
+  /** Blank samples, without those in an engine cut transition when the shots are known. */
   blankAt: number[];
+  /** Blank samples in an engine cut transition, not counted by blank. */
+  blankInTransition: number[];
   lowerHalfShare: number;
   centreOfMass: number;
   flatShare: number;
@@ -264,7 +307,16 @@ async function alive(video: string, band: CaptionBand): Promise<FrameMeasures['a
   };
 }
 
-export async function measureFrames(video: string, band: CaptionBand): Promise<FrameMeasures> {
+/**
+ * Measures a reel with its caption band left out. With the cut's shots, a blank sample in one of the
+ * engine's cut transitions goes to `blankInTransition`, not `blankAt`; every other measure is
+ * frame_audit.py's.
+ */
+export async function measureFrames(
+  video: string,
+  band: CaptionBand,
+  cut?: Shots,
+): Promise<FrameMeasures> {
   if (!(band.top >= 0 && band.top <= band.bottom && band.bottom <= 1920)) {
     throw new RangeError(
       `caption band ${String(band.top)}-${String(band.bottom)} is not in 0-1920`,
@@ -319,6 +371,7 @@ export async function measureFrames(video: string, band: CaptionBand): Promise<F
   const centre: number[] = [];
   const flat: number[] = [];
   const blankAt: number[] = [];
+  const blankInTransition: number[] = [];
   frames.forEach((f, i) => {
     const spreads = blockSpreads(f, 0, H);
     let picture = 0;
@@ -337,13 +390,16 @@ export async function measureFrames(video: string, band: CaptionBand): Promise<F
     low.push(lower / (picture + 1e-9));
     centre.push(mass / (picture + 1e-9));
     flat.push(spreads.filter((s) => s < FLAT_SPREAD).length / spreads.length);
-    if (detailed / spreads.length < BLANK_DETAIL) blankAt.push(i * SAMPLE_S);
+    if (detailed / spreads.length < BLANK_DETAIL) {
+      (cut !== undefined && inTransition(i, cut) ? blankInTransition : blankAt).push(i * SAMPLE_S);
+    }
   });
 
   return {
     samples: frames.length,
     frame0Detail: round(detail(first), 3),
     blankAt,
+    blankInTransition,
     lowerHalfShare: median(low),
     centreOfMass: median(centre),
     flatShare: median(flat),

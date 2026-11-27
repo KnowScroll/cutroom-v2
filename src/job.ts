@@ -6,7 +6,7 @@ import { z } from 'zod';
 import type { Config, VoiceModelKey } from './config.ts';
 import { EngineCrashError, runCut, type CutResult, type Spent } from './engine.ts';
 import { basicGates } from './gates/basic.ts';
-import { frameGates, frameSetup, measureFrames } from './gates/frames.ts';
+import { frameGates, frameSetup, measureFrames, readShots } from './gates/frames.ts';
 import { runIntake } from './intake.ts';
 import type { M3Request, M3Result } from './minimax.ts';
 import {
@@ -518,7 +518,7 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
       }
 
       await stage('gates');
-      const measures = await measureFrames(cut.reelPath, frames.band);
+      const measures = await measureFrames(cut.reelPath, frames.band, await readShots(cut.dir));
       record.gates = [...(await basicGates(cut)), ...frameGates(measures, frames.settings)];
       await event('gates', 'gates.done', { cut: n, gates: record.gates, frames: measures });
       log(

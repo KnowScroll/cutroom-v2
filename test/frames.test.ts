@@ -110,6 +110,46 @@ await test('the caption band is left out of the picture', async (t) => {
   assert.equal(gate(elsewhere, 'alive').pass, true);
 });
 
+// testsrc with frames `from`-`to` painted over in one flat colour. At 10 fps the 1 s sample i is
+// source frame 10i + 4 (t = i + 0.4 s).
+const blankFrames = (from: number, to: number): string =>
+  `testsrc=s=270x480:r=10:d=4,drawbox=x=0:y=0:w=iw:h=ih:c=black:t=fill:enable='between(n,${String(from)},${String(to)})'`;
+
+await test("a blank sample in the engine's cut transition at a shot start is not blank", async (t) => {
+  const path = await video(t, blankFrames(14, 15));
+  const shots = {
+    fps: 10,
+    shots: [
+      { start: 0, dur: 1.35 },
+      { start: 1.35, dur: 2.65 },
+    ],
+  };
+  const m = await measureFrames(path, CUTROOM_BAND, shots);
+  assert.deepEqual(m.blankAt, []);
+  assert.deepEqual(m.blankInTransition, [1]);
+  assert.equal(gate(frameGates(m), 'blank').pass, true);
+  // without the shots, frame_audit.py's measure counts it
+  const plain = await measureFrames(path, CUTROOM_BAND);
+  assert.deepEqual(plain.blankAt, [1]);
+  assert.equal(gate(frameGates(plain), 'blank').pass, false);
+});
+
+await test('a blank lasting a whole shot fails blank', async (t) => {
+  const path = await video(t, blankFrames(14, 25));
+  const shots = {
+    fps: 10,
+    shots: [
+      { start: 0, dur: 1.35 },
+      { start: 1.35, dur: 1.25 },
+      { start: 2.6, dur: 1.4 },
+    ],
+  };
+  const m = await measureFrames(path, CUTROOM_BAND, shots);
+  assert.deepEqual(m.blankInTransition, [1]);
+  assert.deepEqual(m.blankAt, [2]);
+  assert.equal(gate(frameGates(m), 'blank').pass, false);
+});
+
 await test('gate lines set a frame gate off, info or to another threshold', async (t) => {
   const m = await measureFrames(
     await video(t, 'color=c=0x2a6f97:s=270x480:r=10:d=3'),
