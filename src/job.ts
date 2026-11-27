@@ -4,7 +4,16 @@ import { readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 import type { Config, VoiceModelKey } from './config.ts';
-import { EngineCrashError, runCut, type CutResult, type Spent } from './engine.ts';
+import {
+  EngineCrashError,
+  EngineLockedError,
+  parseOutputs,
+  runCut,
+  type CutResult,
+  type RunCutOptions,
+  type Spent,
+  type VoiceRefused,
+} from './engine.ts';
 import { basicGates } from './gates/basic.ts';
 import { frameGates, frameSetup, measureFrames, readShots } from './gates/frames.ts';
 import { runIntake } from './intake.ts';
@@ -12,8 +21,10 @@ import type { M3Request, M3Result } from './minimax.ts';
 import {
   appendEvent,
   appendIndex,
+  claimJob,
   createJob,
   gateValue,
+  readJob,
   runDir,
   setJobStage,
   setJobStatus,
@@ -32,7 +43,17 @@ import {
   type VoiceSwitch,
 } from './record.ts';
 import { reviewCut } from './review.ts';
-import { applyPatches, invalidateCheckpoints, recordNextCut, syncTemplates } from './templates.ts';
+import { readLoop, writeLoop, type LoopState } from './loop.ts';
+import {
+  PATCHABLE_SECTIONS,
+  applyPatches,
+  findAppliedPatch,
+  invalidateCheckpoints,
+  recordNextCut,
+  syncTemplates,
+  type PatchResult,
+  type PatchableSection,
+} from './templates.ts';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
 
@@ -45,8 +66,12 @@ export interface JobOptions {
   m3: (req: M3Request) => Promise<M3Result>;
   /** The template originals, synced into `<var>/templates` at job start (design §5.2). Default `<repo>/templates`. */
   originalsDir?: string;
+  /** An existing job folder (queued, or running when a restart resumes it) instead of a new one; `request` is its request. */
+  jobId?: string;
   /** Extra environment for the engine process. */
   engineEnv?: Readonly<Record<string, string>>;
+  /** Milliseconds between tries while another process holds the engine lock (default 2000). */
+  lockPollMs?: number;
   /** One line per step for the person watching the CLI. */
   log?: (line: string) => void;
 }
@@ -225,6 +250,61 @@ interface Round {
   before: Snapshot | null;
 }
 
+// Resume helpers (design §8): the planned round and the job's own start.
+/** Waits ms; a SIGINT/SIGTERM meanwhile exits at once (the job stays running and resumes at the next start). */
+async function sleepOrExit(ms: number): Promise<void> {
+  const bye = (signal: NodeJS.Signals): void => {
+    process.exit(signal === 'SIGINT' ? 130 : 143);
+  };
+  process.on('SIGINT', bye);
+  process.on('SIGTERM', bye);
+  try {
+    await new Promise((r) => setTimeout(r, ms));
+  } finally {
+    process.off('SIGINT', bye);
+    process.off('SIGTERM', bye);
+  }
+}
+
+function snapshotToJson(s: Snapshot): { lines: string[]; code: Record<string, string> } {
+  return { lines: s.lines, code: Object.fromEntries(s.code) };
+}
+
+/** The planned round a loop state holds; its record is the one in `rounds`, so later updates reach both. */
+function restoreRound(state: LoopState): Round | null {
+  if (state.made === null) return null;
+  const { n, notes, patches, before } = state.made;
+  const record = state.rounds.find((r) => r.n === n);
+  if (record === undefined) throw new Error(`loop state: no record of round ${String(n)}`);
+  return {
+    record,
+    notes,
+    patches,
+    before:
+      before === null ? null : { lines: before.lines, code: new Map(Object.entries(before.code)) },
+  };
+}
+
+/** A new job, or the queued / running job `options.jobId` names (a running one is a resume). */
+async function openJob(
+  varDir: string,
+  options: JobOptions,
+): Promise<{ id: string; started: string }> {
+  let id: string;
+  if (options.jobId === undefined) {
+    id = (await createJob(varDir, options.request)).id;
+  } else {
+    id = options.jobId;
+    const job = await readJob(varDir, id);
+    if (job.status === 'running') {
+      await claimJob(varDir, id);
+      return { id, started: job.started ?? '' };
+    }
+  }
+  const running = await setJobStatus(varDir, id, 'running', { stage: 'sync' });
+  return { id, started: running.started ?? '' };
+}
+
 interface RoundInput {
   n: number;
   job: string;
@@ -239,6 +319,32 @@ interface RoundInput {
   /** Notes rounds since the last template round: a template round's rerun drops their changes. */
   notesRounds: readonly number[];
   event: (stage: string, name: string, data: unknown) => Promise<void>;
+}
+
+/**
+ * Resume (design §8): a patch this job already applied for this round (history entry, working copy at its result) is
+ * taken as it is, never applied twice; the caller still invalidates the checkpoints, which finishes a round that
+ * stopped between the patch and the deletion.
+ */
+async function appliedOrApply(
+  i: RoundInput,
+  patches: readonly TemplatePatch[],
+): Promise<PatchResult> {
+  const prior = await findAppliedPatch(i.workingDir, i.kind, i.job, i.n);
+  if (prior !== null) {
+    const sections = prior.patches
+      .map((p) => p.section.trim().toLowerCase())
+      .filter((s): s is PatchableSection => (PATCHABLE_SECTIONS as readonly string[]).includes(s));
+    return { k: prior.k, applied: prior.patches, rejected: prior.rejected, sections };
+  }
+  return applyPatches(i.workingDir, i.kind, patches, {
+    job: i.job,
+    cut: i.n,
+    round: i.n,
+    request: i.request,
+    gates: i.cut.gates,
+    scores: i.review.scores,
+  });
 }
 
 /**
@@ -262,14 +368,7 @@ async function planRound(i: RoundInput): Promise<Round | { none: string }> {
   };
   const patches = i.review.template_patch ?? [];
   if (patches.length > 0) {
-    const res = await applyPatches(i.workingDir, i.kind, patches, {
-      job: i.job,
-      cut: i.n,
-      round: i.n,
-      request: i.request,
-      gates: i.cut.gates,
-      scores: i.review.scores,
-    });
+    const res = await appliedOrApply(i, patches);
     record.rejected_patches = res.rejected;
     for (const r of res.rejected) await i.event('round', 'patch.rejected', { round: i.n, ...r });
     if (res.k !== null) {
@@ -345,10 +444,9 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
   const workingDir = path.join(varDir, 'templates');
   const log = options.log ?? (() => undefined);
   const t0 = Date.now();
-  const job = await createJob(varDir, options.request);
-  const id = job.id;
+  const { id, started } = await openJob(varDir, options);
   const dir = runDir(varDir, id);
-  const started = (await setJobStatus(varDir, id, 'running', { stage: 'sync' })).started ?? '';
+  let earlierS = 0; // seconds of the starts before this one (resume)
   const event = (stage: string, name: string, data: unknown = null): Promise<void> =>
     appendEvent(varDir, id, stage, name, data);
   const stage = async (s: string): Promise<void> => {
@@ -367,6 +465,24 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
     return res;
   };
 
+  // design §8: a busy engine lock means wait, not fail; the job stays running and nothing is spent
+  const runWaiting = async (opts: RunCutOptions): Promise<CutResult | VoiceRefused> => {
+    let waited = false;
+    for (;;) {
+      try {
+        return await runCut(opts);
+      } catch (e) {
+        if (!(e instanceof EngineLockedError)) throw e;
+        if (!waited) {
+          waited = true;
+          await event('engine', 'engine.wait', { cut: opts.cut, holder_pid: e.holderPid });
+          log(`waiting for the engine lock (pid ${String(e.holderPid)})`);
+        }
+        await sleepOrExit(options.lockPollMs ?? 2000);
+      }
+    }
+  };
+
   let intake: Intake | null = null;
   const cuts: CutRecord[] = [];
   const rounds: FixRound[] = [];
@@ -377,39 +493,93 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
   // Spent by invocations of a cut that was never written (refused voices, a crash); counted in the totals.
   let pending: Spent | undefined;
 
-  try {
-    await event('sync', 'job.start', { request: options.request });
-    const sync = await syncTemplates(originalsDir, workingDir);
-    syncConflicts = sync.conflicts;
-    for (const e of sync.events) await event('sync', `sync.${e.action}`, e);
-    for (const c of sync.conflicts) log(`sync conflict: ${c}`);
-
-    await stage('intake');
-    const result = await runIntake({
-      request: options.request.request,
-      template: options.request.template,
-      seconds: options.request.seconds,
-      templatesDir: workingDir,
-      m3: counted,
+  // design §6.7: only a refusal rules a model out (for this job); a voice_pitch switch moves on to a model no cut
+  // has used yet, and the job fails only when every model is ruled out
+  const refusals: Refusal[] = [];
+  const ruledOut = new Set<VoiceModelKey>();
+  const tried = new Set<VoiceModelKey>();
+  let current: VoiceModelKey | undefined; // the model of the last cut made
+  let made: Round | null = null; // the round that makes the next cut
+  let notesRounds: number[] = [];
+  let reasked = false;
+  // Resume (design §8): what a restarted job keeps is written after each step that cannot be redone for free.
+  const save = async (): Promise<void> => {
+    if (intake === null) throw new Error('loop state saved before intake');
+    await writeLoop(dir, {
+      intake,
+      sync_conflicts: syncConflicts,
+      elapsed_s: earlierS + (Date.now() - t0) / 1000,
+      cuts,
+      rounds,
+      voice_switches: switches,
+      harness_calls: calls,
+      refusals,
+      ruled_out: [...ruledOut],
+      tried: [...tried],
+      current: current ?? null,
+      pending: pending ?? null,
+      notes_rounds: notesRounds,
+      made:
+        made === null
+          ? null
+          : {
+              n: made.record.n,
+              notes: made.notes,
+              patches: made.patches,
+              before: made.before === null ? null : snapshotToJson(made.before),
+            },
+      reasked,
     });
-    intake = result.intake;
+  };
+
+  try {
+    const state = await readLoop(dir);
+    if (state === null) {
+      await event('sync', 'job.start', { request: options.request });
+      const sync = await syncTemplates(originalsDir, workingDir);
+      syncConflicts = sync.conflicts;
+      for (const e of sync.events) await event('sync', `sync.${e.action}`, e);
+      for (const c of sync.conflicts) log(`sync conflict: ${c}`);
+
+      await stage('intake');
+      const result = await runIntake({
+        request: options.request.request,
+        template: options.request.template,
+        seconds: options.request.seconds,
+        templatesDir: workingDir,
+        m3: counted,
+      });
+      intake = result.intake;
+      await writeFile(path.join(dir, 'brief.txt'), result.brief);
+      await event('intake', 'intake.done', intake);
+      log(`intake: ${intake.template} (fit ${intake.fit}), ${String(intake.seconds)} s`);
+      await save();
+    } else {
+      ({ intake, sync_conflicts: syncConflicts } = state);
+      earlierS = state.elapsed_s;
+      cuts.push(...state.cuts);
+      rounds.push(...state.rounds);
+      switches.push(...state.voice_switches);
+      calls.push(...state.harness_calls);
+      refusals.push(...state.refusals);
+      state.ruled_out.forEach((m) => ruledOut.add(m));
+      state.tried.forEach((m) => tried.add(m));
+      current = state.current ?? undefined;
+      pending = state.pending ?? undefined;
+      notesRounds = state.notes_rounds;
+      reasked = state.reasked;
+      made = restoreRound(state);
+      await event('sync', 'job.resume', { cuts: cuts.length, rounds: rounds.length });
+      log(`resuming after ${String(cuts.length)} cut(s)`);
+    }
     const kind = intake.template;
     const seconds = intake.seconds;
     const briefFile = path.join(dir, 'brief.txt');
-    await writeFile(briefFile, result.brief);
-    await event('intake', 'intake.done', intake);
-    log(`intake: ${kind} (fit ${intake.fit}), ${String(seconds)} s`);
-    // ## checks may not be patched (D16), so the setup holds for every cut; a bad gate line stops the job here,
-    // before the engine spends anything
+    // ## checks may not be patched (D16), so the setup holds for every cut (and is recomputed on resume); a bad gate
+    // line stops the job here, before the engine spends anything
     const frames = frameSetup(await readFile(path.join(workingDir, `${kind}.md`), 'utf8'));
     await event('gates', 'gates.setup', frames);
 
-    // design §6.7: only a refusal rules a model out (for this job); a voice_pitch switch moves on to a model no cut
-    // has used yet, and the job fails only when every model is ruled out
-    const refusals: Refusal[] = [];
-    const ruledOut = new Set<VoiceModelKey>();
-    const tried = new Set<VoiceModelKey>();
-    let current: VoiceModelKey | undefined; // the model of the last cut made
     const untried = (): VoiceModelKey | undefined =>
       config.voiceModels.find((m) => !tried.has(m) && !ruledOut.has(m));
     const chooseVoice = (pitchSwitch: boolean): VoiceModelKey | undefined => {
@@ -417,133 +587,164 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
       if (pitchSwitch) return untried() ?? first;
       return current !== undefined && !ruledOut.has(current) ? current : first;
     };
-    let made: Round | null = null; // the round that makes the next cut
-    let notesRounds: number[] = [];
-    for (let n = 1; ; n++) {
+    // Resume: a cut without a review goes on with its gates and review; a finished cut with the next round planned
+    // goes to the engine; a finished cut alone goes on with the end check and the round.
+    const last = cuts.at(-1);
+    const startN =
+      last === undefined
+        ? 1
+        : last.review === null || made === null || made.record.cut !== last.n + 1
+          ? last.n
+          : last.n + 1;
+    const workDir = path.join(dir, 'reel-work');
+    for (let n = startN; ; n++) {
       await stage(`cut-${String(n)}`);
-      // the working copy the engine reads for this cut
-      const templateSha = sha256(await readFile(path.join(workingDir, `${kind}.md`)));
-      const notesFile = made?.record.notes_file ?? undefined;
-      const pitchSwitch = made !== null && made.record.voice !== null;
+      const resumed = cuts.find((c) => c.n === n);
+      let record: CutRecord;
+      let cut: CutResult | undefined;
+      let voiceKey: VoiceModelKey;
+      if (resumed !== undefined) {
+        if (current === undefined) throw new Error(`cut ${String(n)} resumed with no voice model`);
+        record = resumed;
+        voiceKey = current;
+      } else {
+        // the working copy the engine reads for this cut
+        const templateSha = sha256(await readFile(path.join(workingDir, `${kind}.md`)));
+        const notesFile = made?.record.notes_file ?? undefined;
+        const pitchSwitch = made !== null && made.record.voice !== null;
 
-      // the voice fallback of design §6.7 (trigger 1: the engine's voice refusal; the same cut reruns, not a round)
-      let written: { cut: CutResult; model: VoiceModelKey } | null = null;
-      while (written === null) {
-        const model = chooseVoice(pitchSwitch);
-        if (model === undefined) {
-          throw new Error(
-            `every voice model was refused: ${refusals.map((r) => `${r.model} (HTTP ${String(r.status)}: ${r.message})`).join('; ')}`,
-          );
-        }
-        await event('engine', 'engine.start', {
-          cut: n,
-          voice_model: model,
-          notes: notesFile ?? null,
-          template_sha: templateSha,
-        });
-        log(
-          `engine: cut ${String(n)} with voice ${model}${notesFile === undefined ? '' : ', notes'}`,
-        );
-        const run = await runCut({
-          config,
-          runDir: dir,
-          briefFile,
-          template: kind,
-          seconds,
-          cut: n,
-          voiceModel: model,
-          ...(notesFile === undefined ? {} : { notesFile }),
-          ...(pending === undefined ? {} : { earlier: pending }),
-          env: { CUTROOM_TEMPLATE_DIR: workingDir, ...options.engineEnv },
-        });
-        if (run.kind === 'voice_refused') {
-          refusals.push(run);
-          ruledOut.add(model);
-          pending = run.spent;
-          const next = chooseVoice(pitchSwitch);
-          await event('engine', 'voice.refused', { cut: n, ...run });
-          if (next !== undefined) {
-            const sw = {
-              cut: n,
-              from: model,
-              to: next,
-              reason: `HTTP ${String(run.status)}: ${run.message}`,
-            };
-            switches.push(sw);
-            await event('engine', 'voice.switch', sw);
-            log(`voice ${model} refused (HTTP ${String(run.status)}); trying ${next}`);
+        // the voice fallback of design §6.7 (trigger 1: the engine's voice refusal; the same cut reruns, not a round)
+        let written: { cut: CutResult; model: VoiceModelKey } | null = null;
+        while (written === null) {
+          const model = chooseVoice(pitchSwitch);
+          if (model === undefined) {
+            throw new Error(
+              `every voice model was refused: ${refusals.map((r) => `${r.model} (HTTP ${String(r.status)}: ${r.message})`).join('; ')}`,
+            );
           }
-          continue;
+          await event('engine', 'engine.start', {
+            cut: n,
+            voice_model: model,
+            notes: notesFile ?? null,
+            template_sha: templateSha,
+          });
+          log(
+            `engine: cut ${String(n)} with voice ${model}${notesFile === undefined ? '' : ', notes'}`,
+          );
+          const run = await runWaiting({
+            config,
+            runDir: dir,
+            briefFile,
+            template: kind,
+            seconds,
+            cut: n,
+            voiceModel: model,
+            ...(notesFile === undefined ? {} : { notesFile }),
+            ...(pending === undefined ? {} : { earlier: pending }),
+            env: { CUTROOM_TEMPLATE_DIR: workingDir, ...options.engineEnv },
+          });
+          if (run.kind === 'voice_refused') {
+            refusals.push(run);
+            ruledOut.add(model);
+            pending = run.spent;
+            const next = chooseVoice(pitchSwitch);
+            await event('engine', 'voice.refused', { cut: n, ...run });
+            if (next !== undefined) {
+              const sw = {
+                cut: n,
+                from: model,
+                to: next,
+                reason: `HTTP ${String(run.status)}: ${run.message}`,
+              };
+              switches.push(sw);
+              await event('engine', 'voice.switch', sw);
+              log(`voice ${model} refused (HTTP ${String(run.status)}); trying ${next}`);
+            }
+            await save();
+            continue;
+          }
+          written = { cut: run, model };
         }
-        written = { cut: run, model };
+        cut = written.cut;
+        voiceKey = written.model;
+        pending = undefined;
+        tried.add(voiceKey);
+        current = voiceKey;
+        await event('engine', 'engine.end', {
+          cut: n,
+          voice_model: voiceKey,
+          voice_model_id: cut.voiceModelId,
+          film_s: cut.filmS,
+          wall_s: cut.wallS,
+          usd: cut.totalUsd,
+        });
+
+        record = {
+          n,
+          dir: cut.dir,
+          template: kind,
+          template_sha: templateSha,
+          voice_model: `${voiceKey} (${cut.voiceModelId})`,
+          film_s: cut.filmS,
+          wall_s: cut.wallS,
+          engine_cost: cut.cost,
+          gates: [],
+          review: null,
+          notes_applied: made?.notes ?? null,
+          patch_applied: made?.patches ?? null,
+          engine_rejections: [
+            ...cut.failingSteps.map((f) => `shipped failing: ${f.step}: ${f.reason}`),
+            ...cut.rejections,
+          ],
+          credits: await readFile(cut.creditsPath, 'utf8'),
+        };
+        cuts.push(record);
+        if (made !== null && made.before !== null && made.notes !== null) {
+          const cmp = compare(made.before, await snapshot(workDir), made.notes);
+          made.record.changed = cmp.changed;
+          made.record.unchanged = cmp.unchanged;
+          await event('round', 'notes.result', { round: made.record.n, ...cmp });
+        }
+        await save();
       }
-      const { cut, model: voiceKey } = written;
-      pending = undefined;
-      tried.add(voiceKey);
-      current = voiceKey;
-      await event('engine', 'engine.end', {
-        cut: n,
-        voice_model: voiceKey,
-        voice_model_id: cut.voiceModelId,
-        film_s: cut.filmS,
-        wall_s: cut.wallS,
-        usd: cut.totalUsd,
-      });
 
-      const record: CutRecord = {
-        n,
-        dir: cut.dir,
-        template: kind,
-        template_sha: templateSha,
-        voice_model: `${voiceKey} (${cut.voiceModelId})`,
-        film_s: cut.filmS,
-        wall_s: cut.wallS,
-        engine_cost: cut.cost,
-        gates: [],
-        review: null,
-        notes_applied: made?.notes ?? null,
-        patch_applied: made?.patches ?? null,
-        engine_rejections: [
-          ...cut.failingSteps.map((f) => `shipped failing: ${f.step}: ${f.reason}`),
-          ...cut.rejections,
-        ],
-        credits: await readFile(cut.creditsPath, 'utf8'),
-      };
-      cuts.push(record);
-      if (made !== null && made.before !== null && made.notes !== null) {
-        const cmp = compare(made.before, await snapshot(cut.workDir), made.notes);
-        made.record.changed = cmp.changed;
-        made.record.unchanged = cmp.unchanged;
-        await event('round', 'notes.result', { round: made.record.n, ...cmp });
+      let review: Review;
+      if (record.review !== null) {
+        review = record.review;
+      } else {
+        // a cut resumed before its review: its outputs are on disk
+        cut ??= await parseOutputs(dir, n, path.join(dir, `engine-${String(n)}.log`));
+        await stage('gates');
+        const measures = await measureFrames(cut.reelPath, frames.band, await readShots(cut.dir));
+        record.gates = [...(await basicGates(cut)), ...frameGates(measures, frames.settings)];
+        await event('gates', 'gates.done', { cut: n, gates: record.gates, frames: measures });
+        log(
+          `gates: ${record.gates.map((g) => `${g.name} ${g.pass ? 'pass' : 'FAIL'}${g.mode === 'info' ? ' (info)' : ''}`).join(', ')}`,
+        );
+
+        await stage(`review-${String(n)}`);
+        const reviewed = await reviewCut({
+          cut,
+          gates: record.gates,
+          templatesDir: workingDir,
+          template: kind,
+          outDir: dir,
+          m3: counted,
+        });
+        review = reviewed.review;
+        record.review = review;
+        reasked = reviewed.reasked;
+        await save();
+        await event('review', 'review.done', {
+          cut: n,
+          approve: review.approve,
+          reasked: reviewed.reasked,
+          scores: review.scores,
+          summary: review.summary,
+        });
+        log(`review ${String(n)}: ${review.approve ? 'approve' : 'fixes wanted'}`);
       }
-
-      await stage('gates');
-      const measures = await measureFrames(cut.reelPath, frames.band, await readShots(cut.dir));
-      record.gates = [...(await basicGates(cut)), ...frameGates(measures, frames.settings)];
-      await event('gates', 'gates.done', { cut: n, gates: record.gates, frames: measures });
-      log(
-        `gates: ${record.gates.map((g) => `${g.name} ${g.pass ? 'pass' : 'FAIL'}${g.mode === 'info' ? ' (info)' : ''}`).join(', ')}`,
-      );
-
-      await stage(`review-${String(n)}`);
-      const reviewed = await reviewCut({
-        cut,
-        gates: record.gates,
-        templatesDir: workingDir,
-        template: kind,
-        outDir: dir,
-        m3: counted,
-      });
-      const review = reviewed.review;
-      record.review = review;
-      await event('review', 'review.done', {
-        cut: n,
-        approve: review.approve,
-        reasked: reviewed.reasked,
-        scores: review.scores,
-        summary: review.summary,
-      });
-      log(`review ${String(n)}: ${review.approve ? 'approve' : 'fixes wanted'}`);
+      // recordNextCut rewrites the entry's `next`, so a resume may repeat it
       const patched = made?.record.patch ?? null;
       if (patched !== null) {
         await recordNextCut(workingDir, kind, patched.k, {
@@ -583,7 +784,7 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
         kind,
         workingDir,
         runDir: dir,
-        workDir: cut.workDir,
+        workDir,
         cut: record,
         review,
         voice: pitchFails && next !== undefined ? { from: voiceKey, to: next } : null,
@@ -591,7 +792,7 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
         event,
       });
       if ('none' in planned) {
-        loopEnd = `no valid fix after cut ${String(n)} (${planned.none})${reviewed.reasked ? '; the review was asked again after approving with a blocking gate FAIL' : ''}`;
+        loopEnd = `no valid fix after cut ${String(n)} (${planned.none})${reasked ? '; the review was asked again after approving with a blocking gate FAIL' : ''}`;
         await event('round', 'round.none', { cut: n, why: planned.none });
         break;
       }
@@ -609,6 +810,7 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
       }
       if (made.record.kind === 'notes') notesRounds.push(n);
       if (made.record.kind === 'template') notesRounds = [];
+      await save();
       await event('round', 'round.planned', made.record);
       log(
         `round ${String(n)}: ${made.record.kind}${made.record.voice === null ? '' : `, voice ${made.record.voice.from} -> ${made.record.voice.to}`}`,
@@ -651,7 +853,7 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
     approved,
     totals: {
       usd: engineUsd + harnessUsd,
-      wall_s: (finished.getTime() - t0) / 1000,
+      wall_s: earlierS + (finished.getTime() - t0) / 1000,
       cuts: cuts.length,
       harness_calls: calls.length,
     },

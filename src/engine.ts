@@ -15,6 +15,7 @@ import path from 'node:path';
 import { z } from 'zod';
 import type { Config, VoiceModelKey } from './config.ts';
 import { PRICE } from './minimax.ts';
+import { pidAlive, renameWithRetry } from './proc.ts';
 import type { PhaseCost } from './record.ts';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
@@ -149,6 +150,14 @@ const LockFile = z.object({
 type LockFile = z.infer<typeof LockFile>;
 
 export class EngineBusyError extends Error {}
+/** Another live harness holds engine.lock: the caller waits and tries again (design §8). */
+export class EngineLockedError extends EngineBusyError {
+  holderPid: number;
+  constructor(message: string, holderPid: number) {
+    super(message);
+    this.holderPid = holderPid;
+  }
+}
 export class EngineCrashError extends Error {
   spent: Spent = { usd: 0, tokensIn: 0, tokensOut: 0, wallS: 0 };
 }
@@ -157,16 +166,6 @@ const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
 
 function errCode(e: unknown): string | undefined {
   return e instanceof Error && 'code' in e && typeof e.code === 'string' ? e.code : undefined;
-}
-
-function pidAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (e) {
-    // EPERM: the process exists but is not ours.
-    return errCode(e) === 'EPERM';
-  }
 }
 
 /**
@@ -200,21 +199,6 @@ async function waitGone(pid: number): Promise<void> {
   if (pidAlive(pid)) throw new Error(`engine pid ${String(pid)} did not stop`);
 }
 
-/** Windows refuses a rename over a file another process has open at that instant (EPERM/EBUSY); it clears within milliseconds. */
-function renameWithRetry(from: string, to: string, owned: (() => boolean) | undefined): void {
-  for (let i = 0; ; i++) {
-    if (owned !== undefined && !owned()) throw new EngineBusyError('engine lock lost');
-    try {
-      renameSync(from, to);
-      return;
-    } catch (e) {
-      const code = errCode(e);
-      if (i >= 40 || (code !== 'EPERM' && code !== 'EBUSY' && code !== 'EACCES')) throw e;
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
-    }
-  }
-}
-
 /**
  * Create the lock file only if absent. Not `link` + removing a temp file: on Windows a file made that way refuses a
  * rename over it (EPERM) for up to ~1.3 s (measured under load); a file written in place does not. The file is briefly
@@ -235,7 +219,10 @@ function publish(
   writeFileSync(tmp, content);
   try {
     if (mode === 'link') linkSync(tmp, file);
-    else renameWithRetry(tmp, file, owned);
+    else
+      renameWithRetry(tmp, file, () => {
+        if (owned !== undefined && !owned()) throw new EngineBusyError('engine lock lost');
+      });
   } finally {
     rmSync(tmp, { force: true });
   }
@@ -283,6 +270,7 @@ interface Held {
 
 /** Only the owner (matching token) releases its lock. */
 function release(held: Held): void {
+  heldHere.delete(held.token);
   try {
     if (readLock(held.file)?.token === held.token) rmSync(held.file, { force: true });
   } catch {
@@ -297,9 +285,16 @@ function recordEnginePid(held: Held, pid: number | null): void {
   publish(held.file, JSON.stringify({ ...lock, engine_pid: pid }), 'rename', owned);
 }
 
+// Tokens of the locks this process holds. A lock naming our own pid under another token is a dead process's (pid reuse).
+const heldHere = new Set<string>();
+
 /** busy: a live harness holds it, whatever the engine pid says. Else orphan (a live engine) or stale (nothing runs). */
 function judge(lock: LockFile): 'busy' | 'stale' | 'orphan' {
-  if (lock.harness_pid === process.pid || pidAlive(lock.harness_pid)) return 'busy';
+  const alive =
+    lock.harness_pid === process.pid
+      ? lock.token !== undefined && heldHere.has(lock.token)
+      : pidAlive(lock.harness_pid);
+  if (alive) return 'busy';
   return lock.engine_pid !== null && pidAlive(lock.engine_pid) ? 'orphan' : 'stale';
 }
 
@@ -350,6 +345,7 @@ async function takeOver(file: string, mineJson: string): Promise<boolean> {
 async function acquireLock(file: string): Promise<Held> {
   await mkdir(path.dirname(file), { recursive: true });
   const held: Held = { file, token: randomUUID() };
+  heldHere.add(held.token);
   const mine = JSON.stringify({
     harness_pid: process.pid,
     engine_pid: null,
@@ -366,13 +362,16 @@ async function acquireLock(file: string): Promise<Held> {
     const lock = readLock(file);
     if (lock === null) continue;
     if (judge(lock) === 'busy') {
-      throw new EngineBusyError(
+      heldHere.delete(held.token);
+      throw new EngineLockedError(
         `engine busy: harness pid ${String(lock.harness_pid)} since ${lock.started_at}`,
+        lock.harness_pid,
       );
     }
     if (await takeOver(file, mine)) return held;
     await sleep(50);
   }
+  heldHere.delete(held.token);
   throw new EngineBusyError('engine lock could not be taken');
 }
 
@@ -647,6 +646,11 @@ export async function runCut(opts: RunCutOptions): Promise<CutResult | VoiceRefu
   const earlier: Spent = { ...(opts.earlier ?? { usd: 0, tokensIn: 0, tokensOut: 0, wallS: 0 }) };
   const untilExit = new Promise<never>(() => undefined);
   try {
+    // a calls.json already here is from an invocation that was interrupted (finished ones are moved aside): price it
+    const interrupted = await harvestCalls(runDir, cut);
+    earlier.usd += interrupted.usd;
+    earlier.tokensIn += interrupted.tokensIn;
+    earlier.tokensOut += interrupted.tokensOut;
     for (let attempt = 1; ; attempt++) {
       if (stopping()) return await untilExit;
       if (readLock(lockFile)?.token !== held.token) throw new EngineBusyError('engine lock lost');
