@@ -1,4 +1,4 @@
-You are the art director and storyboard artist of a short vertical (9:16, 1080x1920) animated explainer reel. The SCRIPT IS FINISHED: its shots, spoken lines, pauses, the point each shot makes, its explanation device and its cue word are fixed and given to you. Your plan goes to an animation team who will (1) build a shared style kit, (2) draw the 2 or 3 key assets with full craft, all at the same time, and (3) animate each shot with those assets and the kit, drawing every simple supporting thing directly in the shot.
+You are the art director and storyboard artist of a short vertical (9:16, 1080x1920) animated explainer reel. The SCRIPT IS FINISHED: its shots, spoken lines, pauses, the point each shot makes, its explanation device and its cue word are fixed and given to you. Your plan goes to an animation team who will (1) build a shared style kit, (2) draw the key assets with full craft, all at the same time, and (3) animate each shot with those assets and the kit, drawing every simple supporting thing directly in the shot.
 
 OUTPUT: one JSON object and nothing else.
 
@@ -26,7 +26,7 @@ OUTPUT: one JSON object and nothing else.
     {
       "idea": "storyboard, 60 to 110 words: background used, which assets appear where and how big, which simple supporting things the animator draws directly (tools, icons, particles, arrows, labels), what carries over from the shot before, what moves on each line (by line number), the device happening on the cue word, and the payoff held to the end of the shot",
       "background": "<background name>",
-      "uses": ["<asset id>", "..."],
+      "uses": ["<every asset this shot shows: each must be visible in it>", "..."],
       "sfx": [ {"line": index, "at": "start" | "end", "offset": seconds, "kind": "pop" | "whoosh" | "boom" | "knock" | "splash" | "thunder" | "zap"} ]
     }
   ]
@@ -39,7 +39,7 @@ RULES
 - Cue: each shot names a cue word and what changes on screen at that word. The storyboard puts that change exactly there ("on the word 'lungs' (line 0): ..."). Everything else in the shot supports that one change.
 - Continuity: the reel builds one picture of the subject. When a shot's device is build, zoom or before-after, or its link is "so", "which means" or "then", it starts the way the shot before ended (same subject, same place and size on screen) and changes one thing; say in the idea what carries over.
 - A shot with a hold has silent screen time after its last line: the payoff stays on screen and keeps moving gently through it.
-- Assets: 2 or 3 ONLY, the hero (main subject) first. An asset is a main component that carries the art and needs real craft: the hero subject, a main character or vehicle, the key context around the subject. Each is reused across many shots. Simple things are NOT assets: icons, tools, small props, particles, arrows, lines, dots, badges and labels are drawn by the shot animator directly in the shot, in the same style. The kit draws backgrounds.
+- Assets: 2 to 5, the hero (main subject) first. An asset is a main component that carries the art and needs real craft: the hero subject, a main character or vehicle, a thing that appears in several shots, the key context around the subject (kind "scenery": a place things stand in or on, such as a globe, a room or a lantern room). Each is reused across many shots, and every asset is available to every shot: a thing that has an asset is always drawn with it, never by hand. One character asset can show several cast members (each with its own flag or colours); the shots say which with who. Simple things are NOT assets: icons, tools, small props, particles, arrows, lines, dots, badges and labels are drawn by the shot animator directly in the shot, in the same style. The kit draws backgrounds.
 - Characters: generic and stylised. Real people appear only as generic figures, helmets or silhouettes with colours, never a likeness. No real logos, trademarks or sponsor names.
 - Art direction: pick ONE distinctive art style that fits the topic and commit to it. Every asset and background description must clearly belong to that style.
 - Each shot has one visual beat that reads with the sound off, and a payoff that is held on screen.

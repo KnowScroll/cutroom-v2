@@ -13,6 +13,7 @@ function drawAsset(ctx, p, h, kit) {
 - kit is the shared style kit: use kit.palette colours and kit.font(size, weight) so the asset matches the style.
 - Fill the box well (at least 60% of its width or height), and never draw outside it.
 - No text unless the asset is a UI element that needs it.
+- Characters: return where the head top and the hands are in the current pose, in the box's coordinates: return { head: [x, y], handL: [x, y], handR: [x, y] }. A shot's h.asset gives them back in its own coordinates, to put a held thing in a hand or a label above the head.
 - Declare every name once per scope: for a pair (left and right shoe, hand, eye) use one helper called twice or two different names (shoeL, shoeR). Declaring the same const, let or function name twice (a common slip: 'shoe') is a SyntaxError and the drawing is rejected.
 - Pure function of p: no Math.random (use h.rng(seed)), no Date, timers, document, window or network.
 

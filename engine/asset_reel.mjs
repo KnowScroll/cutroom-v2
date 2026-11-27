@@ -251,7 +251,7 @@ const cost = () => calls.reduce((a, c) => a + (c.input_tokens * PRICE.in + c.cac
 function checkProduction(p, story) {
   const E = [];
   if (!p?.style?.palette || !p.style.backgrounds?.length) E.push('style needs a palette and 2 to 5 backgrounds');
-  if (!Array.isArray(p?.assets) || p.assets.length < 2 || p.assets.length > 3) E.push(`need 2 or 3 assets (only the main components that need real craft; shots draw simple things themselves), got ${p?.assets?.length}`);
+  if (!Array.isArray(p?.assets) || p.assets.length < 2 || p.assets.length > 5) E.push(`need 2 to 5 assets (the things that need real craft or appear in several shots; shots draw simple things themselves), got ${p?.assets?.length}`);
   if (!Array.isArray(p?.shots) || p.shots.length !== story.shots.length) E.push(`need exactly ${story.shots.length} shots, one per script shot in order, got ${p?.shots?.length}`);
   if (E.length) return E;
   // a background named by "id" (or inside its set or room spec) instead of "name": take that name (seen: 4 plan rejections in a row)
@@ -490,7 +490,7 @@ function sentencesOfShot(sh) {
   }
   return out;
 }
-const assetCatalog = (plan, ids) => plan.assets.filter(a => !ids || ids.includes(a.id)).map(a => ({ id: a.id, kind: a.kind, description: a.description, box: `${a.w}x${a.h}`, animated: !!a.animated, params: a.params || [], ...(a.poses ? { poses: a.poses.map(p => `${p.name}: ${p.look}`) } : {}) }));
+const assetCatalog = plan => plan.assets.map(a => ({ id: a.id, kind: a.kind, description: a.description, box: `${a.w}x${a.h}`, animated: !!a.animated, params: a.params || [], ...(a.poses ? { poses: a.poses.map(p => `${p.name}: ${p.look}`) } : {}) }));
 
 // validate a drawing; if its ONLY fault is spilling outside its declared box, refit the box to what it really draws (+8%)
 // instead of asking for a redraw: the box is just a size label for placing it, and M3 often guesses it wrong for lying poses
@@ -554,7 +554,7 @@ function applyPoses(plan, P) {
     a.poses = (kept ? JSON.parse(kept) : e.poses).map(p => ({ name: p.name, look: p.look, shots: p.shots }));
     if (e.box?.w > 0 && e.box?.h > 0) { a.w = Math.round(e.box.w); a.h = Math.round(e.box.h); }
     a.params = [{ name: 'pose', type: 'string', description: `one of: ${a.poses.map(p => p.name).join(', ')}` }, ...(a.params || []).filter(p => p.name !== 'pose')];
-    a.states = a.poses.map(p => ({ pose: p.name }));
+    a.states = a.poses.map(p => ({ ...(a.states?.[0] || {}), pose: p.name })); // each pose keeps the planned params (a ball's flag), so the sheet shows the real thing
   }
 }
 
@@ -563,7 +563,7 @@ async function makeAsset(plan, stage, a, notes = null, save = !notes) {
   // a character with many poses: draw the character with its 3 most-used poses first (full attention on the identity),
   // then add the rest to that code from the same inner functions. Ten poses in one go lost the face and the craft.
   if (a.poses && a.poses.length > 3 && !notes && !a.code) {
-    const all = a.poses, core = all.slice(0, 3), setPoses = ps => { a.poses = ps; a.states = ps.map(p => ({ pose: p.name })); a.params = [{ name: 'pose', type: 'string', description: `one of: ${ps.map(p => p.name).join(', ')}` }, ...a.params.filter(p => p.name !== 'pose')]; };
+    const all = a.poses, core = all.slice(0, 3), setPoses = ps => { a.poses = ps; a.states = ps.map(p => ({ ...(a.states?.[0] || {}), pose: p.name })); a.params = [{ name: 'pose', type: 'string', description: `one of: ${ps.map(p => p.name).join(', ')}` }, ...a.params.filter(p => p.name !== 'pose')]; };
     setPoses(core); await makeAsset(plan, stage, a, null, false);
     if (!a.code) { setPoses(all); return; } // the run stops on a missing asset as before
     const page = await stage.newPage();
@@ -643,8 +643,8 @@ async function makeShot(plan, stage, tl, i, notes = null) {
     if (PHOTOMODE() && tl.photos?.length) await page.evaluate(p => window.loadPhotos(p), tl.photos);
     const ck = checks(), hero = NOASSETS ? { id: null } : plan.assets[0];
     const heroBox = hero.code && !D3MODE() ? (await page.evaluate((code, spec, kit) => window.validateAsset(code, spec, kit).box, hero.code, hero, plan.kit)) : null;
-    // "subject size: off": shots may hold a quote, a map or a number instead of an asset (documentary reels), so no 400 px subject rule
-    const sc = { hero: ck['subject size'] === 'off' ? null : hero.id, heroBox, acting: +ck['acting beat'] || 0, heroSize: range(ck['hero size']), heroWidth: range(ck['hero width']), heroCentreY: range(ck['hero centre y']), labels: ck.labels || null };
+    // "subject size: off": shots may hold a quote, a map or a number instead of an asset (documentary reels), so no subject size or opening rule
+    const sc = { hero: ck['subject size'] === 'off' ? null : hero.id, heroBox, acting: +ck['acting beat'] || 0, heroSize: range(ck['hero size']), heroWidth: range(ck['hero width']), heroCentreY: range(ck['hero centre y']), labels: ck.labels || null, uses: s.uses || [], scenery: plan.assets.filter(a => a.kind === 'scenery').map(a => a.id) };
     const validate0 = c => page.evaluate((code, shot, t, k) => window.validateShot(code, shot, t, k), c, { ...sh, code: null }, { ...tl, shots: [], photos: undefined }, sc);
     // "numbers: reference": every number written on screen must appear in the fetched reference or the brief (M3 invented values to fill a beat)
     const validateN = ck.numbers !== 'reference' ? validate0 : async c => { const res = await validate0(c); const bad = numbersNotIn((res.stats && res.stats.shown) || []); if (bad.length) { res.errors = [...res.errors, `the number(s) ${bad.map(b => `"${b}"`).join(', ')} on screen are not in the reference: show only numbers the reference states (with their unit), or leave the number out`]; res.ok = false; } return res; };
@@ -663,8 +663,8 @@ async function makeShot(plan, stage, tl, i, notes = null) {
     const cast = Object.fromEntries(Object.entries(plan.cast).filter(([k]) => k !== 'narrator').map(([k, v]) => [k, v.asset]));
     const user = D3MODE() ? `Art style: ${plan.style.name}: ${plan.style.description}\n\n${LPMODE() ? kitApiLp(plan) : kitApi3d(plan)}\n\nShot ${i + 1} of ${plan.shots.length}. Storyboard: ${s.idea}${shotStory(s)}\n${LPMODE() ? 'Set' : 'Room'}: "${s.background}"\nShot length: ${sh.dur.toFixed(2)} s\nLines (sh.lines): ${JSON.stringify(sh.lines.map(({ who, text, start, end }) => ({ who, text, start, end })))}\n${LPMODE() ? `Sentences of the narration with their times (h.d3.sentences() returns these): ${JSON.stringify(sentencesOfShot(sh))}\nThe host (h.d3.actor id) and the subjects (h.d3.thing ids) with the inside parts h.d3.label can name: ${JSON.stringify(cast3d(plan))}` : `Cast (h.d3.actor ids with their roles) and the story's own prop (an extra h.d3.thing id): ${JSON.stringify(cast3d(plan))}`}${notes ? `\n\nThe director reviewed this shot and asks:\n${notes}\n\nCurrent code:\n\`\`\`js\n${s.code}\n\`\`\`` : ''}\n\nWrite draw.`
       : `Art style: ${plan.style.name}: ${plan.style.description}\n\n${kitApi(plan)}\n\nShot ${i + 1} of ${plan.shots.length}. Storyboard: ${s.idea}${shotStory(s)}\nBackground: "${s.background}"\nShot length: ${sh.dur.toFixed(2)} s\nLines (sh.lines): ${JSON.stringify(sh.lines.map(({ who, text, start, end }) => ({ who, text, start, end })))}\n${NOASSETS
-      ? `NO ASSETS IN THIS REEL: h.asset is not available. Draw every character and object yourself with canvas code in this shot, in the art style, following these design notes exactly so they look the same in every shot (same shapes, proportions, colours, outline and face). Where the directions mention an asset or its params, draw that thing yourself in that state, and act the characters with your own drawing (pose, expression, gestures). Speakers and the design that represents each: ${JSON.stringify(cast)}\nDesign notes: ${JSON.stringify(assetCatalog(plan, s.uses).map(({ id, kind, description, box, params }) => ({ id, kind, description, size: box, states: params.map(p => `${p.name}: ${p.description}`) })))}`
-      : `Speakers and the asset that represents each: ${JSON.stringify(cast)}\nAssets you may use: ${JSON.stringify(assetCatalog(plan, s.uses))}`}${evidence}${notes ? `\n\nThe director reviewed this shot and asks:\n${notes}\n\nCurrent code:\n\`\`\`js\n${s.code}\n\`\`\`` : ''}\n\nWrite draw.`;
+      ? `NO ASSETS IN THIS REEL: h.asset is not available. Draw every character and object yourself with canvas code in this shot, in the art style, following these design notes exactly so they look the same in every shot (same shapes, proportions, colours, outline and face). Where the directions mention an asset or its params, draw that thing yourself in that state, and act the characters with your own drawing (pose, expression, gestures). Speakers and the design that represents each: ${JSON.stringify(cast)}\nDesign notes: ${JSON.stringify(assetCatalog(plan).map(({ id, kind, description, box, params }) => ({ id, kind, description, size: box, states: params.map(p => `${p.name}: ${p.description}`) })))}`
+      : `Speakers and the asset that represents each: ${JSON.stringify(cast)}\nAssets (every one is yours to use; the storyboard shows ${JSON.stringify(s.uses || [])} in this shot, and each of those must be visible): ${JSON.stringify(assetCatalog(plan))}`}${evidence}${notes ? `\n\nThe director reviewed this shot and asks:\n${notes}\n\nCurrent code:\n\`\`\`js\n${s.code}\n\`\`\`` : ''}\n\nWrite draw.`;
     const craft = LPMODE() ? 'These are three frames of your shot (20%, 55% and 92% of its length, side by side; each is a separate vertical frame). Judge like a viewer: is the subject big and clearly the real thing, does the slice open it where the line explains it and does the one label point at the right part, is the host beside it (never inside it) in a pose that fits the sentence, is the header readable?' : D3MODE() ? 'These are three frames of your shot (20%, 55% and 92% of its length, side by side; each is a separate vertical frame). Judge like a viewer: does everyone stand where a person could stand, face whom they deal with, does each camera setup show the right person clearly, do the expressions match the lines, do the insert panels read? Fix staging with positions, facing, poses and camera types.' : 'These are three frames of your shot (20%, 55% and 92% of its length, side by side; each is a separate vertical frame). Judge staging, hero size, depth, motion and payoff timing against the template directions and the storyboard.';
     const r = await make(`shot${i + 1}${notes ? '-rev' : ''}`, `${prompt(D3MODE() ? 'shot3d' : 'shot')}${PHOTOMODE() ? `\n\n${prompt('shotphotos')}` : ''}\n\n${guide('look', 'motion', 'shots')}`, user, validate, craft, s.code);
     if (r.code) s.code = r.code;
