@@ -155,6 +155,25 @@ await test('a voice refusal is returned without a rerun (429 too)', async () => 
   }
 });
 
+await test('a wall clock stepped back during an engine run leaves the time spent the time it ran (#38)', async (t) => {
+  const s = await setup({ FAKE_ENGINE_REFUSE: 'heygen' });
+  t.mock.timers.enable({ apis: ['Date'], now: Date.now() });
+  // WSL steps its wall clock back 2-4 s in the first minute after a boot; here it goes back 1 s every millisecond
+  const stepBack = setInterval(() => {
+    t.mock.timers.setTime(Date.now() - 1000);
+  }, 1);
+  const p0 = performance.now();
+  let r: CutResult | VoiceRefused;
+  try {
+    r = await runCut(s.opts);
+  } finally {
+    clearInterval(stepBack);
+  }
+  const ran = (performance.now() - p0) / 1000;
+  if (r.kind !== 'voice_refused') throw new Error('expected a voice refusal');
+  assert.ok(r.spent.wallS > 0 && r.spent.wallS <= ran, String(r.spent.wallS));
+});
+
 await test('a crash once reruns the same command and resumes', async () => {
   const s = await setup({ FAKE_ENGINE_CRASH: 'once' });
   const r = cutOf(await runCut(s.opts));

@@ -661,7 +661,7 @@ export async function runCut(opts: RunCutOptions): Promise<CutResult | VoiceRefu
           return 0;
         }
       })();
-      const startedAt = Date.now();
+      const startedAt = performance.now(); // monotonic: the wall clock can step back (#38)
       const { code } = await runEngineOnce(args, env, logPath, held, state);
       if (stopping()) return await untilExit;
       const thisRun = readFileSync(logPath, 'utf8').slice(before);
@@ -685,7 +685,7 @@ export async function runCut(opts: RunCutOptions): Promise<CutResult | VoiceRefu
       earlier.usd += lost.usd;
       earlier.tokensIn += lost.tokensIn;
       earlier.tokensOut += lost.tokensOut;
-      earlier.wallS += (Date.now() - startedAt) / 1000;
+      earlier.wallS += (performance.now() - startedAt) / 1000;
       const refusal = REFUSAL.exec(thisRun);
       if (refusal?.[2] !== undefined) {
         return {

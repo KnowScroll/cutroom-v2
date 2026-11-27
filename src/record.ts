@@ -379,12 +379,21 @@ export async function readEvents(varDir: string, id: string): Promise<RunEvent[]
     .map((l) => RunEvent.parse(JSON.parse(l)));
 }
 
+// prettifyError names the failing fields; a thrown ZodError's message is a lazy getter, which node:test reports as ''.
 export async function writeRunRecord(varDir: string, run: RunRecord): Promise<void> {
-  await writeJson(join(runDir(varDir, run.id), 'run.json'), RunRecord.parse(run));
+  const file = join(runDir(varDir, run.id), 'run.json');
+  const parsed = RunRecord.safeParse(run);
+  if (!parsed.success) {
+    throw new Error(`run record not written to ${file}: ${z.prettifyError(parsed.error)}`);
+  }
+  await writeJson(file, parsed.data);
 }
 
 export async function readRunRecord(varDir: string, id: string): Promise<RunRecord> {
-  return RunRecord.parse(await readJson(join(runDir(varDir, id), 'run.json')));
+  const file = join(runDir(varDir, id), 'run.json');
+  const parsed = RunRecord.safeParse(await readJson(file));
+  if (!parsed.success) throw new Error(`${file}: ${z.prettifyError(parsed.error)}`);
+  return parsed.data;
 }
 
 function blockingFails(cut: CutRecord): number {
