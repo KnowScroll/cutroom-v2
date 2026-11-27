@@ -14,17 +14,18 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 - [ ] Later, not blocking: look at #13's calibration table (posted: https://github.com/KnowScroll/cutroom-v2/issues/13#issuecomment-7206270682).
 - [x] #17: the user approved installing Node 22, FFmpeg and Chrome in WSL Ubuntu (2026-11-27).
 
-- [ ] Budget (decide before #18): 23 of 40 cuts used (~$1.9). CP5 needs 5 jobs x up to 4 = 20 -> ~43, over 40 (cuts counted as produced reel-v<n>; voice refusals logged separately). Cuts are cheap (~$0.04-0.15 each with the free voice). Orchestrator recommendation: raise the cap to 55 cuts. Until the user answers, work continues; the orchestrator stops before cut 40 if no answer.
+- [ ] **Budget (blocking #18 job 5)**: 39 of 40 cuts used (~$3.6 total). #18 ran 4 of 5 jobs (16 cuts, $1.732); job 5 would need up to 4 cuts (43 > 40). User asked 2026-11-27: allow job 5 past the cap, or accept CP5 with 4 jobs.
 
 ## In flight
 
 | issue | agent / model | branch or worktree | started | note |
 |---|---|---|---|---|
-| #18 | acceptance / opus | WSL ~/cutroom-v2 (main), var ~/cutroom-var | 2026-11-27 | 5 API jobs, production voice list; budget guard: a job only if used + 4 <= 40 |
+| #18 | acceptance / opus (done 4 of 5) | WSL ~/cutroom-v2 (main), var ~/cutroom-var | 2026-11-27 | report: issuecomment-7210058911; job 5 held by budget guard |
+| #36 | implementer / sonnet | claude/36-report-period | 2026-11-27 | report.md doubled period (found by #18) |
 
 ## Real cuts (budget: 40 cuts with model calls, docs/plan.md)
 
-Free re-renders (no model calls) not counted: #16 radio-lp-e4 resume (fonts-radio-lp-e4); #9 `--cut 3` on e2-check, `--cut 4` (empty notes) on e2-fix; two #9 failed notes reads.
+Voice refusals not counted as cuts (#18): 3 eleven-v4 HTTP 402 invocations, their pre-voice spend ($0, $0.042, $0.105) is in the next cut's cost. Free re-renders (no model calls) not counted: #16 radio-lp-e4 resume (fonts-radio-lp-e4); #9 `--cut 3` on e2-check, `--cut 4` (empty notes) on e2-fix; two #9 failed notes reads.
 
 | # | date | issue | purpose | voice | cost USD | run folder |
 |---|---|---|---|---|---|---|
@@ -51,7 +52,23 @@ Free re-renders (no model calls) not counted: #16 radio-lp-e4 resume (fonts-radi
 | 21 | 2026-11-27 | #17 | CP4 cut 2 | heygen | 0.0307 | same |
 | 22 | 2026-11-27 | #17 | CP4 cut 3 (selected) | heygen | 0.0271 | same |
 | 23 | 2026-11-27 | #17 | CP4 cut 4 (job total 0.2477 incl. harness 0.0319) | heygen | 0.0283 | same |
+| 24 | 2026-11-27 | #18 | CP5 job 1 "Norway 1905" cut 1 (countryball-map-story) | eleven-v4 | 0.3054 | WSL ~/cutroom-var/runs/20261127-031544-how-did-norway-break-away-from-sweden-in |
+| 25 | 2026-11-27 | #18 | CP5 job 1 cut 2, notes (eleven-v4 402 first, resumed) | heygen-paid | 0.0782 | same |
+| 26 | 2026-11-27 | #18 | CP5 job 1 cut 3, notes (selected) | heygen-paid | 0.0676 | same |
+| 27 | 2026-11-27 | #18 | CP5 job 1 cut 4, notes (job total 0.5538 incl. harness) | heygen-paid | 0.0624 | same |
+| 28 | 2026-11-27 | #18 | CP5 job 2 "WarmMate ad" cut 1 (script-sketch, fit none) | eleven-v4 | 0.2121 | WSL ~/cutroom-var/runs/20261127-033726-make-a-funny-30-second-ad-for-our-new-se |
+| 29 | 2026-11-27 | #18 | CP5 job 2 cut 2, notes (selected) | eleven-v4 | 0.0493 | same |
+| 30 | 2026-11-27 | #18 | CP5 job 2 cut 3, notes | eleven-v4 | 0.0751 | same |
+| 31 | 2026-11-27 | #18 | CP5 job 2 cut 4, notes (job total 0.4056) | eleven-v4 | 0.0456 | same |
+| 32 | 2026-11-27 | #18 | CP5 job 3 "microwave" cut 1 (lowpoly-cutaway-explainer; eleven-v4 402 first) | heygen-paid | 0.1739 | WSL ~/cutroom-var/runs/20261127-035843-how-does-a-microwave-oven-actually-heat |
+| 33 | 2026-11-27 | #18 | CP5 job 3 cut 2, notes | heygen-paid | 0.0736 | same |
+| 34 | 2026-11-27 | #18 | CP5 job 3 cut 3, notes | heygen-paid | 0.0424 | same |
+| 35 | 2026-11-27 | #18 | CP5 job 3 cut 4, notes (selected; job total 0.3637) | heygen-paid | 0.0398 | same |
+| 36 | 2026-11-27 | #18 | CP5 job 4 "Point Nemo" cut 1 (globe-zoom-explainer; eleven-v4 402 first) | heygen-paid | 0.1640 | WSL ~/cutroom-var/runs/20261127-042300-why-is-point-nemo-the-loneliest-place-on |
+| 37 | 2026-11-27 | #18 | CP5 job 4 cut 2, notes | heygen-paid | 0.0559 | same |
+| 38 | 2026-11-27 | #18 | CP5 job 4 cut 3, notes (selected) | heygen-paid | 0.0273 | same |
+| 39 | 2026-11-27 | #18 | CP5 job 4 cut 4, template round (plan patch, history 1; job total 0.4090) | heygen-paid | 0.1270 | same |
 
 ## Next action
 
-#18 in flight (CP5). Defects it finds become issues, fixed before #18 closes. Then PROGRESS complete + report to the user.
+#36 in flight. User decides job 5 (budget). Then: job 5 if allowed, close #18, PROGRESS complete, report to the user.
