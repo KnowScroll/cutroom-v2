@@ -208,7 +208,8 @@ function calcErrors(x, sheet) {
   if (!r.ops) return [`fact ${x.id}: "calc" ${x.calc} has no arithmetic; compute it from the sheet's quantities (a conversion is "1 mm / 1 pm")`];
   if (!Number.isFinite(r.v)) return [`fact ${x.id}: "calc" ${x.calc} does not compute`];
   // a calc with a length or a mass is checked by its dimensions alone; one of only times and counts may also be calendar
-  // arithmetic ("100,000 times a day" * 365 is 36.5 million a year), checked on its numbers as written
+  // arithmetic ("100,000 times a day" * 365 is 36.5 million a year), checked on its numbers as written, when the text's number
+  // is a count, money or a rate: a time (hours against days) must come out right through the units
   const read = r.qs.filter(q => q.read), physical = r.qs.some(q => q.d[0] || q.d[1]), odd = new Set();
   const readNote = read.length ? ` (the engine reads ${read.map(q => `${q.n} as ${q.n} ${q.u}`).join(', ')}, as the sheet states them)` : '';
   for (const q of r.qs) {
@@ -226,8 +227,9 @@ function calcErrors(x, sheet) {
   if (odd.size) return [`fact ${x.id}: "calc" ${x.calc} uses ${[...odd].join('; ')}${readNote}. Use only the sheet's own numbers, each with its unit as the sheet states it; the engine converts units itself and states the result in the text's unit, so never write a conversion factor such as 24, 1000 or 1000000`];
   const tq = quantitiesIn(x.text), close = (a, b) => Math.abs(a - b) <= Math.abs(b) * 0.03 + 1e-300; // relative only: an absolute margin let 0.00004 pass for 0.00017
   const ok = (r.d.some(Boolean) ? tq.some(q => q.d && sameDim(q.d, r.d) && close(q.v, r.v)) : valuesIn(x.text).some(v => close(v, r.v)))
-    || (!physical && valuesIn(x.text).some(v => close(v, evalCalc(x.calc, bareUnit(sheet), true).v)));
-  return ok ? [] : [`fact ${x.id}: "calc" ${x.calc} gives ${shownIn(r, x.text)}${readNote}, but its text says "${x.text}". One of calc or text is wrong: check the calc's factors and units first (every quantity with its unit, as the sheet states it), then the claim; never change a true claim to fit the arithmetic`];
+    || (!physical && tq.some(q => !(q.d && q.d[2] > 0) && close(q.n, evalCalc(x.calc, bareUnit(sheet), true).v)));
+  const factor = r.qs.find(q => !q.u && !q.read && CALENDAR.has(q.n)), hint = factor && r.d.some(Boolean) ? `; the engine converts units itself, so drop the factor ${factor.n}` : '';
+  return ok ? [] : [`fact ${x.id}: "calc" ${x.calc} gives ${shownIn(r, x.text)}${readNote}, but its text says "${x.text}". One of calc or text is wrong: check the calc's factors and units first (every quantity with its unit, as the sheet states it${hint}), then the claim; never change a true claim to fit the arithmetic`];
 }
 // the shown result of a derived fact, for the fact checker and the fixer ("1 mm / 100 pm = 10 million")
 const calcShown = (x, sheet) => { try { return `${x.calc} = ${shownIn(evalCalc(x.calc, bareUnit(sheet)), x.text)}`; } catch { return String(x.calc); } };

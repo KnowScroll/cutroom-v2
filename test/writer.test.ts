@@ -101,6 +101,26 @@ await test("the Moon's mixed-units calc is rejected; the same walk with units co
   assert.match(lessAMonth[0] ?? '', /gives 3120\.5 days, but its text says/);
   const lengthPlusTime = errorsFor(sheet([derived('m4', 'It is 5', '378000 km + 29.5 d')]), 'm4');
   assert.match(lengthPlusTime[0] ?? '', /adds or subtracts a length and a time/);
+
+  // the same hours-and-days mix when every input is a time
+  const hours: Fact = {
+    id: 'm6',
+    text: 'Walking non-stop to the Moon takes about 75,600 hours',
+    source: 'reference',
+  };
+  const timeOnly = (text: string, calc: string) =>
+    errorsFor(sheet([hours, derived('m7', text, calc)]), 'm7');
+  for (const [text, calc] of [
+    ['It takes 2,442 days longer than a lunar month', '75600/24 - 29.5*24'],
+    ['It takes 1.8 million days', '75600 * 24'],
+    ['A lunar month is about 708 hours', '29.5 * 24'],
+  ] as const)
+    assert.match(timeOnly(text, calc)[0] ?? '', /drop the factor 24/, `${text} = ${calc}`);
+  assert.deepEqual(
+    timeOnly('It takes about 3,120 days longer than a lunar month', '75600 - 29.5'),
+    [],
+  );
+  assert.deepEqual(timeOnly('A lunar month is about 708 hours', '29.5 d / 1 h'), []);
 });
 
 await test('scientific notation is read in calc and text', () => {
