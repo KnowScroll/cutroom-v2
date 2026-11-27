@@ -147,7 +147,7 @@ Engine items are outside §4.2 today.
 The user wants globe-zoom to "adapt to different planets". Today the template is Earth-geography only by design (world.js Natural Earth data; about = places on Earth), and kurzgesagt covers space. Two options for the new session:
 - (a) widen globe-zoom with a generic body renderer (any sphere with a base colour/texture, no Earth data), keeping Earth geography when the subject is on Earth;
 - (b) keep globe-zoom Earth-only, route planets to kurzgesagt, and make intake enforce scope.
-The user's text asks for (a). The handoff lists it as a user-confirm item, because it widens a template's scope.
+The user's brief (§A, §10) requires (a), and HANDOFF §2 records it as decided: globe-zoom widens to other planets and appropriate subjects, keeping real Earth geography for Earth subjects.
 
 ---
 
