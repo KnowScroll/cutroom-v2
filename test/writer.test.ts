@@ -212,6 +212,23 @@ await test('a calendar number is literal; AU is a unit; number words stop at pun
     walk('Walking to the Moon takes about 8.8 years', '384400 / 5 / 12', moon).length,
     1,
   );
+  // beside units, a bare number the sheet only states with a unit must carry it
+  for (const [hours, wrong] of [
+    [12, 267],
+    [8, 400],
+  ] as const) {
+    const day = [...moon.slice(0, 2), `A hiker walks ${String(hours)} hours a day`];
+    const e = walk(
+      `Walking takes about ${String(wrong)} days`,
+      `384400 km / (5 km/h) / ${String(hours)}`,
+      day,
+    );
+    assert.match(e[0] ?? '', new RegExp(`uses ${String(hours)} without its unit`));
+  }
+  assert.deepEqual(
+    walk('Walking to the Moon takes about 6,407 days', '384400 km / (5 km/h) / (12 h/d)', moon),
+    [],
+  );
   for (const [text, calc, more] of [
     ['A shift pays $180', '15 * 12', ['A worker earns $15 an hour', 'A shift lasts 12 hours']],
     [

@@ -207,10 +207,14 @@ function calcErrors(x, sheet) {
   if (!Number.isFinite(r.v)) return [`fact ${x.id}: "calc" ${x.calc} does not compute`];
   // a bare number is one the sheet states (its digits, or its value with the magnitude word) or a plain factor (100 once: a chain
   // of 100s passed 1 mm = 1,000,000 pm); a quantity with a unit is one the sheet states, or 1 of a unit (a conversion)
-  const odd = new Set();
+  // beside quantities with units, a bare number every fact states with a unit must carry it ("/ 12" for "12 hours a day")
+  const odd = new Set(), units = r.qs.some(q => q.u);
   for (const q of r.qs) {
+    const same = q.u ? [] : sheet.filter(s => near(s.n, q.n) || near(s.raw, q.n));
     if (q.u) { if (q.n !== 1 && !sheet.some(s => s.d && sameDim(s.d, q.d) && near(s.v, q.v))) odd.add(`${q.n} ${q.u}, which no other fact on the sheet states`); }
-    else if (!FREE.has(q.n) && !sheet.some(s => near(s.n, q.n) || near(s.raw, q.n))) odd.add(`${q.n}, which no other fact on the sheet states`);
+    else if (FREE.has(q.n)) continue;
+    else if (!same.length) odd.add(`${q.n}, which no other fact on the sheet states`);
+    else if (units && same.every(s => s.u)) odd.add(`${q.n} without its unit (the sheet states "${q.n} ${same[0].u}"; write it with its unit)`);
   }
   if (r.qs.filter(q => !q.u && q.n === 100).length > 1) odd.add('100 more than once');
   if (!odd.size && !r.qs.some(q => q.u || sheet.some(s => near(s.n, q.n) || near(s.raw, q.n)))) odd.add('no number the sheet states');
