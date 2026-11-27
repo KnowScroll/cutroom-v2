@@ -42,11 +42,16 @@ async function wikiCoords(name) {
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const page = Object.values((await r.json()).query?.pages || {})[0]; if (!page) throw new Error('no page in the answer');
     const pts = (page.coordinates || []).filter(k => (k.globe || 'earth') === 'earth').sort((a, b) => (b.primary !== undefined) - (a.primary !== undefined));
-    c = { title: page.title, missing: page.missing !== undefined || page.invalid !== undefined, primary: pts[0]?.primary !== undefined, pts: pts.map(k => [k.lon, k.lat]) };
+    c = { title: page.title, missing: page.missing !== undefined || page.invalid !== undefined, primary: pts[0]?.primary !== undefined, pts: pts.map(k => [k.lon, k.lat]), globes: [...new Set((page.coordinates || []).map(k => k.globe).filter(g => g && g !== 'earth'))] };
   } catch (e) { log(`places: "${name}" not looked up (${String(e.message).slice(0, 80)})`); }
   return (PLACES[name] = c);
 }
-const gcKm = (lo1, la1, lo2, la2) => { const d = Math.PI / 180, a = Math.sin((la2 - la1) * d / 2) ** 2 + Math.cos(la1 * d) * Math.cos(la2 * d) * Math.sin((lo2 - lo1) * d / 2) ** 2; return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(a))); };
+const gcKm = (lo1, la1, lo2, la2, R = 6371) => { const d = Math.PI / 180, a = Math.sin((la2 - la1) * d / 2) ** 2 + Math.cos(la1 * d) * Math.cos(la2 * d) * Math.sin((lo2 - lo1) * d / 2) ** 2; return 2 * R * Math.asin(Math.min(1, Math.sqrt(a))); };
+// the body a shot's places lie on: globe-zoom starts an idea on another body with "BODY: Name, radius R km" (the Earth without one);
+// an orbit view ("CAMERA: ORBIT of X around Y") shows bodies on their paths, no places on a surface. null: the Earth
+const bodyOf = idea => { const m = idea.match(/\bBODY:\s*([^,.;\n]+?)\s*(?:,\s*radius\s+([\d,]+(?:\.\d+)?)\s*km\b|[.;\n]|$)/i), name = m ? m[1].trim() : null;
+  if (name && !/^(the\s+)?earth$/i.test(name)) return { name, r: m[2] ? +m[2].replace(/,/g, '') : null };
+  return /\bCAMERA:\s*ORBIT\b/i.test(idea) ? { name: 'an orbit view', r: null } : null; };
 const placeName = s => { let n = String(s).replace(/^(the)\s+/i, '').replace(/[“”"']/g, '').trim(); if (n === n.toUpperCase()) n = n.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()); return n; };
 // p: the merged plan (its shots' ideas). A point the plan pins (MARKER, LINE end, RING centre) must be a place Wikipedia locates on
 // Earth: a body in space (Venus at [0, 0] on Earth's globe) or a made-up name is a plan error. A camera move's "to Name" and a LABEL
@@ -60,7 +65,7 @@ export async function placeErrors(p) {
   const check = async (i, raw, lon, lat, tol, pinned) => {
     const name = placeName(raw); if (/^(lon|lat|longitude|latitude|\d)/i.test(name)) return;
     const w = await wikiCoords(name); if (!w) return;
-    if (!w.pts.length) { if (pinned && !reported.has(`none:${name}`)) { reported.add(`none:${name}`); E.push(`shot ${i + 1}: "${name}" cannot be located: ${w.missing ? `Wikipedia has no article "${name}"` : `Wikipedia "${w.title}" gives no coordinates on Earth`}. A MARKER, LINE end or RING centre is a real place on Earth, named by its Wikipedia title (a city, an island, a mountain, a point at sea) with its real coordinates; a body in space or a thing that is not a place is never a point on the globe: draw it as its own thing, or leave it out`); } return; }
+    if (!w.pts.length) { if (pinned && !reported.has(`none:${name}`)) { reported.add(`none:${name}`); E.push(`shot ${i + 1}: "${name}" cannot be located: ${w.missing ? `Wikipedia has no article "${name}"` : `Wikipedia "${w.title}" gives no coordinates on Earth`}. A MARKER, LINE end or RING centre is a real place on Earth, named by its Wikipedia title (a city, an island, a mountain, a point at sea) with its real coordinates; a body in space or a thing that is not a place is never a point on the Earth: draw a body as itself (a shot on another body starts its idea with "BODY: Name, radius R km"), or leave it out${w.globes.length ? ` (Wikipedia places "${w.title}" on ${w.globes.join(', ')})` : ''}`); } return; }
     // a page's other points are places it mentions ("Soviet Union" lists only Moscow): good enough for a pinned point, not for a label
     if (!w.primary && !pinned) return;
     const [lo, la] = w.primary ? w.pts[0] : w.pts.reduce((b, q) => (gcKm(lon, lat, q[0], q[1]) < gcKm(lon, lat, b[0], b[1]) ? q : b));
@@ -69,17 +74,21 @@ export async function placeErrors(p) {
     if (off > tol && !reported.has(name + key(lon, lat))) { reported.add(name + key(lon, lat)); E.push(`shot ${i + 1}: "${name}" is at [${fmt(lo)}, ${fmt(la)}] (longitude, latitude; Wikipedia "${w.title}"), not [${lon}, ${lat}] (${Math.round(off)} km off). Use the real coordinates everywhere: overlays, cameras, counters and lines`); }
   };
   for (const [i, s] of p.shots.entries()) {
-    const idea = String(s.idea || '');
+    const idea = String(s.idea || ''), body = bodyOf(idea);
+    // places on another body are not Earth places: Wikipedia's coordinates are the Earth's (and a body's own page has none)
+    if (body) { if ([...idea.matchAll(AT), ...idea.matchAll(LAB)].length) log(`places: shot ${i + 1} is on ${body.name}, not the Earth: its places are not looked up`); continue; }
     // pinned: a MARKER, a LINE's start, a RING's centre ("around" in prose, "spins around the globe to X [..]", is not one)
     for (const m of idea.matchAll(AT)) await check(i, m[2], +m[3], +m[4], 80, m[1] === 'MARKER at' || m[1] === 'LINE from' || (m[1] === 'around' && /\bRING\b(?:[^.;[\]]|\.(?=\d))*$/.test(idea.slice(0, m.index))));
     for (const m of idea.matchAll(LINE)) for (const [n, lon, lat] of [[m[1], m[2], m[3]], [m[4], m[5], m[6]]]) if (n) await check(i, n, +lon, +lat, 80, true);
     for (const m of idea.matchAll(LAB)) await check(i, m[1], +m[2], +m[3], 250, false); // a label may sit beside its place
   }
   for (const [i, s] of p.shots.entries()) { // a LINE's km counter against the great-circle distance between its (real) ends
-    const idea = String(s.idea || '');
+    const idea = String(s.idea || ''), body = bodyOf(idea), R = body ? body.r : 6371, raw = (n, lon, lat) => ({ lon: +lon, lat: +lat, name: n ? placeName(n) : `[${lon}, ${lat}]` });
+    // on another body: its ends as the plan gives them, on its radius; without a radius on the BODY line the km is not checked
+    if (body && !R) { if ([...idea.matchAll(LINE)].length) log(`places: shot ${i + 1} is on ${body.name} with no radius on its BODY line: its LINE km is not checked`); continue; }
     for (const m of idea.matchAll(LINE)) {
-      const end = (n, lon, lat) => (n && atPoint[`${placeName(n)}|${key(lon, lat)}`]) || atPoint[key(lon, lat)] || { lon: +lon, lat: +lat, name: n ? placeName(n) : `[${lon}, ${lat}]` };
-      const a = end(m[1], m[2], m[3]), b = end(m[4], m[5], m[6]), km = gcKm(a.lon, a.lat, b.lon, b.lat), c = idea.match(/COUNTER\s+[a-z ]*?\s*([\d][\d,]*(?:\.\d+)?)\s*KM\b/i);
+      const end = (n, lon, lat) => (body ? null : (n && atPoint[`${placeName(n)}|${key(lon, lat)}`]) || atPoint[key(lon, lat)]) || raw(n, lon, lat);
+      const a = end(m[1], m[2], m[3]), b = end(m[4], m[5], m[6]), km = gcKm(a.lon, a.lat, b.lon, b.lat, R), c = idea.match(/COUNTER\s+[a-z ]*?\s*([\d][\d,]*(?:\.\d+)?)\s*KM\b/i);
       if (c && km > 1) { const said = +c[1].replace(/,/g, ''); if (Math.abs(said - km) / km > 0.03) E.push(`shot ${i + 1}: the great-circle distance from ${a.name || a.title} to ${b.name || b.title} is ${Math.round(km).toLocaleString('en-US')} km, but its counter says ${c[1]} KM. Use ${Math.round(km).toLocaleString('en-US')} KM on the counter and "${numWords(Math.round(km)) || 'that number'}" kilometres in the line`); }
     }
   }

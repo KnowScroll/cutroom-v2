@@ -171,3 +171,40 @@ await test('without Wikipedia the places are logged as not looked up, and the pl
   );
   assert.ok(logs.some((l) => l.includes('places: "Henderson Island" not looked up')));
 });
+
+// a Venus reel in globe-zoom's grammar (#75): a shot on Venus says so on its BODY line, the orbit view shows Venus and the Sun on
+// their paths. Maxwell Montes to Maat Mons is 12,019 km on Venus's 6,051.8 km radius, 12,653 km on the Earth's
+const onVenus = (counter: string, body = 'BODY: Venus, radius 6,051.8 km.') =>
+  `${body} CAMERA: from {lon0: 0, lat0: 0, s: 0.95} to {lon0: -80, lat0: 30, s: 1.2} at 0 s over 1.2 s. OVERLAYS: MARKER at Maxwell Montes [3.3, 65.2]; LINE from Maxwell Montes [3.3, 65.2] to Maat Mons [-165.4, 0.5] in gold; RING of 500 km around Maat Mons [-165.4, 0.5] in gold; LABEL "VENUS" at Venus [0.0, 0.0]. TOP: COUNTER gold ${counter} KM.`;
+const ORBIT =
+  'CAMERA: ORBIT of Venus around Sun. OVERLAYS: BODY Venus on its orbit from [0] to [225] degrees; MARKER at Venus [0.0, 0.0]; LABEL "SUN" at Sun [0.0, 0.0]. TOP: COUNTER gold 225 DAYS.';
+
+await test('places on another body are not Earth places, and a line on it is measured on its radius', async (t) => {
+  const { urls, logs } = wikipedia(t);
+  assert.deepEqual(
+    await placeErrors({ shots: [{ idea: onVenus('12,019') }, { idea: ORBIT }] }),
+    [],
+  );
+  assert.deepEqual(urls, [], 'nothing on Venus or in the orbit view is looked up on the Earth');
+  assert.ok(logs.some((l) => l.includes('places: shot 1 is on Venus, not the Earth')));
+  assert.ok(logs.some((l) => l.includes('places: shot 2 is on an orbit view, not the Earth')));
+  // the Earth's distance between the same two points is wrong on Venus
+  const earthKm = await placeErrors({ shots: [{ idea: onVenus('12,653') }] });
+  assert.ok(
+    earthKm.some((e) =>
+      /from Maxwell Montes to Maat Mons is 12,019 km, but its counter says 12,653 KM/.test(e),
+    ),
+    earthKm.join(' | '),
+  );
+  // a BODY line without a radius: the km is not checked, and the log says so
+  assert.deepEqual(await placeErrors({ shots: [{ idea: onVenus('99', 'BODY: Venus.') }] }), []);
+  assert.ok(logs.some((l) => l.includes('no radius on its BODY line: its LINE km is not checked')));
+  // "BODY: Earth" and a shot with no BODY line are on the Earth: Venus pinned there is still an error
+  for (const idea of [VENUS_SHOT, `BODY: Earth, radius 6,371 km. ${VENUS_SHOT}`]) {
+    const E = await placeErrors({ shots: [{ idea }] });
+    assert.ok(
+      E.some((e) => /"Venus" cannot be located/.test(e)),
+      E.join(' | '),
+    );
+  }
+});

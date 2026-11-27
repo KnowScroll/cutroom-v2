@@ -56,6 +56,10 @@ const after = (moonScale: number, pop = false) => `function draw(ctx, lt, sh, h,
 const shot = (code: string, ck: Record<string, unknown>) =>
   validateShot(stage, { code, lines, dur: 4.4, assets: [earth, moon, bodies], ck });
 
+// one unchecked run first: a fresh page's first frames are slow (compiling, font loading), and the stage rejects a shot over 180 ms
+// a frame, which failed the first test once when the whole suite ran in parallel
+await shot(before(false), {});
+
 await test('a carried thing that keeps its place and size at the cut passes, on both sides', async () => {
   const out = await shot(before(false), { carryOut: carry });
   assert.ok(out.ok, out.errors.join(' | '));
