@@ -2,14 +2,16 @@
 // direction, each with its own prompt (engine/prompts/<step>.txt) and engine checks that reject and ask for a redo:
 //   facts      reference + brief -> a numbered fact sheet, the viewer's question, its answer, the payoff fact
 //              (it may name up to 2 more Wikipedia articles when the answer needs a number the reference lacks)
-//   spine      fact sheet -> one shot per point: beat, the point, its facts, how it follows from the shot before, the
-//              explanation device, a silent hold
-//   script     spine -> spoken lines (1 to 3 a shot) with tones and pauses, the cue word each shot's picture change lands on
+//   spine      fact sheet -> what the story is for (its idea and the viewer's takeaway), then one shot per step toward it: beat,
+//              the point, its facts, how it follows from the shot before, the explanation device, a silent hold
+//   script     spine -> spoken lines (1 to 3 a shot) with tones and pauses, the cue word each shot's picture change lands on;
+//              an overrun is cut to length by a small fit call (fitWords), never rejected
 //   viewer     a test viewer who knows nothing reads the script blind: what was asked, what was answered, where it lost them
 //   factcheck  the script against the brief, the reference and the fact sheet with each derived fact's calc (runs at the
 //              same time as the viewer); a conflict between the brief and the reference is reported, not fixed
 //   revise     the script step again with both reports (one round); if the revision fails the engine checks, the
-//              script from before the review stays
+//              script from before the review stays. When the viewer got lost, the spine is built again first (the order of
+//              the story is wrong, not only its words) and the script written on it
 // A script brief (template check "script: yes") has only the script step: its lines stay verbatim.
 // The production plan (asset_reel.mjs, prompts/plan.txt) gets the finished script and adds the art direction and storyboard.
 
@@ -39,23 +41,59 @@ export const DEVICES = {
   statement: 'one plain idea drawn simply, for a claim or a turn in the argument',
 };
 const DEVICE_TEXT = Object.entries(DEVICES).map(([k, v]) => `- ${k}: ${v}`).join('\n');
-const LINKS = ['hook', 'but', 'so', 'because', 'which means', 'then', 'and'];
+
+// ---------- timing: the picture around each shot's speech (the budget and the timeline both use it) ----------
+// lead: picture before a shot's first line; tail: after its last line, before the cut (the shot's silent hold comes on top); breath:
+// before each further line of a shot unless it sets gap_before; end: the last shot's tail at least (no cut follows it). A template's
+// checks may set lead and tail ("lead: 0.3"). The fixed 0.35 s lead and 0.6 s tail left 0.95 s of silence at every cut (17-37% of
+// each reel silent, findings P.1)
+export const PAD = { lead: 0.15, tail: 0.35, breath: 0.22, end: 1 };
+export const padding = (checks = {}) => ({ ...PAD, ...Object.fromEntries(['lead', 'tail'].filter(k => +checks[k] >= 0).map(k => [k, Math.min(2, +checks[k])])) });
+// one shot's line times (seconds into the shot) and length, from its lines' spoken seconds; no seconds give its silence alone
+export function shotTimes(s, secs, pad, last) {
+  let t = pad.lead;
+  const lines = (s.lines || []).map((l, i) => { t += i ? (l.gap_before ?? pad.breath) : (+l.gap_before || 0); const start = t; t += secs[i] || 0; return { start, end: t }; });
+  return { lines, dur: t + Math.max(pad.tail, last ? pad.end : 0) + Math.max(0, Math.min(2, +s.hold || 0)) };
+}
+// the seconds of a reel that are not speech; the word budget fills the rest
+export const silenceOf = (shots, pad) => shots.reduce((a, s, i) => a + shotTimes(s, [], pad, i === shots.length - 1).dur, 0);
+// a checkpointed script was written to its voice model's speaking rate (story.voice_model, story.wps). The harness reruns a cut with
+// the next voice when one is refused (design 6.7); a rate more than 15% off makes the reel that much too long or short (an eleven-v4
+// script spoken by heygen ran 33 s of 45), so the script is written again. The same model's rate drifts as it is measured
+// (cache/voice/rates.json) and never rewrites a resumed cut
+export const rateMoved = (story, wps, model) => !!story?.voice_model && story.voice_model !== model && +story.wps > 0 && Math.abs(wps / story.wps - 1) > 0.15;
 
 // ---------- text checks ----------
 const toks = s => String(s).toLowerCase().replace(/[’‘]/g, "'").replace(/[^a-z0-9'\s-]+/g, ' ').replace(/-/g, ' ').split(/\s+/).filter(Boolean);
-const NUM_WORD = new Set([...ONES, ...TENS.filter(Boolean), 'hundred', 'thousand', 'million', 'billion', 'trillion']);
+// the magnitude words, in digits ("4.6 billion") and in words; past trillion too, so a payoff of 1.25e20 can be said and traced
+// ("one hundred and twenty-five quintillion": the atom script fell back on "an almost unimaginable number")
+const MAG = { thousand: 1e3, million: 1e6, billion: 1e9, trillion: 1e12, quadrillion: 1e15, quintillion: 1e18, sextillion: 1e21, septillion: 1e24, octillion: 1e27, nonillion: 1e30 }, MAGS = Object.keys(MAG).join('|');
+const NUM_WORD = new Set([...ONES, ...TENS.filter(Boolean), 'hundred', ...Object.keys(MAG)]);
+// a spine shot's "when" as a signed time: a year AD, below zero for BC and for "... years ago" ("753 BC" before "509 BC", "252
+// million years ago" before "201 million years ago"); NaN when it holds no date
+const whenOf = when => {
+  const t = String(when || ''); if (/\bago\b/i.test(t)) { const v = valuesIn(t)[0]; return v ? -v : NaN; }
+  const bc = t.match(/\b(\d{1,4})\s*(?:BCE?|B\.C\.)/i); if (bc) return -bc[1];
+  const y = t.match(/\b\d{3,4}\b/); return y ? +y[0] : NaN;
+};
+// a number as the narrator says it: 1.25e20 -> "one hundred and twenty-five quintillion", 8.8 -> "eight point eight"; null when
+// that form does not read back as the value (1e-10 prints as digits; past the largest magnitude word, "five thousand nine
+// hundred and seventy sextillion" read as 9.7e23 for 5.97e24): the message then shows its digits
+const sayNum = v => {
+  const big = Object.entries(MAG).filter(([, m]) => m >= 1e6 && v >= m).at(-1), r = String(big ? +(v / big[1]).toPrecision(3) : v), m = r.match(/^(\d+)(?:\.(\d+))?$/), w = m && numWords(+m[1]);
+  const s = w && `${w}${m[2] ? ` point ${[...m[2]].map(d => ONES[+d]).join(' ')}` : ''}${big ? ` ${big[0]}` : ''}`;
+  return s && numbersSaid(s).some(n => Math.abs(n.v - v) <= Math.abs(v) * 0.05) ? s : null;
+};
 export const STOP = new Set(('a an the and or but so of to in on at for by with from as is are was were be been being it its it\'s this that these those he she they his her their them ' +
   'you your we our i my me what which who whom how why when where then than there here into onto out up down over under about after before just only also very more most ' +
   'can could would will should not no do does did has have had one all any each every some such own same too').split(' '));
 const HYPE = /\b(astonishing|incredible|incredibly|amazing|remarkable|unbelievable|mind[- ]?blowing|insane|fascinating|staggering|stunning|crazy|game[- ]changer|jaw[- ]dropping|shocking)\b/i;
-const LINK_WORDS = /\b(but|so|because|which|that's why|that is why|therefore|until|instead|yet|if|unless|then|while|although|though|means|meaning|after|when|why|since|without)\b/i;
 const sameWord = (a, b) => a === b || (b.length >= 4 && (a.startsWith(b) || b.startsWith(a)) && Math.abs(a.length - b.length) <= 3);
 const says = (text, phrase) => { const w = toks(text), p = toks(phrase); if (!p.length) return false; for (let i = 0; i + p.length <= w.length; i++) if (p.every((x, k) => sameWord(w[i + k], x))) return true; return false; };
 // ---------- numbers and units ----------
 // derived facts: the plain factors a calc may use without a fact stating them. A bare number is taken literally; units count
 // only where the calc writes them, and the unit table converts them (M3 wrote 1 mm = 1,000,000 pm as "1 * 1000000")
 const FREE = new Set([1, 2, 3, 4, 100]); // 100 at most once; "* 1" or "/ 1" changes nothing ("1 million / 1" passed a false fact)
-const MAG = { thousand: 1e3, million: 1e6, billion: 1e9, trillion: 1e12 };
 // each unit's SI factor and dimension [length, mass, time]; SI prefixes and plurals are read too ("km", "picometres", "mg", "hours")
 const UNITS = {}, LEN = [1, 0, 0], MASS = [0, 1, 0], TIME = [0, 0, 1], Z = [0, 0, 0];
 const defUnit = (names, k, d) => names.split(' ').forEach(n => { UNITS[n] = [k, d]; });
@@ -85,7 +123,7 @@ const SI = d => { const part = sg => d.map((e, j) => sg * e > 0 ? ['m', 'kg', 's
 const SUP = '⁻⁰¹²³⁴⁵⁶⁷⁸⁹';
 const normNum = s => String(s).replace(/[⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, m => '^' + [...m].map(c => SUP.indexOf(c) ? SUP.indexOf(c) - 1 : '-').join('')).replace(/(\d),(?=\d{3}\b)/g, '$1');
 // a number in digits: "1000", "4.6 billion", "1e-10", "1.5 × 10^7", "10^7"
-const NUM = /(?<![\w.^])(\d+(?:\.\d+)?)(?!\d|(?:st|nd|rd|th)\b)(?:[eE]([+-]?\d+)|\s*[×x*]\s*10\^([+-]?\d+)|\^([+-]?\d+))?(?:\s+(thousand|million|billion|trillion)\b)?/gi;
+const NUM = new RegExp(String.raw`(?<![\w.^])(\d+(?:\.\d+)?)(?!\d|(?:st|nd|rd|th)\b)(?:[eE]([+-]?\d+)|\s*[×x*]\s*10\^([+-]?\d+)|\^([+-]?\d+))?(?:\s+(${MAGS})\b)?`, 'gi');
 const numVal = m => (m[4] != null ? (+m[1]) ** +m[4] : +m[1] * 10 ** +(m[2] ?? m[3] ?? 0)) * (MAG[(m[5] || '').toLowerCase()] || 1);
 // the unit right after a number, or after one other word ("243 Earth days"), with a rate ("km/h", "per kg", "people per km2",
 // "a year"); after money only a rate ("$60,500 per kg"); a glued single letter is none ("1990s", "5m")
@@ -119,8 +157,9 @@ function quantitiesIn(text) {
 }
 // numbers in words: "ten thousand", "a million", "four point six billion", "nineteen eighty-seven", "nineteen oh five"
 const WN = Object.fromEntries([...ONES.map((w, i) => [w, i]), ...TENS.map((w, i) => [w, i * 10]).filter(([w]) => w)]);
+const NOT_COUNT = new RegExp(`^(\\w*(fif|six|seven|eigh|nin|ten|eleven|twelf|teen|tie|hundred|${MAGS})ths?|fourths?|first|second|thirds?|halves|half|quarters?|(twent|thirt|fort|fift|sixt|sevent|eight|ninet)ies)$`);
 function wordNumbers(text) {
-  return String(text).split(/[;:.!?]|(?<!\b(?:thousand|million|billion|trillion)),/i).flatMap(wordRuns);
+  return String(text).split(new RegExp(String.raw`[;:.!?]|(?<!\b(?:${MAGS})),`, 'i')).flatMap(wordRuns);
 }
 function wordRuns(text) {
   const w = toks(text), out = [];
@@ -139,7 +178,7 @@ function wordRuns(text) {
       else if (!(x === 'and' && WN[w[j + 1]] != null && (cur >= 100 || total))) break;
     }
     // a fraction, an ordinal or a decade is no count ("one ten-millionth", "twenty-first", "nineteen fifties"): not checked
-    if (!/^(\w*(fif|six|seven|eigh|nin|ten|eleven|twelf|teen|tie|hundred|thousand|million|billion|trillion)ths?|fourths?|first|second|thirds?|halves|half|quarters?|(twent|thirt|fort|fift|sixt|sevent|eight|ninet)ies)$/.test(w[j] || ''))
+    if (!NOT_COUNT.test(w[j] || ''))
       out.push({ s: w.slice(i, j).join(' '), v: total + cur, one: j === i + 1 && WN[w[i]] < 10 });
     i = j - 1;
   }
@@ -250,38 +289,29 @@ const calcShown = (x, sheet) => `${x.calc}; ${calcErrors(x, sheet).length ? 'the
 const calcList = f => { const facts = f?.facts || [], sheetFor = sheetsFor(facts); return facts.map(x => `${x.id}: ${x.text}${x.source === 'derived' ? ` [derived: ${calcShown(x, sheetFor(x))}]` : x.source === 'reference' && (x.quote || x.quote_check) ? ` [quote: "${x.quote || ''}"${x.quote_check ? `; the engine found: ${x.quote_check}` : ''}]` : ''}`).join('\n'); };
 // a soft problem: asked to be fixed, but an answer left with only soft problems is kept after the last try
 const soft = msg => Object.assign(new String(msg), { soft: true });
-const digitNums = s => (String(s).replace(/(\d),(\d)/g, '$1$2').match(/\d+(?:\.\d+)?/g) || []).map(Number);
 
-// runs of number words with the word after them ("ten thousand bitcoins" -> "ten thousand bitcoin"); single digits are skipped
-function numberPhrases(text) {
-  const w = toks(text), out = [];
-  for (let i = 0; i < w.length;) {
-    if (!NUM_WORD.has(w[i])) { i++; continue; }
-    let j = i; while (j < w.length && (NUM_WORD.has(w[j]) || (w[j] === 'and' && NUM_WORD.has(w[j + 1] || '')) || (w[j] === 'point' && NUM_WORD.has(w[j + 1] || '')))) j++;
-    const run = w.slice(i, j);
-    if (!(run.length === 1 && ONES.indexOf(run[0]) < 10)) out.push(`${run.join(' ')} ${(w[j] || '').replace(/s$/, '')}`.trim());
-    i = j;
-  }
-  return out;
-}
-// a number phrase, or 4 words in a row with 3 content words, said by the narrator in two shots (the last shot may call one back)
-function repeatErrors(shots) {
-  const seen = new Map(), E = new Map();
+// pointless repetition: a narrator line that restates one earlier shot (60% of its content words are that shot's) and adds almost
+// nothing (all but one in five were said before): "So the walk would take about eight point eight years, while your whole life
+// would last about seventy-three years" after a shot that said both numbers. A payoff that joins words of several shots into a new
+// claim passes, as do a short punch line, a line that builds on an earlier number and the last shot (it may restate the answer).
+// Measured on 17 real scripts: only that line is flagged (at 50%, a microwave payoff sharing half its words with one shot was too).
+// The old rule flagged any shared number or 4-word phrase: it rejected one atom script 4 times for "one million atoms" in two
+// different claims. Number words match exactly ("nine" is not "ninety")
+export function repeatErrors(shots) {
+  const seen = [], E = [], same = (y, x) => (NUM_WORD.has(x) || NUM_WORD.has(y) ? x === y : sameWord(y, x));
   shots.forEach((s, i) => {
-    if (i === shots.length - 1) return;
-    const keys = new Map();
+    const mine = [];
     for (const l of s.lines || []) {
       if (l.who !== 'narrator') continue;
-      const w = toks(l.text);
-      for (let k = 0; k + 4 <= w.length; k++) { const g = w.slice(k, k + 4); if (g.filter(x => !STOP.has(x)).length >= 3) keys.set(g.join(' '), g.join(' ')); }
-      for (const p of numberPhrases(l.text)) keys.set('#' + p, p);
+      const w = [...new Set(toks(l.text).filter(x => !STOP.has(x)))], old = w.filter(x => seen.some(ws => ws.some(y => same(y, x))));
+      const echo = Math.max(0, ...seen.map(ws => w.filter(x => ws.some(y => same(y, x))).length));
+      if (i && i < shots.length - 1 && w.length >= 5 && w.length - old.length <= Math.max(1, Math.floor(w.length / 5)) && echo * 5 >= w.length * 3)
+        E.push(soft(`shot ${i + 1}: "${l.text}" says again what an earlier shot said: cut it or make it take the story further (building on an earlier number is fine; the last shot may restate the answer)`));
+      mine.push(...w);
     }
-    for (const [k, shown] of keys) {
-      if (seen.has(k) && seen.get(k) !== i) { const j = seen.get(k), id = `${j}-${i}`; if (!E.has(id)) E.set(id, soft(`shots ${j + 1} and ${i + 1} both say "${shown}": say it once (one shot, one new point; only the last shot may call it back)`)); }
-      else seen.set(k, i);
-    }
+    seen.push(mine);
   });
-  return [...E.values()];
+  return E;
 }
 
 // script lines from a script brief: **Name:** "text", **Name (inner monologue):** "text", or Name: "text" on its own line
@@ -368,7 +398,7 @@ export function numbersNotInSource(src, texts) {
   const plain = src.replace(/(\d),(\d)/g, '$1$2'), have = new Set((plain.match(/\d+(?:\.\d+)?/g) || []).map(n => n.replace(/^0+(?=\d)/, ''))), vals = valuesIn(src);
   const stated = v => vals.some(x => Math.abs(x - v) <= Math.abs(v) * 1e-9), out = new Set();
   for (const t of texts) for (const m of String(t).replace(/(\d),(\d)/g, '$1$2').matchAll(/\d+(?:\.\d+)?/g)) { const n = m[0].replace(/^0+(?=\d)/, ''); if (n.length >= 2 && !have.has(n) && !stated(+n)) out.add(m[0]); }
-  for (const t of texts) for (const m of String(t).replace(/(\d),(\d)/g, '$1$2').matchAll(/(\d+(?:\.\d+)?)\s*(thousand|million|billion|trillion)/gi)) if (!stated(+m[1] * MAG[m[2].toLowerCase()])) out.add(m[0]); // "1 TRILLION": the magnitude too
+  for (const t of texts) for (const m of String(t).replace(/(\d),(\d)/g, '$1$2').matchAll(new RegExp(String.raw`(\d+(?:\.\d+)?)\s*(${MAGS})`, 'gi'))) if (!stated(+m[1] * MAG[m[2].toLowerCase()])) out.add(m[0]); // "1 TRILLION": the magnitude too
   const srcDates = datesIn(src);
   for (const t of texts) for (const d of datesIn(t)) if (!srcDates.some(s => s.day === d.day && s.mon === d.mon && (!d.year || s.year === d.year))) out.add(d.s);
   return [...out];
@@ -389,7 +419,7 @@ export function createWriter(E) {
   const storyGuide = () => E.guide('about', 'story', 'plan', 'sound');
 
   // one step: ask, check, and on a rejection send the problems back in the same conversation (up to `tries` answers).
-  // Soft problems (craft: a reused fact, too many "and" links, a repeat, unvoiced links) are fixed while tries remain; an answer
+  // Soft problems (craft: a pointless repeat, a jump back in time, a hype word) are fixed while tries remain; an answer
   // whose only problems are soft is kept after the last try (logged), so a hard-to-please check never stops the run.
   async function ask(step, system, messages, check, tries = 4) {
     let keep = null;
@@ -432,43 +462,53 @@ export function createWriter(E) {
   function spineErrors(sp, f) {
     const Er = [], [smin, smax] = shotRange(), n = sp?.shots?.length;
     if (!Array.isArray(sp?.shots) || n < smin || n > smax) return [`need ${smin} to ${smax} shots, got ${n}`];
-    const ids = new Set(f.facts.map(x => x.id)), used = new Map(), beats = beatsOf();
+    // the story says what it is for before its beats, so each beat can serve it (scripts were fact lists with filler)
+    if (!String(sp.idea || '').trim() || !String(sp.takeaway || '').trim()) Er.push('first say what the story is for: "idea" (its one central idea: the question it answers) and "takeaway" (what the viewer should come away with); every shot serves them');
+    // they are free text the script is written to, like the sheet's answer: their numbers must be facts on the sheet
+    const loose = untraced(`${sp.idea || ''}; ${sp.takeaway || ''}`, f.facts);
+    if (loose.length) Er.push(`the idea and takeaway say ${quoted(loose)}, which no fact on the sheet states: use the sheet's own numbers, or none`);
+    const ids = new Set(f.facts.map(x => x.id)), beats = beatsOf();
     sp.shots.forEach((s, i) => {
       if (!s.point) Er.push(`shot ${i + 1} needs "point"`);
       if (beats.length && !beats.includes(String(s.beat || '').toLowerCase())) Er.push(`shot ${i + 1} needs "beat": one of ${beats.join(', ')}`);
       if (!DEVICES[s.device]) Er.push(`shot ${i + 1}: "device" must be one of ${Object.keys(DEVICES).join(', ')}`);
-      if (i && !LINKS.slice(1).includes(String(s.link || '').toLowerCase())) Er.push(`shot ${i + 1}: "link" must be one of ${LINKS.slice(1).join(', ')}`);
       if (!(+s.hold >= 0 && +s.hold <= 2)) s.hold = Math.max(0, Math.min(2, +s.hold || 0));
-      for (const id of s.facts || []) { if (!ids.has(id)) Er.push(`shot ${i + 1} uses fact "${id}", which is not in the sheet`); else used.set(id, [...(used.get(id) || []), i]); }
+      for (const id of s.facts || []) if (!ids.has(id)) Er.push(`shot ${i + 1} uses fact "${id}", which is not in the sheet`);
     });
-    // one fact, one shot; a fact the hook teases may be explained once later, and the last shot may call back the hook or the payoff
-    const hookFacts = new Set(sp.shots[0].facts || []);
-    for (const [id, at] of used) {
-      if (at.length < 2) continue;
-      const ok = at.length === 2 && (at[0] === 0 || (at[1] === n - 1 && (id === f.payoff || hookFacts.has(id))));
-      if (!ok) Er.push(soft(`fact ${id} is used in shots ${at.map(x => x + 1).join(', ')}: one fact, one shot (the hook may tease a fact one later shot explains; the last shot may call back the hook or the payoff)`));
-    }
+    // time runs forward (a history reel went 1905, 1814, 1905 and lost its viewer): a shot dated before an earlier one is background
+    // or a flashback the spine marks; the hook may tease the end and the last shot may look back
+    let top = null;
+    sp.shots.forEach((s, i) => {
+      const y = whenOf(s.when); if (!Number.isFinite(y) || !i || i === n - 1) return;
+      if (top && y < top.y && !/flashback|background/i.test(`${s.when} ${s.beat || ''}`)) Er.push(soft(`shot ${i + 1} ("when": "${s.when}") goes back in time after shot ${top.i + 1} ("${top.when}"): tell the events in the order they happened, or mark it as context its line announces ("when": "background: ${s.when}" or "flashback: ${s.when}")`));
+      else if (!top || y > top.y) top = { y, i, when: s.when };
+    });
     const have = new Set(sp.shots.map(s => String(s.beat || '').toLowerCase()));
     if (beats.length) needBeats().filter(b => !have.has(b)).forEach(b => Er.push(`no shot covers the "${b}" beat; the template requires it`));
     const p = +sp.payoff_shot;
     if (!(p >= 2 && p <= n)) Er.push(`"payoff_shot" must be a shot from 2 to ${n} (the one that answers the question), got ${sp.payoff_shot}`);
     else if (!(sp.shots[p - 1].facts || []).includes(f.payoff)) Er.push(`the payoff shot (${p}) must use the payoff fact ${f.payoff}`);
     if ((sp.shots[0].facts || []).includes(f.payoff)) Er.push(`the hook (shot 1) uses the payoff fact ${f.payoff}: the hook opens the question and holds the answer back for the payoff shot`);
-    const ands = sp.shots.slice(1).filter(s => String(s.link).toLowerCase() === 'and').length;
-    if (ands > 2) Er.push(soft(`${ands} shots only follow with "and": that is a list of facts, not a story. Make each shot follow from the one before (but, so, because, which means), or merge or cut it`));
     const holds = sp.shots.reduce((a, s) => a + (+s.hold || 0), 0);
     if (holds > 3.5) Er.push(soft(`the holds add up to ${holds.toFixed(1)} s; keep them on the reveal and the answer, at most 3 s in all`));
     return Er;
   }
-  async function writeSpine(f) {
-    const saved = E.ckLoad('spine.json'); if (saved) { log('spine: restored from checkpoint'); return JSON.parse(saved); }
+  // redo: {sp, viewer, script, fix}: the spine built again after the test viewer got lost in the script written on it (not saved:
+  // the caller saves it once a script on it passes)
+  async function writeSpine(f, redo) {
+    const saved = !redo && E.ckLoad('spine.json'); if (saved) { log('spine: restored from checkpoint'); return JSON.parse(saved); }
     const [smin, smax] = shotRange(), beats = beatsOf();
     const system = `${E.prompt('spine').replace('{{DEVICES}}', DEVICE_TEXT).replace('{{DEVICE_NAMES}}', Object.keys(DEVICES).join(', '))}\n\n${storyGuide()}${beats.length ? `\n\nBEATS: give every shot a "beat" from: ${beats.join(', ')}. Required: ${needBeats().join(', ') || 'none'}.` : ''}`;
-    const user = `Brief: ${briefFor(brief)}\nTarget length: ${seconds} seconds: ${smin === smax ? smin : `${Math.max(smin, 6)} to ${Math.min(smax, Math.max(smin, 8))}`} shots, about ${E.budget} spoken words in all.\n\nFACT SHEET\nQuestion: ${f.question}\nAnswer: ${f.answer}\nPayoff fact: ${f.payoff}\nYardstick: ${f.yardstick || '(none)'}\n${factList(f)}\n\nReturn only the JSON object.`;
-    const sp = await ask('spine', system, [{ role: 'user', content: user }], o => spineErrors(o, f));
-    if (!sp) throw new Error('no usable story spine');
-    E.ckSave('spine.json', sp);
-    log(`spine: ${sp.shots.length} shots, payoff shot ${sp.payoff_shot}: ${sp.shots.map((s, i) => `${i + 1} ${s.beat || ''}/${s.device}${i ? `(${s.link})` : ''}`).join(' ')}`);
+    // as many shots as the word budget carries at about 10 words a shot, within the template's range (14 fixed shots left 7 words
+    // a shot for a 96-word budget, and no fit could cut the draft that far)
+    const carry = Math.max(smin, Math.min(smax, Math.floor(E.budget / 10))), lo = Math.min(Math.max(smin, 6), carry), hi = Math.min(smax, Math.max(smin, 8), carry);
+    const user = `Brief: ${briefFor(brief)}\nTarget length: ${seconds} seconds: ${lo === hi ? lo : `${lo} to ${hi}`} shots, about ${E.budget} spoken words in all (at least about 10 words a shot: plan no more shots than the words can carry).\n\nFACT SHEET\nQuestion: ${f.question}\nAnswer: ${f.answer}\nPayoff fact: ${f.payoff}\nYardstick: ${f.yardstick || '(none)'}\n${factList(f)}\n\nReturn only the JSON object.`;
+    const messages = [{ role: 'user', content: user }];
+    if (redo) messages.push({ role: 'assistant', content: JSON.stringify(redo.sp) }, { role: 'user', content: `The scriptwriter wrote this script on your spine:\n\n${redo.script}\n\nA test viewer who knows nothing about the topic watched it and got lost:\n${JSON.stringify(redo.viewer, null, 1)}\n\nThe fact checker found: ${redo.fix.length ? JSON.stringify(redo.fix, null, 1) : 'nothing wrong'}.\n\nBuild the spine again so the viewer can follow the story from the question to the answer: reorder, merge, split, add or cut shots, and change their points, facts and links, as the story needs. Return the complete JSON.` });
+    const step = redo ? 'spine-revise' : 'spine', sp = await ask(step, system, messages, o => spineErrors(o, f), redo ? 3 : 4);
+    if (!sp) { if (redo) { log('spine-revise: no new spine passed the checks; revising the script on the first one'); return null; } throw new Error('no usable story spine'); }
+    if (!redo) E.ckSave('spine.json', sp);
+    log(`${step}: ${sp.shots.length} shots, payoff shot ${sp.payoff_shot}: ${sp.shots.map((s, i) => `${i + 1} ${s.beat || ''}/${s.device}${i ? `(${s.link})` : ''}`).join(' ')} | idea: ${sp.idea}`);
     return sp;
   }
 
@@ -511,28 +551,26 @@ export function createWriter(E) {
       if (ck().hook === 'number or question' && !/\?\s*$/.test(first) && !toks(first).some(w => NUM_WORD.has(w) || ['half', 'dozen'].includes(w)))
         Er.push(`shot 1's line "${first}" is not a hook: it has no number and is not a question. Open with a surprising real number (written as words) or a question that ends with "?"`);
       if (f && sp) {
-        // the payoff's OWN numbers: those no other fact on the sheet holds (the payoff fact often restates the setup's number)
-        const pay = f.facts.find(x => x.id === f.payoff), other = new Set(f.facts.filter(x => x.id !== f.payoff).flatMap(x => digitNums(x.text)));
-        // a decimal (44.2) is checked by its whole part ("forty-four ... point two"): numWords(44.2) gave "forty-undefined"
-        const own = digitNums(pay?.text).filter(n => n >= 10 && !other.has(n)).map(n => numWords(Math.trunc(n))).filter(Boolean);
+        // the payoff's OWN numbers: those no other fact on the sheet holds (the payoff fact often restates the setup's number), by
+        // value: by digits "1.25e20" asked for "twenty" and every number under 10 (8.8 years) went unchecked. A date's day and a
+        // year are not asked for: a day is said as an ordinal the reader skips, so "26 October 1905" could never pass
+        const pay = f.facts.find(x => x.id === f.payoff), other = f.facts.filter(x => x.id !== f.payoff).flatMap(x => valuesIn(x.text)), near5 = (a, b) => Math.abs(a - b) <= Math.abs(b) * 0.05;
+        const dated = new Set([...datesIn(pay?.text || '').flatMap(d => [d.day, +d.year]), ...quantitiesIn(pay?.text || '').filter(q => !q.d && Number.isInteger(q.n) && q.n >= 1000 && q.n <= 2100).map(q => q.n)]);
+        const own = [...new Set(valuesIn(pay?.text || ''))].filter(v => v && !dated.has(v) && !other.some(o => near5(v, o))), said = t => numbersSaid(t).map(n => n.v);
         const hook = shots[0].lines.map(l => l.text).join(' '), ps = shots[+sp.payoff_shot - 1];
-        for (const w of own) if (says(hook, w)) Er.push(soft(`the hook says "${w}", the answer's number: hold it back for the payoff shot (${sp.payoff_shot}) and open the question instead`));
-        if (own.length && ps && !own.some(w => ps.lines.some(l => says(l.text, w)))) Er.push(soft(`the payoff shot (${sp.payoff_shot}) must say the answer's own number in words (${own.map(w => `"${w}"`).join(' or ')}, from ${pay.id}: ${pay.text})`));
-        const linked = shots.slice(1).filter(s => s.lines.some(l => LINK_WORDS.test(l.text))).length, want = Math.ceil((shots.length - 1) / 3);
-        if (linked < want) Er.push(soft(`only ${linked} of shots 2 to ${shots.length} say how they follow from the shot before; voice the spine's links ("but", "so", "because", "which means", "that's why", "until"): at least ${want} shots`));
+        for (const v of own.filter(v => v >= 10 || !Number.isInteger(v))) if (said(hook).some(x => near5(x, v))) Er.push(soft(`the hook says ${sayNum(v) || fmtNum(v)}, the answer's number: hold it back for the payoff shot (${sp.payoff_shot}) and open the question instead`));
+        // asked for while tries remain, never the reason a run ends (a hard check ended the Norway run); the hint is a spoken form
+        // the trace reads back
+        const spoken = own.map(v => sayNum(v)).filter(Boolean);
+        if (own.length && ps && !ps.lines.some(l => said(l.text).some(x => own.some(v => near5(x, v))))) Er.push(soft(`the payoff shot (${sp.payoff_shot}) must say the answer's own number in words (${(spoken.length ? spoken : own.map(fmtNum)).map(w => `"${w}"`).join(' or ')}, from ${pay.id}: ${pay.text}), plainly, never "an unimaginable number"`));
         // every number said must be one the sheet states (nothing else checks a spoken number against the facts)
         shots.forEach((s, i) => s.lines.forEach(l => { const n = untraced(l.text, f.facts); if (n.length) Er.push(`shot ${i + 1}: "${l.text}" says ${quoted(n)}, which no fact on the sheet states: say the sheet's numbers (rounding is fine) or leave the number out`); }));
       }
     }
+    // an overrun is not sent back: with thinking off M3 cannot count while rewriting the whole script (it returned the same 116 words
+    // for a 102 budget twice, and a hard cap at 1.3x failed the atom run with "no usable script"), so fitWords cuts any draft to length
     const allowed = budgetFor(shots, o.cast), rate = wps(o.cast);
-    if (total > allowed * 1.05) {
-      const per = Math.floor(allowed / shots.length), long = shots.map((s, i) => [i + 1, s.lines.reduce((a, l) => a + words(l.text), 0)]).filter(([, n]) => n > per + 2);
-      // up to 30% over is soft: with thinking off M3 cannot count while rewriting the whole script (it returned the same 116
-      // words for a 102 budget twice), so fitWords cuts the long shots to exact targets in a small call of its own
-      const msg = `the lines total ${total} words; with ${shots.length} shots and their pauses the budget is ${allowed} words (the narrator speaks about ${rate} words a second), about ${per} per shot. Cut ${total - allowed} words: ${long.length ? long.map(([k, n]) => `shot ${k} has ${n}, cut it to ${per}`).join('; ') : 'a few from the longest shots'}. Count each shot's words before returning.`;
-      Er.push(total > allowed * 1.3 ? msg : soft(msg)); // a soft overrun is cut to length by fitWords
-
-    } else if (!SCRIPT() && total < allowed * 0.8) { const msg = `the lines total only ${total} words, so the reel would run about ${Math.round(E.padOf(shots) + total / rate)} s instead of ${seconds} s. Use ${Math.ceil(allowed * 0.85)} to ${allowed} words.`; Er.push(total < allowed * 0.7 ? msg : soft(msg)); }
+    if (!SCRIPT() && total < allowed * 0.8) { const msg = `the lines total only ${total} words, so the reel would run about ${Math.round(E.padOf(shots) + total / rate)} s instead of ${seconds} s. Use ${Math.ceil(allowed * 0.85)} to ${allowed} words.`; Er.push(total < allowed * 0.7 ? msg : soft(msg)); }
     return Er;
   }
   // a script brief: every scripted line appears once, word for word, in order (numbers and symbols may become words)
@@ -552,9 +590,9 @@ export function createWriter(E) {
   }
   const scriptSystem = () => `${E.prompt('script').replace('{{VOICES}}', E.voiceGuide).replace('{{FEELS}}', E.feels)}\n\n${storyGuide()}`;
 
-  // cut an over-budget script to length: a small call (fit.txt) rewrites only the longest shots to exact word targets, up to 2
-  // rounds; a shot's cut is taken only if it is shorter, has no digits, keeps its speakers and still says its cue word, and the
-  // whole cut script is kept only if it passes every hard check
+  // cut an over-budget script to length: a small call (fit.txt) rewrites the shots to exact word targets, up to 3 rounds; a shot's
+  // cut is taken only if it is shorter, has no digits, keeps its speakers and still says its cue word, and the whole cut script is
+  // kept only if it passes every hard check
   const countWords = s => s.lines.reduce((a, l) => a + words(l.text), 0);
   // a small call that rewrites only some shots' lines ({shots: [{shot, lines}]}); a shot's new lines are taken only if they have no
   // digits, keep the cast, still say the cue word and pass `accept(old shot, new lines, shot index)`
@@ -594,28 +632,35 @@ export function createWriter(E) {
     if (SCRIPT()) return o;
     const withHolds = x => x.shots.map((s, i) => ({ ...s, hold: sp ? sp.shots[i].hold : s.hold }));
     const total0 = o.shots.reduce((a, s) => a + countWords(s), 0);
+    if (total0 <= budgetFor(withHolds(o), o.cast) * 1.05) return o;
     let cur = o;
     for (let round = 1; round <= 3; round++) {
       const shots = withHolds(cur), allowed = budgetFor(shots, cur.cast), total = shots.reduce((a, s) => a + countWords(s), 0);
       if (total <= allowed * 1.05) break;
-      // the longest shots give words first, down to the per-shot target; then every long shot shrinks in proportion
-      const per = Math.floor(allowed / shots.length), want = {}; let need = total - allowed;
-      for (const i of shots.map((_, k) => k).sort((a, b) => countWords(shots[b]) - countWords(shots[a]))) { if (need <= 0) break; const n = countWords(shots[i]), cut = Math.min(need, n - per); if (cut > 0) { want[i] = n - cut; need -= cut; } }
-      if (need > 0) shots.forEach((s, i) => { const n = countWords(s); if (n > 5) want[i] = Math.min(want[i] ?? n, Math.max(4, Math.floor(n * allowed / total))); });
-      const req = Object.entries(want).map(([i, t]) => ({ shot: +i + 1, target_words: t, now_words: countWords(shots[i]), keep: [shots[i].cue?.word].filter(Boolean), lines: shots[i].lines.map(l => ({ who: l.who, text: l.text, tone: l.tone })) }));
-      cur = await editShots(`script-fit#${round}`, 'fit', req, cur, (s, lines) => lines.reduce((a, l) => a + words(l.text), 0) < countWords(s) && !newNumbers(lines, f).length);
+      // every shot over 6 words gives words in proportion, so the story keeps its shape (cutting the longest shots to the average
+      // first flattened an explaining shot into a list item); a short punch line stays
+      const long = shots.map((s, i) => [i, countWords(s)]).filter(([, n]) => n > 6), pool = long.reduce((a, [, n]) => a + n, 0), share = Math.max(0, pool - (total - allowed)) / pool;
+      const req = long.map(([i, n]) => [i, n, Math.max(4, Math.floor(n * share))]).filter(([, n, t]) => t < n).map(([i, n, t]) => ({ shot: i + 1, target_words: t, now_words: n, keep: [shots[i].cue?.word].filter(Boolean), lines: shots[i].lines.map(l => ({ who: l.who, text: l.text, tone: l.tone })) }));
+      if (!req.length) break;
+      cur = await editShots(`script-fit#${round}`, 'fit', req, cur, (s, lines) => lines.reduce((a, l) => a + words(l.text), 0) < countWords(s) && !newNumbers(lines, f).length, sp?.idea ? `\n\nWHAT THE STORY IS FOR: ${sp.idea}\nThe viewer should come away with: ${sp.takeaway}` : '');
     }
-    const total1 = cur.shots.reduce((a, s) => a + countWords(s), 0);
-    if (total1 === total0) return o;
-    if (scriptErrors(cur, sp, f).some(e => !e.soft)) { log(`script-fit: the cut broke a check; keeping the ${total0}-word script`); return o; }
-    log(`script-fit: ${total0} -> ${total1} words (budget ${budgetFor(withHolds(cur), cur.cast)})`);
+    // a shot whose cut breaks a hard check (a hook that lost its question) gets its draft back; the other shots keep their cuts
+    const hard = x => scriptErrors(x, sp, f).filter(e => !e.soft).length;
+    for (let i = 0; i < cur.shots.length && hard(cur); i++) if (!sameLines(cur.shots[i], o.shots[i])) { const back = { ...cur, shots: cur.shots.map((s, k) => (k === i ? o.shots[i] : s)) }; if (hard(back) < hard(cur)) cur = back; }
+    if (hard(cur)) { log(`script-fit: the cut broke a check; keeping the ${total0}-word script`); cur = o; }
+    const total1 = cur.shots.reduce((a, s) => a + countWords(s), 0), allowed = budgetFor(withHolds(cur), cur.cast);
+    log(total1 === total0 ? `script-fit: no cut was taken; ${total0} words (budget ${allowed})` : `script-fit: ${total0} -> ${total1} words (budget ${allowed})`);
+    // length never ends a run (a template's fixed 14 shots left 208 words for 96, and stopping lost the whole cut): the shortest
+    // fitted script is kept, and the overrun is logged; the harness reports the length against the target
+    if (total1 > allowed * 1.3) log(`script-fit: WARNING: ${total1} words after the fit, ${Math.round((total1 / allowed - 1) * 100)}% over the budget of ${allowed}; the reel will run long`);
     return cur;
   }
-  async function writeScript(f, sp) {
+  // note: what the script on a rebuilt spine must not repeat (the first draft's problems)
+  async function writeScript(f, sp, note = '') {
     let user;
     if (sp) {
       const est = sp.shots.map(s => ({ hold: s.hold, lines: [{}] })), allowed = budgetFor(est, null);
-      user = `Brief: ${briefFor(brief)}\nTarget length: ${seconds} seconds. Word budget for ALL spoken lines together: at most ${allowed} words (the narrator speaks about ${wps(null)} words a second). Word target per shot: ${Math.floor(allowed / sp.shots.length)} (a short punch shot may take fewer and give them to an explaining shot; the total stays within ${allowed}). Most shots are one line; each extra line costs a breath.\n\nFACT SHEET (the only claims you may use; every number you say is one of its numbers, rounding is fine)\nQuestion: ${f.question}\nAnswer: ${f.answer}\nYardstick: ${f.yardstick || '(none)'}\n${factList(f)}\n\nSPINE\n${JSON.stringify({ shots: sp.shots.map((s, i) => ({ shot: i + 1, beat: s.beat, point: s.point, facts: s.facts, link: s.link, device: s.device, hold: s.hold })), payoff_shot: sp.payoff_shot, callback: sp.callback }, null, 1)}\n\nReturn only the JSON object.`;
+      user = `Brief: ${briefFor(brief)}\nTarget length: ${seconds} seconds. Word budget for ALL spoken lines together: about ${allowed} words (the narrator speaks about ${wps(null)} words a second), about ${Math.floor(allowed / sp.shots.length)} a shot on average: a shot takes the words its point needs, an explaining shot more and a punch shot fewer, in one to three sentences.\n\nWHAT THE STORY IS FOR: ${sp.idea || f.question}\nThe viewer should come away with: ${sp.takeaway || f.answer}\n\nFACT SHEET (the only claims you may use; every number you say is one of its numbers, rounding is fine; it holds more than the story needs, so use only what the spine's shots need)\nQuestion: ${f.question}\nAnswer: ${f.answer}\nYardstick: ${f.yardstick || '(none)'}\n${factList(f)}\n\nSPINE\n${JSON.stringify({ shots: sp.shots.map((s, i) => ({ shot: i + 1, beat: s.beat, point: s.point, facts: s.facts, link: s.link, device: s.device, hold: s.hold, ...(s.when ? { when: s.when } : {}) })), payoff_shot: sp.payoff_shot, callback: sp.callback }, null, 1)}${note}\n\nReturn only the JSON object.`;
     } else {
       const beats = beatsOf();
       user = `Brief (a SCRIPT): ${brief}\n\nThe brief is a SCRIPT: keep every spoken line verbatim and in order (numbers and symbols written as words for the voice). Use ${ck().shots || '8 to 12'} shots, one per beat of the script (usually 1 to 3 lines each). There is no spine, so also give each shot "beat"${beats.length ? ` (from: ${beats.join(', ')}; required: ${needBeats().join(', ') || 'none'})` : ''}, "point" (what the viewer gets from it), "device" (from: ${Object.keys(DEVICES).join(', ')}) and "hold" (seconds of silent screen time after its lines, 0 normally). Also give "payoff_shot" at the top level. Word budget for ALL lines together: at most ${E.budget} words.\nReturn only the JSON object.`;
@@ -634,7 +679,7 @@ export function createWriter(E) {
   // it thinks (low effort, off if thinking eats the budget) and gives a verdict on every fact and shot: a 6-token "no problems"
   // passed a false sheet; a fact it finds wrong joins the problems the harness reads
   async function factcheck(step, o, sp, f) {
-    const system = `${E.prompt('factcheck')}${E.refBlock()}`, user = `BRIEF\n${briefFor(brief)}\n\nFACT SHEET (a derived fact shows the engine's arithmetic, a reference fact its quote)\n${calcList(f)}\n\nSCRIPT\n${readAloud(o, sp)}\n\nReturn only the JSON object.`;
+    const system = `${E.prompt('factcheck')}${E.refBlock()}`, user = `BRIEF\n${briefFor(brief)}\n\nFACT SHEET (a derived fact shows the engine's arithmetic, a reference fact its quote)\n${calcList(f)}${sp?.idea ? `\n\nIDEA: ${sp.idea}\nTAKEAWAY: ${sp.takeaway}` : ''}\n\nSCRIPT\n${readAloud(o, sp)}\n\nReturn only the JSON object.`;
     const missing = r => { const ids = new Set((r?.facts || []).map(v => v?.id)), shots = new Set((r?.lines || []).map(v => +v?.shot)); return [...f.facts.filter(x => !ids.has(x.id)).map(x => x.id), ...o.shots.map((_, i) => i + 1).filter(n => !shots.has(n)).map(n => `shot ${n}`)]; };
     let r = await json(step, system, user, ['low', 'off']), gap = r ? missing(r) : [];
     if (gap.length) { log(`${step}: no verdict for ${gap.join(', ')}; asked once more`); r = (await json(`${step}-again`, system, `${user}\n\nGive a verdict for every fact id and every shot; the last answer left out ${gap.join(', ')}.`, ['low', 'off'])) || r; }
@@ -645,6 +690,9 @@ export function createWriter(E) {
   // says a sheet fact settles ("settled_by") is no conflict: the line is wrong and is fixed toward the sheet
   const settle = (step, fc, f) => { for (const p of fc?.problems || []) { const ids = [].concat(p?.settled_by || []).filter(id => f.facts.some(x => x.id === id)); if (p?.kind === 'conflict' && ids.length) { p.kind = 'wrong'; p.fix ||= `say it the way the fact sheet does (${ids.join(', ')})`; log(`${step}: shot ${p.shot}'s conflict is settled by ${ids.join(', ')}; fixed toward the sheet`); } } };
   const toFix = fc => (fc?.problems || []).filter(p => p?.kind !== 'conflict');
+  // the idea and takeaway steer the script and the revision: one the checker finds wrong takes its fix (a Moon takeaway said "your
+  // whole life is barely a tenth of the walk", the walk being about a tenth of a life)
+  const fixPurpose = (step, fc, sp) => { for (const p of toFix(fc)) { const k = String(p?.shot || '').toLowerCase(), fix = String(p?.fix || '').trim(); if ((k === 'idea' || k === 'takeaway') && fix && !/^cut\b/i.test(fix)) { log(`${step}: the ${k} "${sp[k]}" was wrong (${p.problem}); now "${fix}"`); sp[k] = fix; } } };
   const conflicts = (step, fc) => { const c = (fc?.problems || []).filter(p => p?.kind === 'conflict'); for (const p of c) if (!/^a conflict/.test(p.problem || '')) p.problem = `a conflict between the brief and the reference, reported, not fixed: ${p.problem || ''}`; if (c.length) log(`${step}: ${c.length} conflict(s) reported, not fixed: ${c.map(p => `shot ${p.shot}: ${p.problem}`).join('; ')}`); return c; };
   async function reviewScript(o, sp, f) {
     const [viewer, fc] = await Promise.all([json('viewer', E.prompt('viewer'), `${readAloud(o, sp)}\n\nReturn only the JSON object.`), factcheck('factcheck', o, sp, f)]);
@@ -663,32 +711,44 @@ export function createWriter(E) {
       const { o } = await writeScript(null, null);
       story = { title: o.title, music: { ...(o.music || {}), payoff_shot: +o.payoff_shot || o.shots.length }, cast: o.cast, shots: o.shots.map(s => ({ beat: s.beat, point: s.point, device: DEVICES[s.device] ? s.device : 'act', hold: Math.max(0, Math.min(2, +s.hold || 0)), lines: s.lines, cue: s.cue, see: s.see })) };
     } else {
-      const f = await writeFacts(), sp = await writeSpine(f);
-      let { o, messages } = await writeScript(f, sp);
+      const f = await writeFacts();
+      let sp = await writeSpine(f), { o, messages } = await writeScript(f, sp);
       o = await fitWords(o, sp, f); messages[messages.length - 1] = { role: 'assistant', content: JSON.stringify(o) }; // the revision starts from the cut script
       const review = await reviewScript(o, sp, f), v = review.viewer;
-      settle('fact check', review.factcheck, f);
-      log(`test viewer: ${v ? `scores ${JSON.stringify(v.scores || {})}, lost ${v.lost?.length || 0}, flat ${v.flat?.length || 0}; Q "${v.question}" A "${v.answer}"` : 'no answer'} | fact check: ${review.factcheck ? `${review.factcheck.problems?.length || 0} problems` : 'no answer'}`);
+      settle('fact check', review.factcheck, f); fixPurpose('fact check', review.factcheck, sp);
+      log(`test viewer: ${v ? `scores ${JSON.stringify(v.scores || {})}, lost ${v.lost?.length || 0}, flat ${v.flat?.length || 0}; Q "${v.question}" A "${v.answer}"; remembers "${v.remember || ''}"` : 'no answer'} | fact check: ${review.factcheck ? `${review.factcheck.problems?.length || 0} problems` : 'no answer'}`);
       conflicts('fact check', review.factcheck);
-      let revised = false;
+      let revised = false, rebuilt = false;
       if (needsRevision(review)) {
         const fix = toFix(review.factcheck);
-        messages.push({ role: 'user', content: `A test viewer who knows nothing about the topic watched your script (without the fact sheet):\n${JSON.stringify(v || {}, null, 1)}\n\nThe question the reel should open: "${sp.question || f.question}". The answer it should give: "${sp.answer || f.answer}".\n\nThe fact checker found: ${fix.length ? JSON.stringify(fix, null, 1) : 'nothing wrong'}.\n\nRewrite the script to fix: every fact problem (use its fix), every shot the viewer got lost in or found flat, and any gap between the viewer's question and answer and the intended ones. Keep the spine (shots, points, facts, links, holds) and the word budget. Return the complete JSON.` });
-        const o2 = await ask('script-revise', scriptSystem(), messages, x => scriptErrors(x, sp, f), 3);
-        if (o2) { o = await fitWords(o2, sp, f); revised = true; messages[messages.length - 1] = { role: 'assistant', content: JSON.stringify(o) }; }
-        else log('script-revise: no revision passed the checks; keeping the script from before the review');
+        // a viewer lost in the story: its order is wrong, not only its words, so the spine is built again (a revision held to the spine
+        // kept the chronology jump the viewer had named); the script on the new spine is checked again below
+        let sp2 = v?.lost?.length ? await writeSpine(f, { sp, viewer: v, script: readAloud(o, sp), fix }) : null;
+        if (sp2) {
+          try {
+            const r = await writeScript(f, sp2, fix.length ? `\n\nAn earlier draft had these fact problems; do not repeat them:\n${JSON.stringify(fix, null, 1)}` : '');
+            o = await fitWords(r.o, sp2, f); sp = sp2; revised = rebuilt = true; E.ckSave('spine.json', sp);
+            log('spine-revise: the script was written again on the new spine');
+          } catch (e) { log(`spine-revise: ${e.message} on the new spine; revising the script on the first one`); sp2 = null; }
+        }
+        if (!sp2) {
+          messages.push({ role: 'user', content: `A test viewer who knows nothing about the topic watched your script (without the fact sheet):\n${JSON.stringify(v || {}, null, 1)}\n\nThe question the reel should open: "${sp.question || f.question}". The answer it should give: "${sp.answer || f.answer}". The viewer should come away with: "${sp.takeaway || f.answer}"; if what they would remember is a detail that does not serve it, cut that detail or make it serve the answer.\n\nThe fact checker found: ${fix.length ? JSON.stringify(fix, null, 1) : 'nothing wrong'}.\n\nRewrite the script to fix: every fact problem (use its fix), every shot the viewer got lost in or found flat, and any gap between the viewer's question and answer and the intended ones. Keep the spine's shots and holds and about the word budget. Return the complete JSON.` });
+          const o2 = await ask('script-revise', scriptSystem(), messages, x => scriptErrors(x, sp, f), 3);
+          if (o2) { o = await fitWords(o2, sp, f); revised = true; }
+          else log('script-revise: no revision passed the checks; keeping the script from before the review');
+        }
       }
       // a revision can bring new claims (one added "about twenty cents each" after the check): check the facts again, fix once
       if (revised) {
-        const fc2 = await factcheck('factcheck-2', o, sp, f); review.factcheck2 = fc2; settle('fact check of the revision', fc2, f);
+        const fc2 = await factcheck('factcheck-2', o, sp, f); review.factcheck2 = fc2; settle('fact check of the revision', fc2, f); fixPurpose('fact check of the revision', fc2, sp);
         log(`fact check of the revision: ${fc2 ? `${fc2.problems?.length || 0} problems` : 'no answer'}`);
         // the harness reads the last fact check (script.json review.factcheck2): the first one's conflicts stay in it
         const seen = new Set(conflicts('fact check of the revision', fc2).map(p => `${p.shot}|${p.claim}`)), carry = (review.factcheck?.problems || []).filter(p => p?.kind === 'conflict' && !seen.has(`${p.shot}|${p.claim}`));
         if (carry.length) review.factcheck2 = { ...(fc2 || {}), problems: [...(fc2?.problems || []), ...carry] };
         if (toFix(fc2).length) o = await fixClaims(o, sp, f, toFix(fc2));
       }
-      story = { title: o.title, question: sp.question || f.question, answer: sp.answer || f.answer, callback: sp.callback, music: { ...(o.music || {}), payoff_shot: +sp.payoff_shot },
-        cast: o.cast, facts: f.facts, payoff: f.payoff, review: { ...review, revised },
+      story = { title: o.title, idea: sp.idea, takeaway: sp.takeaway, question: sp.question || f.question, answer: sp.answer || f.answer, callback: sp.callback, music: { ...(o.music || {}), payoff_shot: +sp.payoff_shot },
+        cast: o.cast, voice_model: E.voiceModel, wps: wps(o.cast), facts: f.facts, payoff: f.payoff, review: { ...review, revised, ...(rebuilt ? { spine_rebuilt: true } : {}) },
         shots: sp.shots.map((s, i) => ({ beat: s.beat, point: s.point, facts: s.facts, link: i ? s.link : 'hook', device: s.device, hold: Math.max(0, Math.min(2, +s.hold || 0)), lines: o.shots[i].lines, cue: o.shots[i].cue, see: o.shots[i].see })) };
     }
     story.shots.forEach(s => s.lines.forEach(l => { if (l.gap_before != null) l.gap_before = Math.max(0, Math.min(1.5, +l.gap_before || 0)); }));
@@ -705,6 +765,7 @@ export function scriptMd(st) {
   const fx = Object.fromEntries((st.facts || []).map(f => [f.id, f]));
   const factLine = f => `${f.text}${f.source === 'derived' ? ` [= ${f.calc}]` : f.source === 'general' ? ' [general]' : ''}`;
   const out = [`# ${st.title || 'untitled'}`, ''];
+  if (st.idea) out.push(`**Idea:** ${st.idea}`, `**Takeaway:** ${st.takeaway || ''}`);
   if (st.question) out.push(`**Question:** ${st.question}`, `**Answer:** ${st.answer}`, `**Payoff:** shot ${st.music?.payoff_shot}${st.payoff && fx[st.payoff] ? ` (${st.payoff}: ${fx[st.payoff].text})` : ''}`, st.callback ? `**Callback:** ${st.callback}` : '', '');
   st.shots.forEach((s, i) => {
     out.push(`## Shot ${i + 1}: ${[s.beat, s.device, i ? s.link : ''].filter(Boolean).join(' / ')}`, `Point: ${s.point || ''}`);
@@ -719,6 +780,6 @@ export function scriptMd(st) {
   if (r?.viewer) { const v = r.viewer; out.push('## Test viewer (on the first draft)', `Scores: ${JSON.stringify(v.scores || {})}`, `Question: ${v.question || ''}`, `Answer: ${v.answer || ''}`, `Remember: ${v.remember || ''}`, ...(v.lost || []).map(x => `- lost in shot ${x.shot}: ${x.why}`), ...(v.flat || []).map(x => `- flat shot ${x.shot}: ${x.why}`), v.want ? `Still wants: ${v.want}` : '', ''); }
   if (r?.factcheck2) out.push('## Fact check of the revision', ...(r.factcheck2.problems?.length ? r.factcheck2.problems.map(problemLine) : ['nothing wrong']), '');
   if (r?.factcheck) out.push('## Fact check (first draft)', ...(r.factcheck.problems?.length ? r.factcheck.problems.map(problemLine) : ['nothing wrong']), '');
-  if (r) out.push(`Revised after the review: ${r.revised ? 'yes' : 'no'}`);
+  if (r) out.push(`Revised after the review: ${r.revised ? `yes${r.spine_rebuilt ? ' (the spine was built again)' : ''}` : 'no'}`);
   return out.filter(x => x !== null).join('\n');
 }

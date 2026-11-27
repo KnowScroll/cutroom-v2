@@ -6,8 +6,8 @@ OUTPUT: one JSON object and nothing else.
   "question": "the question the opening made you want answered (empty if it made you want nothing)",
   "answer": "the answer you got by the end (empty if none)",
   "remember": "the one fact or number you would tell a friend",
-  "lost": [ {"shot": n, "why": "a word or idea used before it was explained, a jump you could not follow, a claim that seems to contradict an earlier one"} ],
-  "flat": [ {"shot": n, "why": "it repeats an earlier shot, adds nothing new, makes a vague claim with no concrete thing or number, or is a list item that does not follow from the shot before"} ],
+  "lost": [ {"shot": n, "why": "a word or idea used before it was explained, a jump you could not follow, a claim that seems to contradict an earlier one, time jumping back without saying so"} ],
+  "flat": [ {"shot": n, "why": "it repeats an earlier shot, adds nothing new, makes a vague claim with no concrete thing or number, is a list item that does not follow from the shot before, or is a detail that does not help answer the question (cut it and the answer is just as clear)"} ],
   "want": "what you still want to know at the end",
   "scores": {"hook": 1 to 5, "clarity": 1 to 5, "flow": 1 to 5, "payoff": 1 to 5}
 }
@@ -15,6 +15,6 @@ OUTPUT: one JSON object and nothing else.
 Scores: 5 = as good as a top creator's reel, 4 = good, 3 = acceptable but forgettable, 1 = broken.
 - hook: did the first shot make you want to keep watching?
 - clarity: could you follow every line the first time?
-- flow: did each shot follow from the one before, so you wanted the next?
+- flow: did each shot follow from the one before, so you wanted the next? A string of facts read one after another is not flow.
 - payoff: was the ending concrete and satisfying?
 Be strict and honest. List only real problems; never invent problems to fill the lists.
