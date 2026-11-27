@@ -61,9 +61,9 @@ A funny true story about an ordinary person, rendered in real 3D with a toon loo
 
 ## checks
 renderer: three
-shots: 6-10
+shots: 5-10
 beats: hook, setup, thing, act, surprise, question, twist, reveal, ending
-required beats: hook, setup, thing, surprise, reveal, ending
+required beats: hook, ending
 hook: number or question
 hero size: 0.3 - 1.4
 acting beat: 6

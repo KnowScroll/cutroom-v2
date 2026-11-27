@@ -85,7 +85,7 @@ A bright cartoon stick-figure "what if / why" explainer, 30 to 45 s: a question 
 - The impact word is 3 to 6 letters, a sound (never a word from the line); at most one in-scene word or number group on screen at a time, all inside x 60 to 1020 and y 180 to 1440. Never write the narration on screen: the engine captions it.
 - Shots with darkness use the "black" background; a darkness or tint over a lit place is a radial gradient or under 50% opacity, never a solid fill. Never paint a solid colour over kit.bg.
 - A shot may cut once inside itself to a closer view (switch the background and staging at a word of its line, with 0.15 s of whip streaks), as the picture shot does; otherwise one place per shot.
-- Motion shows something new: a character acting (a new face, pose or move when a line gives one), effects on a hit; the drift and background life are optional, and a shot may hold while its line explains.
+- Motion shows something new: a character acting (a new face, pose or move when a line gives one), effects on a hit; the drift and background life are optional.
 
 ## checks
 shots: 8-9

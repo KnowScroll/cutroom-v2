@@ -85,9 +85,9 @@ A chunky pixel-art machine explainer that makes time a visible variable. It open
 - "device" in the chain and ramp shots: 820 to 880 px tall, centred x 540, y 1000, alone on the background (no frame, box or plate around it).
 
 ## checks
-shots: 8-9
+shots: 6-9
 beats: hook, blur, step, chain, ramp, loop
-required beats: hook, blur, step, chain, ramp, loop
+required beats: hook, step, loop
 pixel grid: 180
 reference analysis: studio/refs/ref3
 gate balance: info

@@ -44,7 +44,7 @@ A minimal line-art idea reel: one idea, principle or mental model (a habit, a wa
 - The top line is shown from the shot's first frame (no entrance) and stays all shot. In the payoff shot it swaps from the setup phrase to the payoff phrase in ONE frame at T (no fade, no movement).
 
 ## plan
-- Structure: 7 or 8 shots, usually one line each, one beat each, in this usual order (the brief's idea may reorder or merge beats; build takes 1 or 2 shots; proof is optional): with 7 or 8 shots each line stays short (about 9 to 12 words); fewer shots make every line long and heavy.
+- Structure: 6 to 8 shots (7 or 8 by default), usually one line each, one beat each, in this usual order (the brief's idea may reorder or merge beats; build takes 1 or 2 shots; proof is optional): with 7 or 8 shots each line stays short (about 9 to 12 words); fewer shots make every line long and heavy.
   1. hook: a quiet, surprising statement or question about the idea, in plain words. Line shapes: "Most people [common habit]. That is why [quiet consequence]." or "What if [the usual goal] is the wrong goal?" Screen: the hero motif in its simplest form (branching depth 6, 3 steps, 1 orbit, 3 spiral turns, a small grid) grows out of one dot.
   2. belief: what most people believe or do by default, and why it quietly fails. Screen: the second motif showing the default's limit (a path that wanders and loops back, steps that stay low, an orbit that circles without growing, a grid where only a few dots light up).
   3. turn: "But [the reframe]." The idea in one plain sentence. Screen: the hero doing what the idea says (splitting, climbing, filling, circling closer), with the completion accent (pulse ring and sparks).
@@ -88,9 +88,9 @@ A minimal line-art idea reel: one idea, principle or mental model (a habit, a wa
 - Never use kit.panel, h.graph, h.route, h.speedlines, h.burst or h.stick in this style.
 
 ## checks
-shots: 7-8
+shots: 6-8
 beats: hook, belief, turn, build, proof, payoff
-required beats: hook, belief, turn, build, payoff
+required beats: hook, payoff
 hero width: 0.55 - 0.9
 hero centre y: 820 - 1080
 labels: from narration

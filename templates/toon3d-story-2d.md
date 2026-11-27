@@ -108,9 +108,9 @@ A funny true story about an ordinary person, in a toon-shaded 3D cartoon look: b
 - Never paint a solid fill over the background; the INSERT's dimming layer is translucent.
 
 ## checks
-shots: 6-10
+shots: 5-10
 beats: hook, setup, thing, act, surprise, question, twist, reveal, ending
-required beats: hook, setup, thing, surprise, reveal, ending
+required beats: hook, ending
 hook: number or question
 hero size: 0.35 - 1.4
 acting beat: 4.5

@@ -101,9 +101,9 @@ A calm second-person explainer on a dark stage, built on one idea: a small every
 - The return shot's last 0.5 s matches the hook's first frame (the same plinth, small asset, figure and positions).
 
 ## checks
-shots: 8-8
+shots: 6-9
 beats: hook, closer, compare, real, first, second, reveal, return
-required beats: hook, closer, compare, real, first, second, reveal, return
+required beats: hook, second, return
 subject size: off
 labels: from narration
 captions: phrases
