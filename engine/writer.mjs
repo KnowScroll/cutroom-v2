@@ -65,7 +65,15 @@ export const rateMoved = (story, wps, model) => !!story?.voice_model && story.vo
 
 // ---------- text checks ----------
 const toks = s => String(s).toLowerCase().replace(/[’‘]/g, "'").replace(/[^a-z0-9'\s-]+/g, ' ').replace(/-/g, ' ').split(/\s+/).filter(Boolean);
-const NUM_WORD = new Set([...ONES, ...TENS.filter(Boolean), 'hundred', 'thousand', 'million', 'billion', 'trillion']);
+// the magnitude words, in digits ("4.6 billion") and in words; past trillion too, so a payoff of 1.25e20 can be said and traced
+// ("one hundred and twenty-five quintillion": the atom script fell back on "an almost unimaginable number")
+const MAG = { thousand: 1e3, million: 1e6, billion: 1e9, trillion: 1e12, quadrillion: 1e15, quintillion: 1e18, sextillion: 1e21 }, MAGS = Object.keys(MAG).join('|');
+const NUM_WORD = new Set([...ONES, ...TENS.filter(Boolean), 'hundred', ...Object.keys(MAG)]);
+// a number as the narrator says it, for a message: 1.25e20 -> "one hundred and twenty-five quintillion", 8.8 -> "eight point eight"
+const sayNum = v => {
+  const big = Object.entries(MAG).filter(([, m]) => m >= 1e6 && v >= m).at(-1), r = String(big ? +(v / big[1]).toPrecision(3) : v), m = r.match(/^(\d+)(?:\.(\d+))?$/), w = m && numWords(+m[1]);
+  return w ? `${w}${m[2] ? ` point ${[...m[2]].map(d => ONES[+d]).join(' ')}` : ''}${big ? ` ${big[0]}` : ''}` : String(v);
+};
 export const STOP = new Set(('a an the and or but so of to in on at for by with from as is are was were be been being it its it\'s this that these those he she they his her their them ' +
   'you your we our i my me what which who whom how why when where then than there here into onto out up down over under about after before just only also very more most ' +
   'can could would will should not no do does did has have had one all any each every some such own same too').split(' '));
@@ -76,7 +84,6 @@ const says = (text, phrase) => { const w = toks(text), p = toks(phrase); if (!p.
 // derived facts: the plain factors a calc may use without a fact stating them. A bare number is taken literally; units count
 // only where the calc writes them, and the unit table converts them (M3 wrote 1 mm = 1,000,000 pm as "1 * 1000000")
 const FREE = new Set([1, 2, 3, 4, 100]); // 100 at most once; "* 1" or "/ 1" changes nothing ("1 million / 1" passed a false fact)
-const MAG = { thousand: 1e3, million: 1e6, billion: 1e9, trillion: 1e12 };
 // each unit's SI factor and dimension [length, mass, time]; SI prefixes and plurals are read too ("km", "picometres", "mg", "hours")
 const UNITS = {}, LEN = [1, 0, 0], MASS = [0, 1, 0], TIME = [0, 0, 1], Z = [0, 0, 0];
 const defUnit = (names, k, d) => names.split(' ').forEach(n => { UNITS[n] = [k, d]; });
@@ -106,7 +113,7 @@ const SI = d => { const part = sg => d.map((e, j) => sg * e > 0 ? ['m', 'kg', 's
 const SUP = '⁻⁰¹²³⁴⁵⁶⁷⁸⁹';
 const normNum = s => String(s).replace(/[⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, m => '^' + [...m].map(c => SUP.indexOf(c) ? SUP.indexOf(c) - 1 : '-').join('')).replace(/(\d),(?=\d{3}\b)/g, '$1');
 // a number in digits: "1000", "4.6 billion", "1e-10", "1.5 × 10^7", "10^7"
-const NUM = /(?<![\w.^])(\d+(?:\.\d+)?)(?!\d|(?:st|nd|rd|th)\b)(?:[eE]([+-]?\d+)|\s*[×x*]\s*10\^([+-]?\d+)|\^([+-]?\d+))?(?:\s+(thousand|million|billion|trillion)\b)?/gi;
+const NUM = new RegExp(String.raw`(?<![\w.^])(\d+(?:\.\d+)?)(?!\d|(?:st|nd|rd|th)\b)(?:[eE]([+-]?\d+)|\s*[×x*]\s*10\^([+-]?\d+)|\^([+-]?\d+))?(?:\s+(${MAGS})\b)?`, 'gi');
 const numVal = m => (m[4] != null ? (+m[1]) ** +m[4] : +m[1] * 10 ** +(m[2] ?? m[3] ?? 0)) * (MAG[(m[5] || '').toLowerCase()] || 1);
 // the unit right after a number, or after one other word ("243 Earth days"), with a rate ("km/h", "per kg", "people per km2",
 // "a year"); after money only a rate ("$60,500 per kg"); a glued single letter is none ("1990s", "5m")
@@ -140,8 +147,9 @@ function quantitiesIn(text) {
 }
 // numbers in words: "ten thousand", "a million", "four point six billion", "nineteen eighty-seven", "nineteen oh five"
 const WN = Object.fromEntries([...ONES.map((w, i) => [w, i]), ...TENS.map((w, i) => [w, i * 10]).filter(([w]) => w)]);
+const NOT_COUNT = new RegExp(`^(\\w*(fif|six|seven|eigh|nin|ten|eleven|twelf|teen|tie|hundred|${MAGS})ths?|fourths?|first|second|thirds?|halves|half|quarters?|(twent|thirt|fort|fift|sixt|sevent|eight|ninet)ies)$`);
 function wordNumbers(text) {
-  return String(text).split(/[;:.!?]|(?<!\b(?:thousand|million|billion|trillion)),/i).flatMap(wordRuns);
+  return String(text).split(new RegExp(String.raw`[;:.!?]|(?<!\b(?:${MAGS})),`, 'i')).flatMap(wordRuns);
 }
 function wordRuns(text) {
   const w = toks(text), out = [];
@@ -160,7 +168,7 @@ function wordRuns(text) {
       else if (!(x === 'and' && WN[w[j + 1]] != null && (cur >= 100 || total))) break;
     }
     // a fraction, an ordinal or a decade is no count ("one ten-millionth", "twenty-first", "nineteen fifties"): not checked
-    if (!/^(\w*(fif|six|seven|eigh|nin|ten|eleven|twelf|teen|tie|hundred|thousand|million|billion|trillion)ths?|fourths?|first|second|thirds?|halves|half|quarters?|(twent|thirt|fort|fift|sixt|sevent|eight|ninet)ies)$/.test(w[j] || ''))
+    if (!NOT_COUNT.test(w[j] || ''))
       out.push({ s: w.slice(i, j).join(' '), v: total + cur, one: j === i + 1 && WN[w[i]] < 10 });
     i = j - 1;
   }
@@ -271,7 +279,6 @@ const calcShown = (x, sheet) => `${x.calc}; ${calcErrors(x, sheet).length ? 'the
 const calcList = f => { const facts = f?.facts || [], sheetFor = sheetsFor(facts); return facts.map(x => `${x.id}: ${x.text}${x.source === 'derived' ? ` [derived: ${calcShown(x, sheetFor(x))}]` : x.source === 'reference' && (x.quote || x.quote_check) ? ` [quote: "${x.quote || ''}"${x.quote_check ? `; the engine found: ${x.quote_check}` : ''}]` : ''}`).join('\n'); };
 // a soft problem: asked to be fixed, but an answer left with only soft problems is kept after the last try
 const soft = msg => Object.assign(new String(msg), { soft: true });
-const digitNums = s => (String(s).replace(/(\d),(\d)/g, '$1$2').match(/\d+(?:\.\d+)?/g) || []).map(Number);
 
 // pointless repetition: a narrator line that restates one earlier shot (60% of its content words are that shot's) and adds almost
 // nothing (all but one in five were said before): "So the walk would take about eight point eight years, while your whole life
@@ -381,7 +388,7 @@ export function numbersNotInSource(src, texts) {
   const plain = src.replace(/(\d),(\d)/g, '$1$2'), have = new Set((plain.match(/\d+(?:\.\d+)?/g) || []).map(n => n.replace(/^0+(?=\d)/, ''))), vals = valuesIn(src);
   const stated = v => vals.some(x => Math.abs(x - v) <= Math.abs(v) * 1e-9), out = new Set();
   for (const t of texts) for (const m of String(t).replace(/(\d),(\d)/g, '$1$2').matchAll(/\d+(?:\.\d+)?/g)) { const n = m[0].replace(/^0+(?=\d)/, ''); if (n.length >= 2 && !have.has(n) && !stated(+n)) out.add(m[0]); }
-  for (const t of texts) for (const m of String(t).replace(/(\d),(\d)/g, '$1$2').matchAll(/(\d+(?:\.\d+)?)\s*(thousand|million|billion|trillion)/gi)) if (!stated(+m[1] * MAG[m[2].toLowerCase()])) out.add(m[0]); // "1 TRILLION": the magnitude too
+  for (const t of texts) for (const m of String(t).replace(/(\d),(\d)/g, '$1$2').matchAll(new RegExp(String.raw`(\d+(?:\.\d+)?)\s*(${MAGS})`, 'gi'))) if (!stated(+m[1] * MAG[m[2].toLowerCase()])) out.add(m[0]); // "1 TRILLION": the magnitude too
   const srcDates = datesIn(src);
   for (const t of texts) for (const d of datesIn(t)) if (!srcDates.some(s => s.day === d.day && s.mon === d.mon && (!d.year || s.year === d.year))) out.add(d.s);
   return [...out];
@@ -447,6 +454,9 @@ export function createWriter(E) {
     if (!Array.isArray(sp?.shots) || n < smin || n > smax) return [`need ${smin} to ${smax} shots, got ${n}`];
     // the story says what it is for before its beats, so each beat can serve it (scripts were fact lists with filler)
     if (!String(sp.idea || '').trim() || !String(sp.takeaway || '').trim()) Er.push('first say what the story is for: "idea" (its one central idea: the question it answers) and "takeaway" (what the viewer should come away with); every shot serves them');
+    // they are free text the script is written to, like the sheet's answer: their numbers must be facts on the sheet
+    const loose = untraced(`${sp.idea || ''}; ${sp.takeaway || ''}`, f.facts);
+    if (loose.length) Er.push(`the idea and takeaway say ${quoted(loose)}, which no fact on the sheet states: use the sheet's own numbers, or none`);
     const ids = new Set(f.facts.map(x => x.id)), beats = beatsOf();
     sp.shots.forEach((s, i) => {
       if (!s.point) Er.push(`shot ${i + 1} needs "point"`);
@@ -528,13 +538,14 @@ export function createWriter(E) {
       if (ck().hook === 'number or question' && !/\?\s*$/.test(first) && !toks(first).some(w => NUM_WORD.has(w) || ['half', 'dozen'].includes(w)))
         Er.push(`shot 1's line "${first}" is not a hook: it has no number and is not a question. Open with a surprising real number (written as words) or a question that ends with "?"`);
       if (f && sp) {
-        // the payoff's OWN numbers: those no other fact on the sheet holds (the payoff fact often restates the setup's number)
-        const pay = f.facts.find(x => x.id === f.payoff), other = new Set(f.facts.filter(x => x.id !== f.payoff).flatMap(x => digitNums(x.text)));
-        // a decimal (44.2) is checked by its whole part ("forty-four ... point two"): numWords(44.2) gave "forty-undefined"
-        const own = digitNums(pay?.text).filter(n => n >= 10 && !other.has(n)).map(n => numWords(Math.trunc(n))).filter(Boolean);
+        // the payoff's OWN numbers: those no other fact on the sheet holds (the payoff fact often restates the setup's number), by
+        // value: by digits "1.25e20" asked for "twenty" and every number under 10 (8.8 years) went unchecked. The answer must be
+        // said: a soft check let the atom script's payoff say "an almost unimaginable number"
+        const pay = f.facts.find(x => x.id === f.payoff), other = f.facts.filter(x => x.id !== f.payoff).flatMap(x => valuesIn(x.text)), near5 = (a, b) => Math.abs(a - b) <= Math.abs(b) * 0.05;
+        const own = [...new Set(valuesIn(pay?.text || ''))].filter(v => v && !other.some(o => near5(v, o))), said = t => numbersSaid(t).map(n => n.v);
         const hook = shots[0].lines.map(l => l.text).join(' '), ps = shots[+sp.payoff_shot - 1];
-        for (const w of own) if (says(hook, w)) Er.push(soft(`the hook says "${w}", the answer's number: hold it back for the payoff shot (${sp.payoff_shot}) and open the question instead`));
-        if (own.length && ps && !own.some(w => ps.lines.some(l => says(l.text, w)))) Er.push(soft(`the payoff shot (${sp.payoff_shot}) must say the answer's own number in words (${own.map(w => `"${w}"`).join(' or ')}, from ${pay.id}: ${pay.text})`));
+        for (const v of own.filter(v => v >= 10 || !Number.isInteger(v))) if (said(hook).some(x => near5(x, v))) Er.push(soft(`the hook says ${sayNum(v)}, the answer's number: hold it back for the payoff shot (${sp.payoff_shot}) and open the question instead`));
+        if (own.length && ps && !ps.lines.some(l => said(l.text).some(x => own.some(v => near5(x, v))))) Er.push(`the payoff shot (${sp.payoff_shot}) must say the answer's own number in words (${own.map(v => `"${sayNum(v)}"`).join(' or ')}, from ${pay.id}: ${pay.text}), plainly, never "an unimaginable number"`);
         // every number said must be one the sheet states (nothing else checks a spoken number against the facts)
         shots.forEach((s, i) => s.lines.forEach(l => { const n = untraced(l.text, f.facts); if (n.length) Er.push(`shot ${i + 1}: "${l.text}" says ${quoted(n)}, which no fact on the sheet states: say the sheet's numbers (rounding is fine) or leave the number out`); }));
       }
@@ -650,7 +661,7 @@ export function createWriter(E) {
   // it thinks (low effort, off if thinking eats the budget) and gives a verdict on every fact and shot: a 6-token "no problems"
   // passed a false sheet; a fact it finds wrong joins the problems the harness reads
   async function factcheck(step, o, sp, f) {
-    const system = `${E.prompt('factcheck')}${E.refBlock()}`, user = `BRIEF\n${briefFor(brief)}\n\nFACT SHEET (a derived fact shows the engine's arithmetic, a reference fact its quote)\n${calcList(f)}\n\nSCRIPT\n${readAloud(o, sp)}\n\nReturn only the JSON object.`;
+    const system = `${E.prompt('factcheck')}${E.refBlock()}`, user = `BRIEF\n${briefFor(brief)}\n\nFACT SHEET (a derived fact shows the engine's arithmetic, a reference fact its quote)\n${calcList(f)}${sp?.idea ? `\n\nIDEA: ${sp.idea}\nTAKEAWAY: ${sp.takeaway}` : ''}\n\nSCRIPT\n${readAloud(o, sp)}\n\nReturn only the JSON object.`;
     const missing = r => { const ids = new Set((r?.facts || []).map(v => v?.id)), shots = new Set((r?.lines || []).map(v => +v?.shot)); return [...f.facts.filter(x => !ids.has(x.id)).map(x => x.id), ...o.shots.map((_, i) => i + 1).filter(n => !shots.has(n)).map(n => `shot ${n}`)]; };
     let r = await json(step, system, user, ['low', 'off']), gap = r ? missing(r) : [];
     if (gap.length) { log(`${step}: no verdict for ${gap.join(', ')}; asked once more`); r = (await json(`${step}-again`, system, `${user}\n\nGive a verdict for every fact id and every shot; the last answer left out ${gap.join(', ')}.`, ['low', 'off'])) || r; }
@@ -661,6 +672,9 @@ export function createWriter(E) {
   // says a sheet fact settles ("settled_by") is no conflict: the line is wrong and is fixed toward the sheet
   const settle = (step, fc, f) => { for (const p of fc?.problems || []) { const ids = [].concat(p?.settled_by || []).filter(id => f.facts.some(x => x.id === id)); if (p?.kind === 'conflict' && ids.length) { p.kind = 'wrong'; p.fix ||= `say it the way the fact sheet does (${ids.join(', ')})`; log(`${step}: shot ${p.shot}'s conflict is settled by ${ids.join(', ')}; fixed toward the sheet`); } } };
   const toFix = fc => (fc?.problems || []).filter(p => p?.kind !== 'conflict');
+  // the idea and takeaway steer the script and the revision: one the checker finds wrong takes its fix (a Moon takeaway said "your
+  // whole life is barely a tenth of the walk", the walk being about a tenth of a life)
+  const fixPurpose = (step, fc, sp) => { for (const p of toFix(fc)) { const k = String(p?.shot || '').toLowerCase(), fix = String(p?.fix || '').trim(); if ((k === 'idea' || k === 'takeaway') && fix && !/^cut\b/i.test(fix)) { log(`${step}: the ${k} "${sp[k]}" was wrong (${p.problem}); now "${fix}"`); sp[k] = fix; } } };
   const conflicts = (step, fc) => { const c = (fc?.problems || []).filter(p => p?.kind === 'conflict'); for (const p of c) if (!/^a conflict/.test(p.problem || '')) p.problem = `a conflict between the brief and the reference, reported, not fixed: ${p.problem || ''}`; if (c.length) log(`${step}: ${c.length} conflict(s) reported, not fixed: ${c.map(p => `shot ${p.shot}: ${p.problem}`).join('; ')}`); return c; };
   async function reviewScript(o, sp, f) {
     const [viewer, fc] = await Promise.all([json('viewer', E.prompt('viewer'), `${readAloud(o, sp)}\n\nReturn only the JSON object.`), factcheck('factcheck', o, sp, f)]);
@@ -683,7 +697,7 @@ export function createWriter(E) {
       let sp = await writeSpine(f), { o, messages } = await writeScript(f, sp);
       o = await fitWords(o, sp, f); messages[messages.length - 1] = { role: 'assistant', content: JSON.stringify(o) }; // the revision starts from the cut script
       const review = await reviewScript(o, sp, f), v = review.viewer;
-      settle('fact check', review.factcheck, f);
+      settle('fact check', review.factcheck, f); fixPurpose('fact check', review.factcheck, sp);
       log(`test viewer: ${v ? `scores ${JSON.stringify(v.scores || {})}, lost ${v.lost?.length || 0}, flat ${v.flat?.length || 0}; Q "${v.question}" A "${v.answer}"; remembers "${v.remember || ''}"` : 'no answer'} | fact check: ${review.factcheck ? `${review.factcheck.problems?.length || 0} problems` : 'no answer'}`);
       conflicts('fact check', review.factcheck);
       let revised = false, rebuilt = false;
@@ -708,7 +722,7 @@ export function createWriter(E) {
       }
       // a revision can bring new claims (one added "about twenty cents each" after the check): check the facts again, fix once
       if (revised) {
-        const fc2 = await factcheck('factcheck-2', o, sp, f); review.factcheck2 = fc2; settle('fact check of the revision', fc2, f);
+        const fc2 = await factcheck('factcheck-2', o, sp, f); review.factcheck2 = fc2; settle('fact check of the revision', fc2, f); fixPurpose('fact check of the revision', fc2, sp);
         log(`fact check of the revision: ${fc2 ? `${fc2.problems?.length || 0} problems` : 'no answer'}`);
         // the harness reads the last fact check (script.json review.factcheck2): the first one's conflicts stay in it
         const seen = new Set(conflicts('fact check of the revision', fc2).map(p => `${p.shot}|${p.claim}`)), carry = (review.factcheck?.problems || []).filter(p => p?.kind === 'conflict' && !seen.has(`${p.shot}|${p.claim}`));

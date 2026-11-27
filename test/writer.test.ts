@@ -973,6 +973,76 @@ await test('lead and tail are set per template, and by default a cut no longer l
   }
 });
 
+await test('the payoff shot must say the answer, and a number past trillion can be said and traced', async () => {
+  // q-t3-atom: the payoff 1.25e20 could not be said in a form the trace read, and its shot said "an almost unimaginable number"
+  const f7: Fact = {
+    id: 'f7',
+    text: 'A grain of sand holds about 1.25e20 atoms',
+    source: 'general',
+  };
+  const facts = {
+    ...SHEET,
+    payoff: 'f7',
+    answer: 'About 1.25e20 atoms fill a grain of sand.',
+    facts: [...SHEET.facts, f7],
+  };
+  const spine = {
+    ...SPINE,
+    shots: SPINE.shots.map((s, i) => (i === 3 ? { ...s, facts: ['f7'] } : s)),
+  };
+  const said = (text: string) => script(LINES.map((l, i) => (i === 3 ? [text, 'atoms'] : l)));
+  const answer = 'Which means one grain holds about one hundred and twenty-five quintillion atoms.';
+  const { story, logs } = await runWriter({
+    ...passed(),
+    facts,
+    spine,
+    'script#1': said('Which means one grain holds an almost unimaginable number of atoms.'),
+    'script#2': said(answer),
+    factcheck: {
+      facts: facts.facts.map((x) => ({ id: x.id, verdict: 'ok' })),
+      lines: LINES.map((_, i) => ({ shot: i + 1, verdict: 'ok' })),
+      problems: [],
+    },
+  });
+  const rejected = logs.filter((l) => l.startsWith('script rejected'));
+  assert.equal(rejected.length, 1, rejected.join('\n'));
+  assert.match(
+    rejected[0] ?? '',
+    /the payoff shot \(4\) must say the answer's own number in words \("one hundred and twenty-five quintillion"/,
+  );
+  assert.equal(story.shots[3]?.lines[0]?.text, answer);
+});
+
+await test('the idea and takeaway are checked: an untraced number is sent back, a wrong takeaway takes the checker fix', async () => {
+  const takeaway = 'An atom is about ten million times smaller than a grain of sand';
+  const { story, calls, logs } = await runWriter({
+    ...passed(),
+    'spine#1': { ...SPINE, takeaway: 'An atom is about seven million times smaller than sand' },
+    'spine#2': { ...SPINE, takeaway: 'Your whole life is barely a tenth of an atom' },
+    factcheck: checked({
+      problems: [
+        {
+          shot: 'takeaway',
+          kind: 'wrong',
+          claim: 'barely a tenth',
+          problem: 'turned around',
+          fix: takeaway,
+        },
+      ],
+    }),
+  });
+  assert.match(
+    logs.find((l) => l.startsWith('spine rejected')) ?? '',
+    /the idea and takeaway say "seven million", which no fact on the sheet states/,
+  );
+  assert.match(
+    userMessage(calls, 'factcheck'),
+    /\nTAKEAWAY: Your whole life is barely a tenth of an atom\n/,
+  );
+  assert.equal(story.takeaway, takeaway);
+  assert.ok(userMessage(calls, 'script-revise#1').includes(`come away with: "${takeaway}"`));
+});
+
 await test('a script keeps the speaking rate it was written for, and only a voice switch that moves it rewrites it', async () => {
   const { story } = await runWriter(passed());
   assert.equal(story.wps, 2.5);

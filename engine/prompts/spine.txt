@@ -5,7 +5,7 @@ OUTPUT: one JSON object and nothing else.
 {
   "idea": "what the story is for: its one central idea, the question it answers, in one plain sentence",
   "takeaway": "what the viewer should come away with after the last shot (what they understand or feel), in one sentence",
-  "question": "the question the hook opens (from the fact sheet, sharpened if needed)",
+  "question": "the question the hook opens: the fact sheet's question (the request's own question when it asks one), never a different question",
   "answer": "the answer the payoff shot gives",
   "shots": [
     {
@@ -32,6 +32,6 @@ RULES
 - A story, not a list: each shot answers the question the shot before leaves open, or turns it ("but"), so the viewer wants the next one. If two shots could swap places without anything breaking, they are a list: connect them or cut one.
 - No pointless repetition: every shot moves the story on. A fact may come back when a later shot builds on it (the answer worked out from the earlier numbers); a shot that only repeats an earlier one is merged or cut.
 - Time runs forward: tell dated events in the order they happened. Go back only on purpose, as a flashback the line will announce ("when": "flashback: 1814"); the hook may tease the ending.
-- Use only facts from the sheet. A template beat with no true fact for it is skipped, unless the template requires it; then use the plainest true fact, never an invented twist or conflict.
+- Use only facts from the sheet. A template beat with no true fact that serves the idea is skipped, unless the template requires it; then use the plainest true fact that serves it, never an invented twist or conflict. A "but" turn changes how the viewer sees the answer; a side fact about the subject (what it is made of, where it is found) is no turn.
 - Pick the device that makes the point visible: a number gets a counter or a compare, the payoff number the sheet's yardstick if it has one (never a yardstick the sheet does not give); a cause gets a process; a place gets a zoom or a route; a step gets a before-after or a build; a person's choice gets act. Follow the template's own visual language where it names one.
 - Holds: on at most 2 or 3 shots (the reveal and the answer), at most 3 s in all.
