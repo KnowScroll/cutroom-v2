@@ -94,7 +94,7 @@ Jobs run one at a time in the order they were posted. Ctrl+C or SIGTERM on `serv
 - **Say what kind of reel you want** when it isn't obvious: "a funny 30-second sketch about...", "explain to a 10-year-old...". Intake reads the audience, goal and tone from the request.
 - **Name a template when you know which one fits.** Intake picks one otherwise, and sometimes picks badly. In CP5 it routed a scale question to mirror-parable and the engine failed; the same request with `template: kurzgesagt` worked.
 - **Length:** the CLI clamps `--seconds` to 30-90; the API returns 400 outside 30-90. Without a length, intake uses one the request states, else picks 30-90 s for the subject (45 s if it gives none).
-- **Fit:** check the intake's `fit` in the report. `none` means no template really suits the request, and the report flags it (the CP5 ad request got script-sketch with fit `none`). Rephrase the request or name a template.
+- **Fit:** check the intake's `fit` in the report. `none` means no template really suits the request, and the report flags it (the CP5 ad request got a poor-fitting template with fit `none`). Rephrase the request or name a template.
 - **Plain text only.** The request goes into the engine as the brief, so put no instructions to the harness in it.
 
 ## Templates
@@ -115,7 +115,6 @@ These are the originals in `templates/`. A job always uses the working copy in `
 | `minecraft`                     | how a thing is built or grew in stages, block by block                                      | comparisons, history with no physical result, ideas       |
 | `mirror-parable`                | an everyday small case that mirrors and explains a big real thing                           | (no exclusions listed)                                    |
 | `pixel-sim-explainer`           | explosions, collapses, chain reactions, outbreaks: a micro cause with a macro effect        | anatomy, procedures, history, stories                     |
-| `script-sketch`                 | comedy sketches, parodies, dramatic scenes, dialogues                                       | explainers, facts                                         |
 | `sourced-cutaway-explainer`     | energy, industry, infrastructure, geology: "how does X really work / how is X made"         | stories, comedy, history, lists of kinds                  |
 | `speedramp-mechanism-explainer` | machines whose cycle is too fast to see (motors, pumps, printers, screens)                  | slow processes, history, biology                          |
 | `stick-figure`                  | everyday "why do people...?", myths with a real reason, body quirks, "what would happen if" | machine breakdowns, many-item comparisons, long stories   |
@@ -131,6 +130,7 @@ Each template's `## about` section in `templates/<name>.md` is the full descript
 - **Changed original, copy never patched:** the copy is replaced.
 - **Changed original, copy patched or edited:** reported as a `conflict`, and the copy is kept. `sync` exits 1, and `serve` logs the conflict.
 
+- **Deleted original:** the working copy is left (and kept in the manifest) until you remove it by hand.
 New templates and fixes to originals are developer work in Claude Code: the `/new-template` and `/fix-template` skills.
 
 ## Voices
