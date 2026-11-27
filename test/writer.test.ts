@@ -1227,6 +1227,43 @@ await test('the second fact check gets one fix pass: a wrong sheet fact reaches 
   assert.ok(logs.includes('fact check of the revision: 2 fixed, 1 left'), logs.join('\n'));
 });
 
+await test('a wrong fact two shots use stays reported until both are fixed', async () => {
+  // review of #74: shot 2's fix was taken, shot 3's said a number no fact states, and the flag was dropped while shot 3 still said it
+  const spine = {
+    ...SPINE,
+    shots: SPINE.shots.map((s, i) => (i === 2 ? { ...s, facts: ['f2', 'f3'] } : s)),
+  };
+  const second = {
+    facts: SHEET.facts.map((x) => ({
+      id: x.id,
+      verdict: x.id === 'f2' ? 'the reference says something else' : 'ok',
+    })),
+    lines: LINES.map((_, i) => ({ shot: i + 1, verdict: 'ok' })),
+    problems: [],
+  };
+  const { story, logs } = await runWriter({
+    ...passed(),
+    spine,
+    viewer: flatViewer,
+    'factcheck-2': second,
+    'script-fix': {
+      shots: [
+        fixOf(2, 'But an atom is only about one hundred picometres wide.'),
+        fixOf(3, 'So one millimetre holds a billion picometres, five hundred atoms.'),
+      ],
+    },
+  });
+  assert.ok(
+    logs.some((l) => l.startsWith("script-fix: shot 3's fix says")),
+    logs.join('\n'),
+  );
+  assert.deepEqual(
+    (story.review?.factcheck2?.problems ?? []).map((p) => p.claim?.slice(0, 3)),
+    ['f2:'],
+  );
+  assert.ok(logs.includes('fact check of the revision: 0 fixed, 1 left'), logs.join('\n'));
+});
+
 await test('the viewer judges the reel against the request, and a request left unanswered rebuilds the spine', async () => {
   const brief = `${BRIEF}\n\nGoal: The viewer should feel awe.`;
   const noAnswer = { ...VIEWER, answers_request: 'no: it never says how much smaller' };

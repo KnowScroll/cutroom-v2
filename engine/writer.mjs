@@ -650,7 +650,10 @@ export function createWriter(E) {
   async function fixClaims(o, sp, f, problems) {
     const byShot = {}; for (const p of problems || []) for (const i of shotsOf(p, o, sp)) (byShot[i] ||= []).push({ claim: p.claim, problem: o.shots[+p.shot - 1] ? p.problem : `the sheet fact this shot uses is wrong: ${p.problem}`, fix: p.fix });
     const req = Object.entries(byShot).map(([i, ps]) => ({ shot: +i + 1, max_words: countWords(o.shots[i]) + 2, keep: [o.shots[i].cue?.word].filter(Boolean), problems: ps, lines: o.shots[i].lines.map(l => ({ who: l.who, text: l.text, tone: l.tone })), see: o.shots[i].see || '' }));
-    const left = (x, ps) => ps.filter(p => !shotsOf(p, o, sp).some(i => !sameLines(x.shots[i], o.shots[i])));
+    // fixed only where every shot it touches was rewritten (a wrong fact in shots 2 and 3, fixed in 2 only, was dropped while 3
+    // still said it); a change to the screen alone counts for a shot with one problem only
+    const fixedIn = (x, i) => x.shots[i].lines.map(l => l.text).join('\n') !== o.shots[i].lines.map(l => l.text).join('\n') || (!sameLines(x.shots[i], o.shots[i]) && byShot[i].length === 1);
+    const left = (x, ps) => ps.filter(p => { const at = shotsOf(p, o, sp); return !at.length || !at.every(i => fixedIn(x, i)); });
     if (!req.length) return { o, left: problems || [] };
     // the fixer sees the sheet (with each derived fact's calc) and the reference: the fact checker once reversed who paid whom, and
     // its "fix" must not be applied blindly; a new on-screen number must be on the sheet too (a counter showed Earth's 365.25 days)
