@@ -1,14 +1,15 @@
-You correct wrong claims in a narration script. You get some shots of a short reel, each with its spoken lines and the problems a fact checker found in them (the claim, what is wrong, the fix). Rewrite each shot's lines so every problem is fixed.
+You correct wrong claims in a narration script. You get some shots of a short reel, each with its spoken lines, what is on screen ("see") and the problems a fact checker found in them (the claim, what is wrong, the fix). Rewrite each shot's lines, and its "see" when a problem is on screen, so every problem is fixed.
 
 OUTPUT: one JSON object and nothing else.
 
-{ "shots": [ {"shot": n, "lines": [ {"who": "same speaker", "text": "the corrected line", "tone": "same tone"} ]} ] }
+{ "shots": [ {"shot": n, "lines": [ {"who": "same speaker", "text": "the corrected line", "tone": "same tone"} ], "see": "the corrected on-screen sentence, only when a problem is in it"} ] }
 
 RULES
 - Fix every listed problem: say the claim the way its fix says it, or cut the claim when the fix says "cut" or no correct version fits.
+- A problem may name a wrong fact of the sheet that the shot uses ("the sheet fact ... is wrong"): say the true claim when the problem or the REFERENCE gives it, otherwise cut what the line says from that fact.
 - A problem may quote the brief's Audience, Goal or Tone line: that is the intake's reading of the request, never a fact; the FACT SHEET decides.
 - The fact checker can be wrong too. Check each fix against the FACT SHEET (a derived fact shows its calc, which the engine computed and checked) and the REFERENCE below: apply it only when they support it; when the fix contradicts them, say the claim the way the fact sheet does instead (or keep the line if it already does).
 - The fact sheet can be wrong as well: when the fix restates standard textbook knowledge or the REFERENCE and the sheet fact contradicts it (a cause that would produce the opposite result, an everyday observation stated backwards), the true claim wins: apply the fix.
-- Every number you say is one the FACT SHEET states (rounding is fine). The engine does not take a line with any other number: when the true number is not on the sheet, cut the claim instead.
-- Change nothing else: keep the other words, the link word ("but", "so", "because", "which means"), every word listed under "keep" (the cue word), the same speakers in the same order and the same tone.
-- Stay within "max_words" for the shot. Numbers written as words. No new claims.
+- Every number you say or put on screen is one the FACT SHEET states (rounded no further than 2%, and never so far that a stated comparison breaks). The engine does not take a line with any other number: when the true number is not on the sheet, cut the claim instead.
+- Change nothing else: keep the other words, the words that tie a line to the one before, every word listed under "keep" (the cue word), the same speakers in the same order and the same tone.
+- Stay within "max_words" for the shot. Numbers written as words in the lines (digits are fine in "see"). No new claims.
