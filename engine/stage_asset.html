@@ -335,31 +335,36 @@ function planet(v, o = {}) {
   const num = (what, ...a) => { if (!a.every(n => Number.isFinite(n))) throw new Error(`h.planet: ${what} must be numbers, got ${a.map(String).join(', ')}; ${NAN_CAUSES}`); };
   num('v.x, v.y, v.r, v.lon0 and v.lat0', v.x, v.y, v.r, v.lon0, v.lat0);
   if (!o.base) throw new Error("h.planet: o.base (the body's base colour) is missing");
+  // every input is checked before the canvas state changes, so a bad one never leaves a clip or an alpha behind
+  for (const q of o.rings || []) num("a ring's inner and outer radius", q[0], q[1]);
+  for (const q of o.bands || []) num("a band's latitudes", q[0], q[1]);
+  for (const q of o.spots || []) num("a spot's longitude, latitude and radius", q[0], q[1], q[2]);
+  const L = Array.isArray(o.light) ? o.light : [-0.45, -0.5, 0.74], m = Math.hypot(...L), l = L.map(u => u / m), hw = Math.max(0.01, +(o.halo ?? 0.08));
+  if (o.light !== false) num('o.light', ...l); if (o.atmo) num('o.halo', hw);
   const { x, y, r } = v, tf = ctx.getTransform(), k = Math.hypot(tf.a, tf.b) || 1, a0 = ctx.globalAlpha, p0 = v.lat0 * D2R, s0 = Math.sin(p0);
   const N = [0, -Math.cos(p0), s0], unit = { x: 0, y: 0, r: 1, lon0: v.lon0, lat0: v.lat0 }, disc = new Path2D(); disc.arc(x, y, r, 0, TAU);
   const paint = (path, col, al = 1) => { ctx.globalAlpha = a0 * clamp(al); ctx.fillStyle = col; ctx.fill(path, 'evenodd'); };
   // a region cut(d) (widened by d radians); a soft edge (sd) is five layers from sd wider to sd narrower that stack up to the alpha
   const layered = (cut, col, al = 1, sd = 0) => { if (!sd) return paint(cut(0), col, al); const q = 1 - Math.pow(1 - Math.min(clamp(al), 0.95), 1 / 5); for (const f of [1, 0.5, 0, -0.5, -1]) paint(cut(f * sd), col, q); };
   const sd = (+o.soft || 0) * D2R, rings = back => { for (const [R1, R2, col, al] of o.rings || []) { // the far half of each ring before the body, the near half after it
-    num("a ring's inner and outer radius", R1, R2); const path = new Path2D(), n = Math.ceil(clamp(Math.PI * R2 * r * k / 8, 24, 720)), A = back ? Math.PI : 0;
+    const path = new Path2D(), n = Math.ceil(clamp(Math.PI * R2 * r * k / 8, 24, 720)), A = back ? Math.PI : 0;
     for (let i = 0; i <= 2 * n + 1; i++) { const R = i <= n ? R2 : R1, t = A + Math.PI * (i <= n ? i : 2 * n + 1 - i) / n; path.lineTo(x + R * r * Math.cos(t), y + R * r * s0 * Math.sin(t)); }
     path.closePath(); paint(path, col, al ?? 1); } };
   ctx.save(); rings(true); ctx.save(); ctx.clip(disc); paint(disc, o.base);
-  for (const [l1, l2, col, al] of o.bands || []) { num("a band's latitudes", l1, l2); const lo = Math.min(l1, l2) * D2R, hi = Math.max(l1, l2) * D2R; // the caps north of each edge, even-odd
+  for (const [l1, l2, col, al] of o.bands || []) { const lo = Math.min(l1, l2) * D2R, hi = Math.max(l1, l2) * D2R; // the caps north of each edge, even-odd
     layered(d => { const a = lo <= -Math.PI / 2 ? -Math.PI : lo - d, b = hi >= Math.PI / 2 ? Math.PI : hi + d, p = new Path2D(); return b > a ? capPath(capPath(p, N, Math.PI / 2 - a, x, y, r, k), N, Math.PI / 2 - b, x, y, r, k) : p; }, col, al, sd); }
-  for (const [lon, lat, rad, col, al] of o.spots || []) { num("a spot's longitude, latitude and radius", lon, lat, rad); const c = geo(lon, lat, unit);
+  for (const [lon, lat, rad, col, al] of o.spots || []) { const c = geo(lon, lat, unit);
     layered(d => capPath(new Path2D(), c, rad * D2R + d, x, y, r, k), col, al, sd); }
   if (o.land) { paint(landPath(v, k), o.land); ctx.globalAlpha = a0;
     for (const [col, path, w] of [[o.coast, coastPath, 2], [o.borders, borderPath, 1.4]]) if (col) { ctx.strokeStyle = col; ctx.lineWidth = w / k; ctx.stroke(path(v, k)); } }
   if (o.light !== false) {
-    const L = Array.isArray(o.light) ? o.light : [-0.45, -0.5, 0.74], m = Math.hypot(...L), l = L.map(u => u / m); num('o.light', ...l);
     layered(d => capPath(new Path2D(), l.map(u => -u), Math.PI / 2 + d, x, y, r, k), '#05070f', o.night ?? 0.65, 4 * D2R); // the night side
     const sl = Math.hypot(l[0], l[1]), f = (l[2] >= 0 || !sl ? 1 : 1 / sl) * 0.98; // a light pool on the lit point nearest the viewer, a darker limb
     const g = ctx.createRadialGradient(x + f * r * l[0], y + f * r * l[1], 0, x, y, r);
     g.addColorStop(0, 'rgba(255,255,255,0.16)'); g.addColorStop(0.5, 'rgba(255,255,255,0)'); g.addColorStop(0.8, 'rgba(5,7,15,0)'); g.addColorStop(1, 'rgba(5,7,15,0.45)'); paint(disc, g);
   }
   ctx.restore();
-  if (o.atmo) { const hw = Math.max(0.01, +(o.halo ?? 0.08)); num('o.halo', hw); const g = ctx.createRadialGradient(x, y, 0.96 * r, x, y, (1 + hw) * r), halo = new Path2D();
+  if (o.atmo) { const g = ctx.createRadialGradient(x, y, 0.96 * r, x, y, (1 + hw) * r), halo = new Path2D();
     g.addColorStop(0, rgba(o.atmo, 0)); g.addColorStop(0.04 / (0.04 + hw), rgba(o.atmo, 0.6)); g.addColorStop(1, rgba(o.atmo, 0)); halo.arc(x, y, (1 + hw) * r, 0, TAU); paint(halo, g); }
   rings(false); ctx.restore();
 }

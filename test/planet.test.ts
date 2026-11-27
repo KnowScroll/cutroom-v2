@@ -316,10 +316,31 @@ await test('no NaN reaches a path from any side, and a view with a missing field
     } catch (e) {
       missing = String(e);
     }
-    return { bad: bad.slice(0, 8), missing, moonKm: geoDist(0, 0, 90, 0, 1737.4) };
+    // a bad band is refused before the canvas state changes: no clip or alpha is left behind for what is drawn next
+    let ring = '';
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+    try {
+      planet(
+        { x: 540, y: 960, r: 100, lon0: 0, lat0: 20 },
+        { base: '#336699', bands: [[Number.NaN, 10, '#ffffff']] },
+      );
+    } catch (e) {
+      ring = String(e);
+    }
+    ctx.fillStyle = '#ff0000';
+    ctx.fillRect(0, 0, 1080, 1920);
+    const corner = Array.from(ctx.getImageData(5, 5, 1, 1).data);
+    return { bad: bad.slice(0, 8), missing, ring, corner, moonKm: geoDist(0, 0, 90, 0, 1737.4) };
   });
   assert.deepEqual(r.bad, []);
   assert.match(r.missing, /h\.planet: v\.x, v\.y, v\.r, v\.lon0 and v\.lat0 must be numbers/);
+  assert.match(r.ring, /h\.planet: a band's latitudes must be numbers/);
+  assert.deepEqual(
+    r.corner,
+    [255, 0, 0, 255],
+    'the frame outside the body still fills after the refused call',
+  );
   assert.ok(
     Math.abs(r.moonKm - (Math.PI / 2) * 1737.4) < 0.01,
     'h.geoDist measures on the body of radius R',
