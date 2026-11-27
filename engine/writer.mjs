@@ -184,11 +184,17 @@ function evalCalc(calc, unitOfBare = () => null, dropBare = () => false) {
   return { ...r, qs, ops: T.some(t => t.op && t.op !== '(' && t.op !== ')') };
 }
 const fmtNum = v => Math.abs(v) >= 1e12 || (v && Math.abs(v) < 1e-3) ? v.toPrecision(3) : Math.abs(v) >= 1e9 ? `${+(v / 1e9).toFixed(2)} billion` : Math.abs(v) >= 1e6 ? `${+(v / 1e6).toFixed(2)} million` : Math.abs(v) >= 1 ? `${+v.toFixed(2)}` : `${+v.toPrecision(3)}`;
-// a calc's result as the text would state it: in the text's own unit of that kind nearest the result, else in SI units
+// the time units a text names anywhere ("in a year", "annually", "daily"), as [SI factor, dimension, word]
+const TIME_WORDS = { annually: 'year', yearly: 'year', monthly: 'month', weekly: 'week', daily: 'day', hourly: 'hour' };
+const timeUnitsIn = text => toks(text).filter(w => w.length > 2).map(w => [unitOf(TIME_WORDS[w] || w), TIME_WORDS[w] || w]).filter(([u]) => u && sameDim(u[1], TIME)).map(([u, w]) => [...u, w.replace(/s$/, '')]);
+const perTime = d => sameDim(d, [0, 0, -1]);
+// a calc's result as the text would state it: in the text's own unit of that kind nearest the result, a rate per a time unit the
+// text names, else in SI units
 const shownIn = (r, text) => {
   if (!r.d.some(Boolean)) return fmtNum(r.v);
   const off = q => Math.abs(Math.log(Math.abs(q.v / r.v) || 1e-300)), tu = quantitiesIn(text).filter(q => q.d && sameDim(q.d, r.d)).sort((a, b) => off(a) - off(b))[0];
-  return tu ? `${fmtNum(r.v / (tu.v / tu.n))} ${tu.u}` : `${fmtNum(r.v)} ${SI(r.d)}`;
+  const tw = perTime(r.d) && timeUnitsIn(text)[0];
+  return tu ? `${fmtNum(r.v / (tu.v / tu.n))} ${tu.u}` : tw ? `${fmtNum(r.v * tw[0])} per ${tw[2]}` : `${fmtNum(r.v)} ${SI(r.d)}`;
 };
 // the quantities the non-derived facts state (what a calc may use), and how a bare number reads there: in the unit every fact
 // that states it gives it ("378000 / 5" is 378000 km / 5 km/h), or with its magnitude ("4.4 / 8" is 4.4 billion / 8 billion);
@@ -226,7 +232,8 @@ function calcErrors(x, sheet) {
   if (r.qs.filter(q => !q.u && !q.read && q.n === 100).length > 1) odd.add('100 more than once (a chain of 100s is a hand-made decimal factor)');
   if (odd.size) return [`fact ${x.id}: "calc" ${x.calc} uses ${[...odd].join('; ')}${readNote}. Use only the sheet's own numbers, each with its unit as the sheet states it; the engine converts units itself and states the result in the text's unit, so never write a conversion factor such as 1000 or 1000000`];
   const tq = quantitiesIn(x.text), close = (a, b) => Math.abs(a - b) <= Math.abs(b) * 0.03 + 1e-300; // relative only: an absolute margin let 0.00004 pass for 0.00017
-  const ok = r.d.some(Boolean) ? tq.some(q => q.d && sameDim(q.d, r.d) && close(q.v, r.v)) : valuesIn(x.text).some(v => close(v, r.v));
+  const ok = r.d.some(Boolean) ? tq.some(q => q.d && sameDim(q.d, r.d) && close(q.v, r.v)) || (perTime(r.d) && timeUnitsIn(x.text).some(u => tq.some(q => !q.d && close(q.n, r.v * u[0]))))
+    : valuesIn(x.text).some(v => close(v, r.v));
   return ok ? [] : [`fact ${x.id}: "calc" ${x.calc} gives ${shownIn(r, x.text)}${readNote}, but its text says "${x.text}". One of calc or text is wrong: check the calc's factors and units first (every quantity with its unit, as the sheet states it), then the claim; never change a true claim to fit the arithmetic`];
 }
 // the shown result of a derived fact, for the fact checker and the fixer ("1 mm / 100 pm = 10 million")

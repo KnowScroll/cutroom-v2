@@ -178,6 +178,9 @@ await test('rates, magnitude words and plain counts compute; a chain of 100s doe
     ['26000 * 2.08', 'Monaco has about 54,000 people'],
     ['53000000 * 13', 'The contract is worth about $690 million'],
     ['53000000 / 365', 'That is about $145,000 a day'],
+    ['53000000 / 365', 'That is about $145,000 daily'],
+    ['100000 * 365', 'In a year a person blinks about 36.5 million times'],
+    ['100000 * 365', 'A person blinks about 36.5 million times annually'],
     ['100000 * 80', 'A person blinks about 2.9 billion times in a life'],
     ['100000 * 365 * 80', 'A person blinks about 2.9 billion times in a life'],
   ] as const)
