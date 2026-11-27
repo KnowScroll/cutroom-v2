@@ -1,6 +1,7 @@
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { runJob, type JobOptions } from './job.ts';
+import { pidAlive } from './proc.ts';
 import { createJob, readJob, setJobStatus, type Job, type JobRequest } from './record.ts';
 
 // design §8, D18: jobs are folders in <var>/runs; one worker takes the oldest `queued` one, one at a time.
@@ -38,6 +39,11 @@ export async function listJobs(varDir: string): Promise<Job[]> {
   );
 }
 
+/** A running job whose owner process is gone (or never recorded): the worker may resume it. A live owner keeps it. */
+function orphaned(job: Job): boolean {
+  return job.status === 'running' && (job.owner === null || !pidAlive(job.owner.pid));
+}
+
 /** Runs one job (new, or running = resumed after a restart). It always ends done or failed; the queue goes on. */
 async function runOne(job: Job, options: WorkerOptions): Promise<void> {
   const log = options.log ?? (() => undefined);
@@ -67,7 +73,7 @@ async function runOne(job: Job, options: WorkerOptions): Promise<void> {
  */
 export async function drain(options: WorkerOptions): Promise<string[]> {
   const ran: string[] = [];
-  for (const job of (await listJobs(options.config.varDir)).filter((j) => j.status === 'running')) {
+  for (const job of (await listJobs(options.config.varDir)).filter(orphaned)) {
     await runOne(job, options);
     ran.push(job.id);
   }
@@ -100,18 +106,28 @@ export function startWorker(options: WorkerOptions, pollMs = 1000): Worker {
     const attempted = new Set<string>();
     const take = async (status: Job['status']): Promise<boolean> => {
       const job = (await listJobs(options.config.varDir)).find(
-        (j) => j.status === status && !attempted.has(j.id),
+        (j) => (status === 'running' ? orphaned(j) : j.status === status) && !attempted.has(j.id),
       );
       if (job === undefined) return false;
       attempted.add(job.id);
       await runOne(job, options);
       return true;
     };
-    while (!state.stopping && (await take('running'))) {
+    const log = options.log ?? (() => undefined);
+    // a scan that fails (a disk error) is logged and tried again at the next poll; it must not end the worker
+    const safely = async (status: Job['status']): Promise<boolean> => {
+      try {
+        return await take(status);
+      } catch (e) {
+        log(`queue scan failed: ${e instanceof Error ? e.message : String(e)}`);
+        return false;
+      }
+    };
+    while (!state.stopping && (await safely('running'))) {
       // resume every job the last worker left running
     }
     while (!state.stopping) {
-      if (await take('queued')) continue;
+      if (await safely('queued')) continue;
       await new Promise<void>((resolve) => {
         const timer = setTimeout(resolve, pollMs);
         wake = () => {

@@ -15,6 +15,7 @@ import path from 'node:path';
 import { z } from 'zod';
 import type { Config, VoiceModelKey } from './config.ts';
 import { PRICE } from './minimax.ts';
+import { pidAlive, renameWithRetry } from './proc.ts';
 import type { PhaseCost } from './record.ts';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
@@ -159,16 +160,6 @@ function errCode(e: unknown): string | undefined {
   return e instanceof Error && 'code' in e && typeof e.code === 'string' ? e.code : undefined;
 }
 
-function pidAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (e) {
-    // EPERM: the process exists but is not ours.
-    return errCode(e) === 'EPERM';
-  }
-}
-
 /**
  * Stop a process and everything it started. Only ever called with a pid we started or the lock recorded.
  * Linux: SIGTERM the engine's group first (the engine's handlers stop Chrome, which puppeteer launches in a group of
@@ -200,21 +191,6 @@ async function waitGone(pid: number): Promise<void> {
   if (pidAlive(pid)) throw new Error(`engine pid ${String(pid)} did not stop`);
 }
 
-/** Windows refuses a rename over a file another process has open at that instant (EPERM/EBUSY); it clears within milliseconds. */
-function renameWithRetry(from: string, to: string, owned: (() => boolean) | undefined): void {
-  for (let i = 0; ; i++) {
-    if (owned !== undefined && !owned()) throw new EngineBusyError('engine lock lost');
-    try {
-      renameSync(from, to);
-      return;
-    } catch (e) {
-      const code = errCode(e);
-      if (i >= 40 || (code !== 'EPERM' && code !== 'EBUSY' && code !== 'EACCES')) throw e;
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
-    }
-  }
-}
-
 /**
  * Create the lock file only if absent. Not `link` + removing a temp file: on Windows a file made that way refuses a
  * rename over it (EPERM) for up to ~1.3 s (measured under load); a file written in place does not. The file is briefly
@@ -235,7 +211,10 @@ function publish(
   writeFileSync(tmp, content);
   try {
     if (mode === 'link') linkSync(tmp, file);
-    else renameWithRetry(tmp, file, owned);
+    else
+      renameWithRetry(tmp, file, () => {
+        if (owned !== undefined && !owned()) throw new EngineBusyError('engine lock lost');
+      });
   } finally {
     rmSync(tmp, { force: true });
   }
@@ -647,6 +626,11 @@ export async function runCut(opts: RunCutOptions): Promise<CutResult | VoiceRefu
   const earlier: Spent = { ...(opts.earlier ?? { usd: 0, tokensIn: 0, tokensOut: 0, wallS: 0 }) };
   const untilExit = new Promise<never>(() => undefined);
   try {
+    // a calls.json already here is from an invocation that was interrupted (finished ones are moved aside): price it
+    const interrupted = await harvestCalls(runDir, cut);
+    earlier.usd += interrupted.usd;
+    earlier.tokensIn += interrupted.tokensIn;
+    earlier.tokensOut += interrupted.tokensOut;
     for (let attempt = 1; ; attempt++) {
       if (stopping()) return await untilExit;
       if (readLock(lockFile)?.token !== held.token) throw new EngineBusyError('engine lock lost');

@@ -1,6 +1,7 @@
-import { appendFile, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
+import { renameRetry } from './proc.ts';
 
 const NonNegative = z.number().nonnegative();
 
@@ -24,6 +25,8 @@ export const Job = z.object({
   started: z.string().nullable(),
   finished: z.string().nullable(),
   error: z.string().nullable(),
+  /** The process running the job (design §8): another process resumes it only when this pid is dead. */
+  owner: z.object({ pid: z.number().int() }).nullable().default(null),
 });
 export type Job = z.infer<typeof Job>;
 
@@ -251,7 +254,7 @@ function hasCode(err: unknown, code: string): boolean {
 async function writeJson(path: string, value: unknown): Promise<void> {
   const tmp = `${path}.tmp`;
   await writeFile(tmp, `${JSON.stringify(value, null, 2)}\n`);
-  await rename(tmp, path);
+  await renameRetry(tmp, path);
 }
 
 async function readJson(path: string): Promise<unknown> {
@@ -290,6 +293,7 @@ export async function createJob(
       started: null,
       finished: null,
       error: null,
+      owner: null,
     };
     await writeJson(join(runDir(varDir, id), 'job.json'), job);
     return job;
@@ -323,7 +327,18 @@ export async function setJobStatus(
     started: status === 'running' ? t : job.started,
     finished: status === 'done' || status === 'failed' ? t : null,
     error: status === 'failed' ? (opts.error ?? null) : null,
+    owner: status === 'running' ? { pid: process.pid } : job.owner,
   };
+  await writeJson(join(runDir(varDir, id), 'job.json'), next);
+  return next;
+}
+
+/** Makes this process the owner of a running job (a resume after its last owner died). */
+export async function claimJob(varDir: string, id: string): Promise<Job> {
+  const job = await readJob(varDir, id);
+  if (job.status !== 'running')
+    throw new Error(`job ${id}: only a running job is claimed, not ${job.status}`);
+  const next: Job = { ...job, owner: { pid: process.pid }, updated: new Date().toISOString() };
   await writeJson(join(runDir(varDir, id), 'job.json'), next);
   return next;
 }

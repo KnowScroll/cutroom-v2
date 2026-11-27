@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto';
-import { appendFile, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { Gate, ReviewScores, TemplatePatch } from './record.ts';
+import { renameRetry } from './proc.ts';
 
 // design §5: the harness keeps working copies of templates/ (the originals) and may patch them.
 
@@ -71,7 +72,7 @@ function sha256(data: string | Buffer): string {
 async function writeAtomic(path: string, data: string | Buffer): Promise<void> {
   const tmp = `${path}.tmp`;
   await writeFile(tmp, data);
-  await rename(tmp, path);
+  await renameRetry(tmp, path);
 }
 
 async function readJson(path: string): Promise<unknown> {
@@ -479,9 +480,9 @@ export async function applyPatches(
 }
 
 /**
- * The history entry `job` already wrote for `round`, when the working copy is at its result: a restart after the patch
- * was applied (§8). The patch is never applied twice. A snapshot whose copy was not changed (a crash between the
- * writes) is not returned, so the round applies its patches again under a new k.
+ * The history entry `job` already wrote for `round` (the latest, when a torn one was followed by a retry): a restart after
+ * the patch was applied (§8). The patch is never applied twice, even when later jobs have changed the working copy
+ * since. Torn case: the entry was written but the copy still has its sha_before, so null and the round applies again.
  */
 export async function findAppliedPatch(
   workingDir: string,
@@ -498,11 +499,13 @@ export async function findAppliedPatch(
     throw err;
   }
   const now = await shaOfFile(join(workingDir, `${kind}.md`));
-  for (const name of names.filter((f) => f.endsWith('.json')).sort()) {
+  const mine: HistoryEntry[] = [];
+  for (const name of names.filter((f) => f.endsWith('.json'))) {
     const entry = HistoryEntry.parse(await readJson(join(dir, name)));
-    if (entry.job === job && entry.round === round && entry.sha_after === now) return entry;
+    if (entry.job === job && entry.round === round) mine.push(entry);
   }
-  return null;
+  const latest = mine.sort((a, b) => b.k - a.k)[0];
+  return latest === undefined || latest.sha_before === now ? null : latest;
 }
 
 /** Adds the gates and scores of the cut made after patch entry `k` (when that cut is reviewed). */

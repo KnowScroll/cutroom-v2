@@ -99,6 +99,8 @@ async function invocations(varDir: string, id: string) {
     .split('\n')
     .map((l) => Invocation.parse(JSON.parse(l)));
 }
+const earlierUsd = (cut: { engine_cost: Record<string, { usd: number }> } | undefined): number =>
+  Object.entries(cut?.engine_cost ?? {}).find(([k]) => k === 'earlier attempts')?.[1].usd ?? 0;
 const cutOf = (argv: readonly string[]): number => {
   const i = argv.indexOf('--cut');
   return i === -1 ? 1 : Number(argv[i + 1]);
@@ -181,17 +183,30 @@ await test('the worker takes jobs as they are enqueued and stops when asked', as
   });
 });
 
-/** Runs a job to its end in `varDir`, then sets the folder back to what a worker killed at some point leaves. */
-async function interrupted(
-  varDir: string,
-  script: Step[],
-  cut: (state: LoopState) => LoopState,
-): Promise<string> {
+/** A pid that is not running: a worker that died. */
+const deadPid = (): number => {
+  const r = spawnSync(process.execPath, ['-e', '']);
+  assert.ok(r.pid > 0);
+  return r.pid;
+};
+
+/** Runs a job to its end in `varDir`. */
+async function finished(varDir: string, script: Step[]): Promise<string> {
   const id = await enqueue(varDir, { request: 'how big is the Sun' });
   await withFake(script, async (url) => {
     const o = optionsFor(varDir, url);
     await runJob({ ...o, request: { request: 'how big is the Sun' }, jobId: id });
   });
+  return id;
+}
+
+/** Sets a finished job's folder back to what a worker killed at some point leaves (its owner pid is dead). */
+async function rewind(
+  varDir: string,
+  id: string,
+  cut: (state: LoopState) => LoopState,
+  owner = deadPid(),
+): Promise<void> {
   const dir = runDir(varDir, id);
   const state = await readLoop(dir);
   assert.ok(state);
@@ -199,10 +214,72 @@ async function interrupted(
   const job = await readJob(varDir, id);
   await writeFile(
     path.join(dir, 'job.json'),
-    JSON.stringify({ ...job, status: 'running', finished: null, error: null }),
+    JSON.stringify({
+      ...job,
+      status: 'running',
+      finished: null,
+      error: null,
+      owner: { pid: owner },
+    }),
   );
+}
+
+async function interrupted(
+  varDir: string,
+  script: Step[],
+  cut: (state: LoopState) => LoopState,
+): Promise<string> {
+  const id = await finished(varDir, script);
+  await rewind(varDir, id, cut);
   return id;
 }
+
+/** What the worker held when it died inside the round: cut 1 reviewed, the round not yet saved. */
+const insideRound = (s: LoopState): LoopState => ({
+  ...s,
+  cuts: s.cuts.slice(0, 1),
+  rounds: [],
+  made: null,
+  notes_rounds: [],
+  harness_calls: s.harness_calls.slice(0, 2),
+});
+
+await test('a running job with a live owner is left alone; with a dead owner it is resumed', async () => {
+  const varDir = newVar();
+  const id = await finished(varDir, [intake, review(true)]);
+  await rewind(varDir, id, (s) => s, process.pid);
+  const queued = await enqueue(varDir, { request: 'another reel' });
+  const ran = await withFake([intake, review(true)], (url) => drain(optionsFor(varDir, url)));
+  assert.deepEqual(ran, [queued]);
+  assert.equal((await readJob(varDir, id)).status, 'running');
+  assert.equal((await readJob(varDir, id)).owner?.pid, process.pid);
+  await rewind(varDir, id, (s) => s);
+  assert.deepEqual(await withFake([review(true)], (url) => drain(optionsFor(varDir, url))), [id]);
+  assert.equal((await readJob(varDir, id)).status, 'done');
+});
+
+await test('two dead jobs that applied a patch resume one after the other without applying it again', async () => {
+  const varDir = newVar();
+  const script = [intake, review(false, { template_patch: [LOOK_PATCH] }), review(true)];
+  const a = await finished(varDir, script);
+  const b = await finished(varDir, script);
+  await rewind(varDir, a, insideRound);
+  await rewind(varDir, b, insideRound);
+  const working = path.join(varDir, 'templates');
+  const before = await readFile(path.join(working, 'alpha.md'), 'utf8');
+  assert.equal(before.split('Keep every label inside the frame.').length - 1, 2);
+  const ran = await withFake([review(true), review(true)], (url) => drain(optionsFor(varDir, url)));
+  assert.deepEqual(ran, [a, b]);
+  assert.equal(await readFile(path.join(working, 'alpha.md'), 'utf8'), before);
+  assert.deepEqual((await readdir(path.join(working, 'history', 'alpha'))).sort(), [
+    '1.json',
+    '1.md',
+    '2.json',
+    '2.md',
+  ]);
+  assert.equal((await readRunRecord(varDir, a)).rounds[0]?.patch?.k, 1);
+  assert.equal((await readRunRecord(varDir, b)).rounds[0]?.patch?.k, 2);
+});
 
 await test('a restart after a patch was applied but before the checkpoints were deleted completes the round', async () => {
   const varDir = newVar();
@@ -337,10 +414,14 @@ await test('a worker process killed mid-job resumes after the restart without re
     // slow engine: cut 1 finishes, review asks for notes, and the worker dies inside cut 2
     const first = startWorkerProcess(varDir, fake.url, { FAKE_ENGINE_SLEEP_MS: '2500' });
     const logFile = path.join(runDir(varDir, id), 'reel-work', 'invocations.log');
+    const callsFile = path.join(runDir(varDir, id), 'reel-work', 'calls.json');
     let seen = false;
     for (let i = 0; i < 600 && !seen; i++) {
       await new Promise((r) => setTimeout(r, 50));
-      seen = existsSync(logFile) && (await readFile(logFile, 'utf8')).includes('"--cut","2"');
+      seen =
+        existsSync(logFile) &&
+        existsSync(callsFile) &&
+        (await readFile(logFile, 'utf8')).includes('"--cut","2"');
     }
     assert.ok(seen, `cut 2 never started: ${first.output()}`);
     killHard(first.pid);
@@ -369,10 +450,55 @@ await test('a worker process killed mid-job resumes after the restart without re
     assert.equal(countOf(inv, 1), 1, 'the finished cut is not redone');
     assert.equal(countOf(inv, 2), 2, 'the killed cut resumes once');
     assert.equal(inv.length, 3);
+    // the killed invocation's model calls are priced into the cut, not lost
+    assert.ok(earlierUsd(run.cuts[1]) > 0);
+    assert.equal(earlierUsd(run.cuts[0]), 0);
     const notesRuns = inv.filter((i) => cutOf(i.argv) === 2 && i.argv.includes('--apply-notes'));
     assert.equal(notesRuns.length, 2);
     // the lock was released
     assert.ok(!existsSync(path.join(varDir, 'engine.lock')));
+  } finally {
+    await fake.close();
+  }
+});
+
+await test('a worker killed in the fallback cut after a voice refusal keeps the refusal and the switch', async () => {
+  const varDir = newVar();
+  const id = await enqueue(varDir, { request: 'how big is the Sun' });
+  const fake = await startFakeMiniMax([intake, review(true)]);
+  try {
+    const first = startWorkerProcess(varDir, fake.url, {
+      FAKE_ENGINE_REFUSE: 'heygen',
+      FAKE_ENGINE_SLEEP_MS: '2500',
+    });
+    const dir = runDir(varDir, id);
+    const logFile = path.join(dir, 'reel-work', 'invocations.log');
+    const callsFile = path.join(dir, 'reel-work', 'calls.json');
+    let seen = false;
+    for (let i = 0; i < 600 && !seen; i++) {
+      await new Promise((r) => setTimeout(r, 50));
+      seen =
+        existsSync(logFile) &&
+        existsSync(callsFile) &&
+        (await readFile(logFile, 'utf8')).includes('"--voice-model","minimax"');
+    }
+    assert.ok(seen);
+    killHard(first.pid);
+    await first.exit;
+    assert.equal((await readLoop(dir))?.voice_switches.length, 1);
+
+    const second = startWorkerProcess(varDir, fake.url, {});
+    assert.equal(await second.exit, 0, second.output());
+    const run = await readRunRecord(varDir, id);
+    assert.equal(run.status, 'done');
+    assert.equal(run.voice_switches.length, 1);
+    const [sw] = run.voice_switches;
+    assert.ok(sw);
+    assert.equal(sw.from, 'heygen');
+    assert.equal(sw.to, 'minimax');
+    assert.match(sw.reason, /HTTP 402/);
+    assert.match(run.cuts[0]?.voice_model ?? '', /^minimax/);
+    assert.ok(earlierUsd(run.cuts[0]) > 0);
   } finally {
     await fake.close();
   }

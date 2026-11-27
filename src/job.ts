@@ -12,6 +12,7 @@ import type { M3Request, M3Result } from './minimax.ts';
 import {
   appendEvent,
   appendIndex,
+  claimJob,
   createJob,
   gateValue,
   readJob,
@@ -269,7 +270,10 @@ async function openJob(
   } else {
     id = options.jobId;
     const job = await readJob(varDir, id);
-    if (job.status === 'running') return { id, started: job.started ?? '' };
+    if (job.status === 'running') {
+      await claimJob(varDir, id);
+      return { id, started: job.started ?? '' };
+    }
   }
   const running = await setJobStatus(varDir, id, 'running', { stage: 'sync' });
   return { id, started: running.started ?? '' };
@@ -599,7 +603,6 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
             refusals.push(run);
             ruledOut.add(model);
             pending = run.spent;
-            await save();
             const next = chooseVoice(pitchSwitch);
             await event('engine', 'voice.refused', { cut: n, ...run });
             if (next !== undefined) {
@@ -613,6 +616,7 @@ export async function runJob(options: JobOptions): Promise<RunRecord> {
               await event('engine', 'voice.switch', sw);
               log(`voice ${model} refused (HTTP ${String(run.status)}); trying ${next}`);
             }
+            await save();
             continue;
           }
           written = { cut: run, model };

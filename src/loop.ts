@@ -1,4 +1,4 @@
-import { readFile, rename, writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 import { VOICE_MODEL_KEYS } from './config.ts';
@@ -11,6 +11,7 @@ import {
   TemplatePatch,
   VoiceSwitch,
 } from './record.ts';
+import { renameRetry } from './proc.ts';
 
 const Voice = z.enum(VOICE_MODEL_KEYS);
 
@@ -75,5 +76,5 @@ export async function readLoop(runDir: string): Promise<LoopState | null> {
 export async function writeLoop(runDir: string, state: LoopState): Promise<void> {
   const tmp = `${loopFile(runDir)}.tmp`;
   await writeFile(tmp, `${JSON.stringify(LoopState.parse(state), null, 2)}\n`);
-  await rename(tmp, loopFile(runDir));
+  await renameRetry(tmp, loopFile(runDir));
 }
