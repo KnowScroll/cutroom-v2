@@ -72,6 +72,8 @@ export interface CutResult {
   rejections: string[];
   /** Steps the engine shipped although no attempt passed every check ("using the last one that runs"). */
   failingSteps: FailingStep[];
+  /** Steps whose kept code this cut's validator passed again (asset_reel.mjs makeShot recheck, make after a failed redraw). */
+  passingSteps: string[];
 }
 
 export interface VoiceRefused {
@@ -471,9 +473,20 @@ function parseCost(text: string): Record<string, PhaseCost> {
   return out;
 }
 
-export function parseLog(log: string): { rejections: string[]; failingSteps: FailingStep[] } {
+// The engine's lines for kept code that passed its validator again in this cut (asset_reel.mjs makeShot and make).
+const PASSING = [
+  /^(shot\d+): its lines changed and its code still passes every check; kept$/,
+  /^(\S+) rejected: no redraw passed every check \(.*\), so the note is not applied; the previous code still passes and is kept$/,
+];
+
+export function parseLog(log: string): {
+  rejections: string[];
+  failingSteps: FailingStep[];
+  passingSteps: string[];
+} {
   const rejections: string[] = [];
   const failingSteps: FailingStep[] = [];
+  const passingSteps: string[] = [];
   for (const raw of log.split('\n')) {
     const line = stripStamp(raw.trimEnd());
     const last =
@@ -485,8 +498,10 @@ export function parseLog(log: string): { rejections: string[]; failingSteps: Fai
     } else if (/\brejected(?::| \()/.test(line)) {
       rejections.push(line);
     }
+    const pass = PASSING.map((re) => re.exec(line)?.[1]).find((s) => s !== undefined);
+    if (pass !== undefined) passingSteps.push(pass);
   }
-  return { rejections, failingSteps };
+  return { rejections, failingSteps, passingSteps };
 }
 
 async function readJson<S extends z.ZodType>(file: string, schema: S): Promise<z.infer<S>> {
@@ -511,7 +526,7 @@ export async function parseOutputs(
   const cost = parseCost(await readFile(path.join(runDir, 'reel-cost.txt'), 'utf8'));
   cost['voice'] = { usd: summary.speech_usd, tokens_in: 0, tokens_out: 0 };
   cost['music'] = { usd: summary.music_usd, tokens_in: 0, tokens_out: 0 };
-  const { rejections, failingSteps } = parseLog(await readFile(logPath, 'utf8'));
+  const { rejections, failingSteps, passingSteps } = parseLog(await readFile(logPath, 'utf8'));
   return {
     kind: 'cut',
     cut,
@@ -547,6 +562,7 @@ export async function parseOutputs(
     },
     rejections,
     failingSteps,
+    passingSteps,
   };
 }
 

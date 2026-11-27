@@ -107,20 +107,26 @@ function codeOf(plan: ShippedCode, step: string): string | null | undefined {
   return step === 'kit' ? plan.kit : undefined;
 }
 
+/** The code a step label stands for: shot<n> and asset:<id> are one step with their -rev and -poses labels. */
+const slot = (step: string): string =>
+  step.replace(/^(shot\d+)-rev$/, '$1').replace(/^(asset:.+?)(?:-poses|-rev)$/, '$1');
+
 /**
  * The steps cut n ships failing (design §6.3): those its own log names, and those of the previous cut whose code is
- * unchanged (a restored checkpoint, or a redraw that failed and kept the old code, is logged by no later run).
+ * unchanged (a restored checkpoint, or a redraw that failed and kept the old code, is logged by no later run), unless
+ * this cut's log says that kept code passed its validator again (its lines changed).
  */
 export async function shippedFailing(
-  cut: Pick<CutResult, 'cut' | 'dir' | 'failingSteps'>,
+  cut: Pick<CutResult, 'cut' | 'dir' | 'failingSteps' | 'passingSteps'>,
   previous: { dir: string; failing: readonly ShippedStep[] } | null,
 ): Promise<ShippedStep[]> {
   const own: ShippedStep[] = cut.failingSteps.map((f) => ({ ...f, cut: cut.cut }));
   if (previous === null || previous.failing.length === 0) return own;
   const before = await shippedCode(previous.dir);
   const now = await shippedCode(cut.dir);
+  const named = new Set([...own.map((o) => o.step), ...cut.passingSteps].map(slot));
   const carried = previous.failing.filter(
-    (f) => !own.some((o) => o.step === f.step) && codeOf(before, f.step) === codeOf(now, f.step),
+    (f) => !named.has(slot(f.step)) && codeOf(before, f.step) === codeOf(now, f.step),
   );
   return [...own, ...carried];
 }

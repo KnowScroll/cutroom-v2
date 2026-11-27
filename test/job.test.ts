@@ -836,6 +836,30 @@ await test('shipped_failing counts a failing shot carried forward unchanged (the
   );
 });
 
+await test('a carried failing shot is dropped once a cut says its kept code passes against its new lines', async () => {
+  // the Sun shape: shot 2 ships failing in cut 1 and is carried while unchanged; cut 3 changes its lines, and the engine
+  // revalidates the unchanged code against them and says it passes (asset_reel.mjs makeShot recheck)
+  const { run } = await job(
+    [
+      intake,
+      answer({ notes: { shots: { '1': 'Start wider.' } } }),
+      answer({ notes: { lines: { '2': [{ who: 'narrator', text: 'It is very big.' }] } } }),
+      answer({ notes: { shots: { '1': 'Start wider still.' } } }),
+      answer(),
+    ],
+    { FAKE_ENGINE_FAILING_SHOT: '1', FAKE_ENGINE_LINES_KEPT: '2' },
+  );
+  assert.equal(run.cuts.length, 4);
+  assert.deepEqual(
+    run.cuts.map((c) => c.shipped_failing.map((s) => `${s.step}@${String(s.cut)}`)),
+    [['shot2@1'], ['shot2@1'], [], []],
+  );
+  assert.deepEqual(
+    run.cuts.map((c) => c.gates.find((g) => g.name === 'shipped_failing')?.pass),
+    [false, false, true, true],
+  );
+});
+
 await test('an empty or null wrong_template or fact error is no verdict: no intake round, the patch still applies', async () => {
   // M3 sends empty fields instead of leaving them out ("template_patch": [] in 16 of 18 real reviews)
   for (const [wrongTemplate, factErrors] of [

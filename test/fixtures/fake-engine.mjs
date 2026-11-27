@@ -16,6 +16,7 @@
 //   FAKE_ENGINE_LOW_PITCH=<keys>    these --voice-model keys measure 3.1 st (below the voice_pitch gate)
 //   FAKE_ENGINE_KEEP_CODE=<ids>     noted shots (numbers) and assets (ids) whose redraw fails its checks: old code stays
 //   FAKE_ENGINE_WORK_ASSETS=<ids>   the asset ids of the work plan.json (default sun)
+//   FAKE_ENGINE_LINES_KEPT=<shots>  line-noted shots whose kept code passes against the new lines (the real engine's line)
 //   FAKE_ENGINE_FLAT_FRAMES=<cuts>  a reel of one flat colour (fails frame gates); otherwise a moving picture that passes
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -165,6 +166,8 @@ if (notesFile) {
     const s = plan.shots[Number(k) - 1];
     const nl = ls.filter((l) => plan.cast[l.who]);
     if (s && nl.length > 0) s.lines = nl;
+    if (s && nl.length > 0 && list('FAKE_ENGINE_LINES_KEPT').includes(k))
+      log(`shot${k}: its lines changed and its code still passes every check; kept`);
   }
   write(planFile, plan);
   const redraw = (file, id, note) => {

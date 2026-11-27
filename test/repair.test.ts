@@ -360,7 +360,9 @@ await test(
       // shot 2's old code fails against its new line: its failed redraw ships failing, in the line the shipped_failing gate
       // counts, and the last redraw that runs replaces the stale code. Shot 4's old code still passes: it stays, and the note
       // that could not be applied is a rejection the next review reads, not a step shipped failing (design §6.3)
-      const { failingSteps, rejections } = parseLog(log);
+      const { failingSteps, rejections, passingSteps } = parseLog(log);
+      // the kept code that passed again: the harness stops carrying an earlier failure of these steps (gates/basic.ts)
+      assert.deepEqual([...passingSteps].sort(), ['shot3', 'shot4-rev']);
       assert.deepEqual(
         failingSteps.map((f) => f.step),
         ['shot2-rev'],
