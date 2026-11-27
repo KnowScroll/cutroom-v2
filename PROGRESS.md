@@ -14,16 +14,16 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 - [ ] Later, not blocking: look at #13's calibration table (posted: https://github.com/KnowScroll/cutroom-v2/issues/13#issuecomment-7206270682).
 - [x] #17: the user approved installing Node 22, FFmpeg and Chrome in WSL Ubuntu (2026-11-27).
 
-- [ ] **Budget (blocking #18 job 5)**: 39 of 40 cuts used (~$3.6 total). #18 ran 4 of 5 jobs (16 cuts, $1.732); job 5 would need up to 4 cuts (43 > 40). User asked 2026-11-27: allow job 5 past the cap, or accept CP5 with 4 jobs.
+- [x] Budget: 39 of 40 cuts used after #18 jobs 1-4 (16 cuts, $1.732). User ruling 2026-11-27: raise the cap to 44 and run job 5.
 
 ## In flight
 
 | issue | agent / model | branch or worktree | started | note |
 |---|---|---|---|---|
 | #18 | acceptance / opus (done 4 of 5) | WSL ~/cutroom-v2 (main), var ~/cutroom-var | 2026-11-27 | report: issuecomment-7210058911; job 5 held by budget guard |
-| #36 | implementer / sonnet | claude/36-report-period | 2026-11-27 | report.md doubled period (found by #18) |
+| #36 | implementer / sonnet | claude/36-report-period, PR #37 | 2026-11-27 | report.md doubled period (found by #18); CI green, in review |
 
-## Real cuts (budget: 40 cuts with model calls, docs/plan.md)
+## Real cuts (budget: 44 cuts with model calls; docs/plan.md said 40, user raised it to 44 on 2026-11-27 for #18 job 5)
 
 Voice refusals not counted as cuts (#18): 3 eleven-v4 HTTP 402 invocations, their pre-voice spend ($0, $0.042, $0.105) is in the next cut's cost. Free re-renders (no model calls) not counted: #16 radio-lp-e4 resume (fonts-radio-lp-e4); #9 `--cut 3` on e2-check, `--cut 4` (empty notes) on e2-fix; two #9 failed notes reads.
 
@@ -71,4 +71,4 @@ Voice refusals not counted as cuts (#18): 3 eleven-v4 HTTP 402 invocations, thei
 
 ## Next action
 
-#36 in flight. User decides job 5 (budget). Then: job 5 if allowed, close #18, PROGRESS complete, report to the user.
+#36 (PR #37) in review. Merge it, then #18 job 5 in WSL on main (cap 44). Then close #18, PROGRESS complete, report to the user.
