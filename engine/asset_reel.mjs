@@ -16,6 +16,7 @@ import { HERE, VAR, TEMPLATE_DIR, SR, log, sha1, clamp, slugify, stamp, run, poo
 import { voiceModel, normVoice, voiceGuide, speak, voiceCacheKey, voiceRate, recordRate, voiceCheck, wordTimes, MUSIC_FEELS, pickMusic, mixReel } from './audio.mjs';
 import { createWriter, words, numWords, DEVICES, numbersNotInSource, requestOf } from './writer.mjs';
 import { findPhotos, snapQuote } from './photos.mjs';
+import { fetchArticles, fetchPassages } from './reference.mjs';
 
 const MODEL = 'MiniMax-M3', PRICE = { in: 0.30, cached: 0.06, out: 1.20 };
 const STAGE = pathToFileURL(path.join(HERE, 'engine', 'stage_asset.html')).href;
@@ -80,46 +81,16 @@ const PHOTOMODE = () => /^commons$/i.test(checks().photos || '');
 const list = s => (s ? s.split(',').map(x => x.trim().toLowerCase()).filter(Boolean) : []);
 
 // ---------- reference: real facts from Wikipedia, so plan and director do not rely on M3's memory ----------
-// M3 names the articles (a search on a long brief returns junk); the engine fetches their text. No network: the run goes on without it.
-const SKIP_SECTIONS = /^(see also|references|external links|further reading|notes|bibliography|sources|citations|gallery|footnotes)$/i;
-async function fetchArticles(titles, firstMax = 7000, max = 4000) {
-  let out = '';
-  for (const [k, t] of titles.entries()) {
-    try {
-      const r = await fetch(`https://en.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&titles=${encodeURIComponent(t)}`, { headers: { 'User-Agent': 'fastreel-reference/1.0' }, signal: AbortSignal.timeout(20000) });
-      const page = Object.values((await r.json()).query?.pages || {})[0];
-      if (!page?.extract) { log(`reference: no article "${t}"`); continue; }
-      if (REF.includes(`### ${page.title}\n`) || out.includes(`### ${page.title}\n`)) continue;
-      const parts = page.extract.split(/\n(?===+ [^=\n]+ ==+\n)/).filter(x => !SKIP_SECTIONS.test((x.match(/^==+ ([^=\n]+?) ==+/) || [])[1] || ''));
-      out += `\n\n### ${page.title}\n${parts.join('\n').replace(/\n{3,}/g, '\n\n').slice(0, k || !firstMax ? max : firstMax)}`;
-    } catch (e) { log(`reference: "${t}" skipped (${e.message.slice(0, 80)})`); }
-  }
-  return out;
-}
+// M3 names the articles (a search on a long brief returns junk; engine/reference.mjs searches only for a title with no page) and
+// engine/reference.mjs fetches their text. No network: the run goes on without it.
 async function getReference() {
   const saved = ckLoad('reference.txt'); if (saved !== null) return saved;
   let ref = '';
   try {
     const text = await m3('reference', 'You name English Wikipedia articles. Reply with only a JSON array of exact article titles.', [{ role: 'user', content: `Brief: ${brief}\nName 1 to 3 English Wikipedia articles holding the facts this short reel needs: first the article about the brief's exact subject (the event, person, thing or idea itself, for example the event's own article rather than a general history), then its key person or object if that has its own article (for a procedure, the organ or machine it is done to). Never a generic article about an everyday thing that only appears in the story. Most important first.` }], 400);
-    ref = await fetchArticles(JSON.parse(text.slice(text.indexOf('['), text.lastIndexOf(']') + 1)).slice(0, 3));
+    ref = await fetchArticles(JSON.parse(text.slice(text.indexOf('['), text.lastIndexOf(']') + 1)).slice(0, 3), { request: requestOf(brief) });
   } catch (e) { log(`reference: skipped (${e.message.slice(0, 80)})`); }
   ref = ref.trim(); log(`reference: ${ref.length} chars`); ckSave('reference.txt', ref); return ref;
-}
-// the passages of a whole article that hold the words asked for (a reference keeps only an article's first 4000 to 7000 chars:
-// "In December 2024, bitcoin price reached $100,000" sat 20,000 chars into "Bitcoin"). Sentences ranked by how many of the words
-// they hold, then by how many digits, each with the sentence before it for context, in article order, up to `max` chars.
-async function fetchPassages(title, words, max = 3000) {
-  try {
-    const r = await fetch(`https://en.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&titles=${encodeURIComponent(title)}`, { headers: { 'User-Agent': 'fastreel-reference/1.0' }, signal: AbortSignal.timeout(20000) });
-    const page = Object.values((await r.json()).query?.pages || {})[0];
-    if (!page?.extract) { log(`reference: no article "${title}"`); return ''; }
-    const S = page.extract.split(/\n+/).filter(p => !/^==/.test(p.trim())).flatMap(p => p.split(/(?<=[.!?])\s+(?=[A-Z0-9"“])/)).map(s => s.trim()).filter(s => s.length > 25);
-    const ws = words.map(w => w.toLowerCase());
-    const hits = S.map((s, i) => ({ i, hit: ws.filter(w => s.toLowerCase().includes(w)).length, nums: (s.match(/\d/g) || []).length })).filter(x => x.hit).sort((a, b) => b.hit - a.hit || b.nums - a.nums);
-    const keep = new Set(); let len = 0;
-    for (const x of hits) { const add = [x.i - 1, x.i].filter(k => k >= 0 && !keep.has(k)); const n = add.reduce((a, k) => a + S[k].length + 1, 0); if (len + n > max) continue; add.forEach(k => keep.add(k)); len += n; }
-    return keep.size ? `\n\n### ${page.title} (passages about: ${words.join(', ')})\n${[...keep].sort((a, b) => a - b).map(k => S[k]).join(' ')}` : '';
-  } catch (e) { log(`reference: "${title}" skipped (${e.message.slice(0, 80)})`); return ''; }
 }
 // the writer's facts step names what the answer needs and the reference lacks: an article (fetched whole, 4000 chars), or an
 // article with words to look for (its matching passages); added to the reference once
@@ -127,7 +98,7 @@ async function addArticles(needs) {
   let add = '';
   for (const n of needs) {
     const title = typeof n === 'string' ? n : n?.article, words = Array.isArray(n?.look_for) ? n.look_for.filter(w => typeof w === 'string' && w.trim().length > 2).map(w => w.trim()).slice(0, 6) : [];
-    if (title) add += words.length ? await fetchPassages(title, words) : await fetchArticles([title], 0);
+    const have = `${REF}${add}`; if (title) add += words.length ? await fetchPassages(title, words, { have }) : await fetchArticles([title], { have, firstMax: 0 });
   }
   add = add.trim(); if (add) { REF = `${REF}\n\n${add}`.trim(); ckSave('reference.txt', REF); } return add.length;
 }

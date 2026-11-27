@@ -31,6 +31,8 @@ export function factErrors(
   },
 ): Problem[];
 export function numbersNotInSource(src: string, texts: string[]): string[];
+// the brief without the intake's Audience / Goal / Tone lines
+export function requestOf(brief: string): string;
 
 export interface Message {
   role: string;
