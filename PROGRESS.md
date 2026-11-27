@@ -4,7 +4,9 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 
 ## State
 
-2026-11-27: preparation done (docs, labels, milestones, issues #1-#18). Implementation started. #1 merged (PR #19, 3107663). #4 merged (PR #20, 8dbef11). #3 merged (PR #21, 482a73b). #2 merged (PR #22, e0cbf2c). #12 merged (PR #23, fbdb64a). #6 merged (PR #24, 392bb28). #9 merged (PR #26, 3713298). #10 merged (PR #27, ec301b7). #5 merged (PR #25, 8fd890c). #16 merged (PR #28, 4e5b00b). #7 merged (PR #29, adc2cb2). #8 merged (PR #30, 253126b): **CP1 done** (recorded in #8). #11 merged (PR #31, 51d9c19): **CP2 done** (recorded in #11). #13 merged (PR #32, 2a63883): **CP3a done** (recorded in #13). #14 merged (PR #33, 04f16eb). #15 merged (PR #34, 0185057): **CP3b done** (recorded in #15). #17 merged (PR #35, 5445b0e): **CP4 done** (recorded in #17). #36 (found by #18) merged (PR #37, 6e99c7f). Session interrupted once (2026-11-27); #5, #6, #9, #10 resumed from their worktrees.
+2026-11-27: preparation done (docs, labels, milestones, issues #1-#18). Implementation started. #1 merged (PR #19, 3107663). #4 merged (PR #20, 8dbef11). #3 merged (PR #21, 482a73b). #2 merged (PR #22, e0cbf2c). #12 merged (PR #23, fbdb64a). #6 merged (PR #24, 392bb28). #9 merged (PR #26, 3713298). #10 merged (PR #27, ec301b7). #5 merged (PR #25, 8fd890c). #16 merged (PR #28, 4e5b00b). #7 merged (PR #29, adc2cb2). #8 merged (PR #30, 253126b): **CP1 done** (recorded in #8). #11 merged (PR #31, 51d9c19): **CP2 done** (recorded in #11). #13 merged (PR #32, 2a63883): **CP3a done** (recorded in #13). #14 merged (PR #33, 04f16eb). #15 merged (PR #34, 0185057): **CP3b done** (recorded in #15). #17 merged (PR #35, 5445b0e): **CP4 done** (recorded in #17). #36 (found by #18) merged (PR #37, 6e99c7f). #38 (found by #18) merged (PR #39, bde64c0). #18 closed: **CP5 done** (recorded in #18, issuecomment-7212554073).
+
+**Complete (2026-11-27).** All issues closed (#1-#18, #36, #38), CI green on main (bde64c0), `npm run check` green in WSL (140 tests, 138 pass, 2 skipped), CP1-CP5 recorded, README covers the CLI, the API and Linux, the user has the #18 report. Session interrupted once (2026-11-27); #5, #6, #9, #10 resumed from their worktrees.
 
 ## Waiting on the user
 
@@ -18,10 +20,7 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 
 ## In flight
 
-| issue | agent / model | branch or worktree | started | note |
-|---|---|---|---|---|
-| #18 | acceptance / opus | WSL ~/cutroom-v2, var ~/cutroom-var | 2026-11-27 | 5 jobs done: issuecomment-7210058911 (1-4), issuecomment-7211320378 (5); 43 of 44 cuts; open until #38 merges |
-| #38 | implementer / opus | claude/38-run-record-flake | 2026-11-27 | flaky RunRecord.parse failure in job.test.ts (found by #18) |
+Nothing.
 
 ## Real cuts (budget: 44 cuts with model calls; docs/plan.md said 40, user raised it to 44 on 2026-11-27 for #18 job 5)
 
@@ -76,4 +75,4 @@ Voice refusals not counted as cuts (#18): 4 eleven-v4 HTTP 402 invocations; thei
 
 ## Next action
 
-#38 in flight (found by #18). Merge it, then close #18 (CP5), PROGRESS complete, report to the user. No more real cuts: 43 of 44 used.
+None: the build is complete. Open user items above (voice credits before 2026-11-30, #13 calibration table) and the follow-ups in the #18 report are not part of this plan.
