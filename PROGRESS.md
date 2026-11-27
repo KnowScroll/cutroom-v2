@@ -11,15 +11,15 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 - [x] `.env` at the repo root: `MINIMAX_API_KEY`, `OPENROUTER_API_KEY`, `CUTROOM_API_TOKEN` present (checked by name, 2026-11-27). No `ELEVENLABS_API_KEY`: eleven-v4 goes through OpenRouter.
 - [ ] Voice credits (not blocking): OpenRouter has no credits yet and there is no `ELEVENLABS_API_KEY`. User ruling 2026-11-27: use the free `heygen` voice until the user adds credits; keys stay the same, so the fallback list picks the paid voices up by itself. Free models are rate-limited per day: if `heygen` is refused too, follow HANDOFF "Not escalations".
 - [x] D20 confirmed by the user (2026-11-27): first cut plus up to 3 fix rounds.
-- [ ] Later, not blocking: look at #13's calibration table (the orchestrator decides by design D23 and posts it).
+- [ ] Later, not blocking: look at #13's calibration table (posted: https://github.com/KnowScroll/cutroom-v2/issues/13#issuecomment-7206270682).
 - [x] #17: the user approved installing Node 22, FFmpeg and Chrome in WSL Ubuntu (2026-11-27).
 
 ## In flight
 
 | issue | agent / model | branch or worktree | started | note |
 |---|---|---|---|---|
-| #14 | implementer / sonnet | claude/14-queue (worktree) | 2026-11-27 | fakes only |
-| #13 | implementer / opus | claude/13-frame-gates (worktree; rebase onto main now that #31 merged) | 2026-11-27 | calibration first; then 1 real job (CP3a) after rebase |
+| #14 | implementer / sonnet | claude/14-queue (worktree) | 2026-11-27 | PR #33 in review |
+| #13 | implementer / opus | claude/13-frame-gates (worktree) | 2026-11-27 | PR #32 in review; CP3a job done |
 
 ## Real cuts (budget: 40 cuts with model calls, docs/plan.md)
 
@@ -38,6 +38,10 @@ Free re-renders (no model calls) not counted: #16 radio-lp-e4 resume (fonts-radi
 | 9 | 2026-11-27 | #11 | CP2 cut 3, notes round 2 (selected) | heygen | 0.0411 | same |
 | 10 | 2026-11-27 | #11 | CP2 cut 4, notes round 3 (job harness total 0.0313) | heygen (3.91 st FAIL) | 0.0523 | same |
 | 11 | 2026-11-27 | #11 | template-round script: shots patch, rerun from plan.json (+ review 0.0064) | heygen | 0.1681 | var/runs/cp2-template |
+| 12 | 2026-11-27 | #13 | CP3a job "walk to the moon" cut 1 (kurzgesagt, --template) | heygen | 0.143 | var/runs/20261127-002302-how-long-would-it-take-to-walk-to-the-mo |
+| 13 | 2026-11-27 | #13 | CP3a cut 2, notes round (selected) | heygen | 0.044 | same |
+| 14 | 2026-11-27 | #13 | CP3a cut 3, template round (patched var/templates/kurzgesagt.md, history 1) | heygen | 0.106 | same |
+| 15 | 2026-11-27 | #13 | CP3a cut 4, notes round (job harness total ~0.03) | heygen | 0.031 | same |
 
 ## Next action
 
