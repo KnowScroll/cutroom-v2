@@ -248,15 +248,65 @@ const insideRound = (s: LoopState): LoopState => ({
 await test('a running job with a live owner is left alone; with a dead owner it is resumed', async () => {
   const varDir = newVar();
   const id = await finished(varDir, [intake, review(true)]);
-  await rewind(varDir, id, (s) => s, process.pid);
-  const queued = await enqueue(varDir, { request: 'another reel' });
-  const ran = await withFake([intake, review(true)], (url) => drain(optionsFor(varDir, url)));
-  assert.deepEqual(ran, [queued]);
-  assert.equal((await readJob(varDir, id)).status, 'running');
-  assert.equal((await readJob(varDir, id)).owner?.pid, process.pid);
+  // another live process (a `make` run) owns it
+  const other = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 60000)'], {
+    windowsHide: true,
+    stdio: 'ignore',
+  });
+  try {
+    if (other.pid === undefined) throw new Error('owner did not start');
+    await rewind(varDir, id, (s) => s, other.pid);
+    const queued = await enqueue(varDir, { request: 'another reel' });
+    const ran = await withFake([intake, review(true)], (url) => drain(optionsFor(varDir, url)));
+    assert.deepEqual(ran, [queued]);
+    assert.equal((await readJob(varDir, id)).status, 'running');
+    assert.equal((await readJob(varDir, id)).owner?.pid, other.pid);
+  } finally {
+    other.kill();
+  }
   await rewind(varDir, id, (s) => s);
   assert.deepEqual(await withFake([review(true)], (url) => drain(optionsFor(varDir, url))), [id]);
   assert.equal((await readJob(varDir, id)).status, 'done');
+});
+
+await test('a job whose owner pid is this process but was not claimed here is resumed (pid reuse)', async () => {
+  const varDir = newVar();
+  const id = await finished(varDir, [intake, review(true)]);
+  await rewind(varDir, id, (s) => s, process.pid);
+  assert.deepEqual(await withFake([review(true)], (url) => drain(optionsFor(varDir, url))), [id]);
+  assert.equal((await readJob(varDir, id)).status, 'done');
+});
+
+await test('an engine lock naming this pid under a foreign token is stale; its live orphan engine is stopped', async () => {
+  const varDir = newVar();
+  const id = await enqueue(varDir, { request: 'how big is the Sun' });
+  const orphan = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 60000)'], {
+    detached: process.platform !== 'win32',
+    windowsHide: true,
+    stdio: 'ignore',
+  });
+  if (orphan.pid === undefined) throw new Error('orphan did not start');
+  const gone = new Promise<void>((resolve) => {
+    orphan.on('exit', () => {
+      resolve();
+    });
+  });
+  await writeFile(
+    path.join(varDir, 'engine.lock'),
+    JSON.stringify({
+      harness_pid: process.pid,
+      engine_pid: orphan.pid,
+      started_at: new Date().toISOString(),
+      token: 'old',
+    }),
+  );
+  const ran = await withFake([intake, review(true)], (url) =>
+    drain({ ...optionsFor(varDir, url), lockPollMs: 50 }),
+  );
+  assert.deepEqual(ran, [id]);
+  assert.equal((await readJob(varDir, id)).status, 'done');
+  assert.equal((await readEvents(varDir, id)).filter((e) => e.event === 'engine.wait').length, 0);
+  await gone; // the orphan engine's tree was stopped
 });
 
 await test('two dead jobs that applied a patch resume one after the other without applying it again', async () => {

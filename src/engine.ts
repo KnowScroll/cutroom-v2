@@ -270,6 +270,7 @@ interface Held {
 
 /** Only the owner (matching token) releases its lock. */
 function release(held: Held): void {
+  heldHere.delete(held.token);
   try {
     if (readLock(held.file)?.token === held.token) rmSync(held.file, { force: true });
   } catch {
@@ -284,9 +285,16 @@ function recordEnginePid(held: Held, pid: number | null): void {
   publish(held.file, JSON.stringify({ ...lock, engine_pid: pid }), 'rename', owned);
 }
 
+// Tokens of the locks this process holds. A lock naming our own pid under another token is a dead process's (pid reuse).
+const heldHere = new Set<string>();
+
 /** busy: a live harness holds it, whatever the engine pid says. Else orphan (a live engine) or stale (nothing runs). */
 function judge(lock: LockFile): 'busy' | 'stale' | 'orphan' {
-  if (lock.harness_pid === process.pid || pidAlive(lock.harness_pid)) return 'busy';
+  const alive =
+    lock.harness_pid === process.pid
+      ? lock.token !== undefined && heldHere.has(lock.token)
+      : pidAlive(lock.harness_pid);
+  if (alive) return 'busy';
   return lock.engine_pid !== null && pidAlive(lock.engine_pid) ? 'orphan' : 'stale';
 }
 
@@ -337,6 +345,7 @@ async function takeOver(file: string, mineJson: string): Promise<boolean> {
 async function acquireLock(file: string): Promise<Held> {
   await mkdir(path.dirname(file), { recursive: true });
   const held: Held = { file, token: randomUUID() };
+  heldHere.add(held.token);
   const mine = JSON.stringify({
     harness_pid: process.pid,
     engine_pid: null,
@@ -353,6 +362,7 @@ async function acquireLock(file: string): Promise<Held> {
     const lock = readLock(file);
     if (lock === null) continue;
     if (judge(lock) === 'busy') {
+      heldHere.delete(held.token);
       throw new EngineLockedError(
         `engine busy: harness pid ${String(lock.harness_pid)} since ${lock.started_at}`,
         lock.harness_pid,
@@ -361,6 +371,7 @@ async function acquireLock(file: string): Promise<Held> {
     if (await takeOver(file, mine)) return held;
     await sleep(50);
   }
+  heldHere.delete(held.token);
   throw new EngineBusyError('engine lock could not be taken');
 }
 

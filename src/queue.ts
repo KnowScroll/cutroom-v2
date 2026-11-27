@@ -40,12 +40,19 @@ export async function listJobs(varDir: string): Promise<Job[]> {
 }
 
 /** A running job whose owner process is gone (or never recorded): the worker may resume it. A live owner keeps it. */
+// Jobs this process took itself. An owner pid equal to ours that is not here belongs to a dead process (pid reuse).
+const claimed = new Set<string>();
+
 function orphaned(job: Job): boolean {
-  return job.status === 'running' && (job.owner === null || !pidAlive(job.owner.pid));
+  if (job.status !== 'running') return false;
+  if (job.owner === null) return true;
+  if (job.owner.pid === process.pid) return !claimed.has(job.id);
+  return !pidAlive(job.owner.pid);
 }
 
 /** Runs one job (new, or running = resumed after a restart). It always ends done or failed; the queue goes on. */
 async function runOne(job: Job, options: WorkerOptions): Promise<void> {
+  claimed.add(job.id);
   const log = options.log ?? (() => undefined);
   try {
     await runJob({ ...options, request: job.request, jobId: job.id });

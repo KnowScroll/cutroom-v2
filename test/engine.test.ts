@@ -181,7 +181,7 @@ await test('a held lock blocks a second run', async () => {
     writeFileSync(
       s.lockFile,
       JSON.stringify({
-        harness_pid: process.pid,
+        harness_pid: live.pid, // another live process; our own pid under a foreign token is stale
         engine_pid: live.pid,
         started_at: new Date().toISOString(),
       }),
@@ -219,15 +219,20 @@ await test('a stale lock (harness and engine both gone) is taken over', async ()
 
 await test('a live harness holds the lock even when its engine pid is dead', async () => {
   const s = await setup();
-  writeFileSync(
-    s.lockFile,
-    JSON.stringify({
-      harness_pid: process.pid,
-      engine_pid: await deadPid(),
-      started_at: new Date().toISOString(),
-    }),
-  );
-  await assert.rejects(runCut(s.opts), EngineBusyError);
+  const holder = sleeper(); // another live process: a harness of its own
+  try {
+    writeFileSync(
+      s.lockFile,
+      JSON.stringify({
+        harness_pid: holder.pid,
+        engine_pid: await deadPid(),
+        started_at: new Date().toISOString(),
+      }),
+    );
+    await assert.rejects(runCut(s.opts), EngineBusyError);
+  } finally {
+    await killTree(holder.pid);
+  }
 });
 
 await test('a second run during the crash-to-rerun gap is refused', async () => {
