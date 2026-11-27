@@ -617,7 +617,7 @@ function trackText(c, text, x, y, mw) {
 // rounded boxes a shot or its kit draws after the background (h.rr and kit pills use roundRect): a text inside one is a label with that box
 { const rr0 = ctx.roundRect; if (rr0) ctx.roundRect = function (x, y, w, hh, ...r) {
   if (TRACK && IN_SHOT && BG_DONE && !IN_ASSET && [x, y, w, hh].every(n => Number.isFinite(+n))) { const tf = this.getTransform(), pts = [[x, y], [x + w, y], [x, y + hh], [x + w, y + hh]].map(([px, py]) => [tf.a * px + tf.c * py + tf.e, tf.b * px + tf.d * py + tf.f]);
-    (TRACK.boxes = TRACK.boxes || []).push({ x0: Math.min(...pts.map(p => p[0])), x1: Math.max(...pts.map(p => p[0])), y0: Math.min(...pts.map(p => p[1])), y1: Math.max(...pts.map(p => p[1])), alpha: this.globalAlpha }); }
+    (TRACK.boxes = TRACK.boxes || []).push({ x0: Math.min(...pts.map(p => p[0])), x1: Math.max(...pts.map(p => p[0])), y0: Math.min(...pts.map(p => p[1])), y1: Math.max(...pts.map(p => p[1])), q: pts, alpha: this.globalAlpha }); }
   return rr0.call(this, x, y, w, hh, ...r); }; }
 // pixel mode (template check "pixel grid: N"): the shot's artwork is pixelated to N art pixels across, but its text is
 // held back while the shot draws and replayed crisp on top, so words stay readable at any size
@@ -659,10 +659,11 @@ function placeAsset(id, x, y, s = 1, params = {}) {
   if (got && typeof got === 'object') for (const [k, v] of Object.entries(got)) if (Array.isArray(v) && v.length === 2 && v.every(n => Number.isFinite(+n)) && !(k in out)) out[k] = at(+v[0], +v[1]);
   return out;
 }
-// the solid part of an asset's box in its own units (centre 0, 0), for its word and switch params (pose, which, state): pixels at
-// least half opaque, so a glow does not count (the Sun's glow made its box 1.5 times its disc); .seen is every pixel that shows at
-// all, glow included. Drawn once per kind on a side canvas, so placements, labels and overlap checks use what is drawn (a round body
-// fills 68% of its box) the same in validation and render; MEASURE_MS keeps that time out of a frame's render time
+// the solid part of an asset's box in its own units (centre 0, 0), for its word and switch params (pose, which, state): pixels more
+// than 60% opaque, so a glow, a light beam or ghosted context (strokes at 50%, fills at 15%) is not solid (the Sun's glow made its box
+// 1.5 times its disc); .mask marks the solid cells (all empty when nothing is solid); .seen is every pixel that shows at all. Drawn
+// once per kind on a side canvas, so placements, labels and overlap checks use what is drawn (a round body fills 68% of its box) the
+// same in validation and render; MEASURE_MS keeps that time out of a frame's render time. Only a drawing that throws gets its full box
 const DRAWN = new Map(), MEASURE = new OffscreenCanvas(600, 600).getContext('2d', { willReadFrequently: true }); let MEASURE_MS = 0;
 let AUTO = {}; // this frame's bubble anchors from h.asset's who
 function drawnBox(id, spec, params) {
@@ -675,13 +676,13 @@ function drawnBox(id, spec, params) {
       g.save(); g.translate(300, 300); g.scale(s, s); IN_ASSET++; try { fn(g, { ...p, t: 0.4 }, HK, KIT); } finally { IN_ASSET--; g.restore(); } return g.getImageData(0, 0, 600, 600).data; };
     const k = on('#000000'), wh = on('#ffffff'), b = [[1e9, -1, 1e9, -1], [1e9, -1, 1e9, -1]], u = v => (v - 300) / s;
     for (let y = 0; y < 600; y += 2) for (let x = 0; x < 600; x += 2) { const i = (y * 600 + x) * 4, bare = wh[i] - k[i] + wh[i + 1] - k[i + 1] + wh[i + 2] - k[i + 2]; // how much of the background shows: 765 all, 0 none
-      for (const [j, lim] of [[0, 383], [1, 740]]) if (bare < lim) { const q = b[j]; if (x < q[0]) q[0] = x; if (x > q[1]) q[1] = x; if (y < q[2]) q[2] = y; if (y > q[3]) q[3] = y; } }
+      for (const [j, lim] of [[0, 306], [1, 740]]) if (bare < lim) { const q = b[j]; if (x < q[0]) q[0] = x; if (x > q[1]) q[1] = x; if (y < q[2]) q[2] = y; if (y > q[3]) q[3] = y; } }
     const box = q => (q[1] >= 0 ? { x0: u(q[0]), x1: u(q[1]) + 2 / s, y0: u(q[2]), y1: u(q[3]) + 2 / s } : null);
     // which cells of a 16 x 16 grid over the solid box hold solid pixels, so overlaps count the thing's shape, not its box
     const [qx0, qx1, qy0, qy1] = b[0], mask = new Uint8Array(256);
-    if (qx1 >= 0) for (let y = qy0; y <= qy1; y += 2) for (let x = qx0; x <= qx1; x += 2) { const i = (y * 600 + x) * 4; if (wh[i] - k[i] + wh[i + 1] - k[i + 1] + wh[i + 2] - k[i + 2] < 383) mask[Math.floor((y - qy0) / (qy1 - qy0 + 2) * 16) * 16 + Math.floor((x - qx0) / (qx1 - qx0 + 2) * 16)] = 1; }
-    if (b[1][1] >= 0) r = { ...(box(b[0]) || box(b[1])), seen: box(b[1]), ...(qx1 >= 0 ? { mask } : {}) };
-  } catch { } finally { ctx = main; MEASURE_MS += performance.now() - t0; }
+    if (qx1 >= 0) for (let y = qy0; y <= qy1; y += 2) for (let x = qx0; x <= qx1; x += 2) { const i = (y * 600 + x) * 4; if (wh[i] - k[i] + wh[i + 1] - k[i + 1] + wh[i + 2] - k[i + 2] < 306) mask[Math.floor((y - qy0) / (qy1 - qy0 + 2) * 16) * 16 + Math.floor((x - qx0) / (qx1 - qx0 + 2) * 16)] = 1; }
+    r = { ...(box(b[0]) || box(b[1]) || full), seen: box(b[1]) || full, mask }; // nothing drawn in this state: assume it shows, nothing solid
+  } catch { r = null; } finally { ctx = main; MEASURE_MS += performance.now() - t0; }
   r = r || { ...full, seen: full }; kinds.set(key, r); return r;
 }
 // a transform with NaN or Infinity is silently ignored by the canvas, so what follows is drawn at the wrong place and size (a NaN
@@ -904,7 +905,7 @@ function setupCode(tl) {
   // record every panel a shot draws, so a panel left without its words can be rejected (validateShot)
   if (KIT && KIT.panel) { const p0 = KIT.panel; KIT.panel = function (c, x, y, w, hgt, o = {}, ...r) {
     if (TRACK && IN_SHOT && c && c.getTransform) { const tf = c.getTransform(), pts = [[x, y], [x + w, y], [x, y + hgt], [x + w, y + hgt]].map(([px, py]) => [tf.a * px + tf.c * py + tf.e, tf.b * px + tf.d * py + tf.f]);
-      (TRACK.panels = TRACK.panels || []).push({ x0: Math.min(...pts.map(p => p[0])), x1: Math.max(...pts.map(p => p[0])), y0: Math.min(...pts.map(p => p[1])), y1: Math.max(...pts.map(p => p[1])), alpha: c.globalAlpha * (o && o.alpha != null ? +o.alpha : 1) }); }
+      (TRACK.panels = TRACK.panels || []).push({ x0: Math.min(...pts.map(p => p[0])), x1: Math.max(...pts.map(p => p[0])), y0: Math.min(...pts.map(p => p[1])), y1: Math.max(...pts.map(p => p[1])), q: pts, alpha: c.globalAlpha * (o && o.alpha != null ? +o.alpha : 1) }); }
     return p0.call(this, c, x, y, w, hgt, o, ...r); }; }
   tl.shots.forEach((s, i) => { if (s.code) try { SHOTS[i] = compileShot(s.code); } catch { } });
 }
@@ -1029,6 +1030,12 @@ window.validateShot = (code, shot, tl, ck = {}) => {
         const q = inv.transformPoint(d), fi = Math.floor((q.x - f.u.x0) / (f.u.x1 - f.u.x0) * 16), fj = Math.floor((q.y - f.u.y0) / (f.u.y1 - f.u.y0) * 16);
         if (fi >= 0 && fi < 16 && fj >= 0 && fj < 16 && cell(f.u, fj * 16 + fi)) c++; }
       return n ? c / n : 0; };
+    // label boxes on their own (maybe rotated) shape, q = the corners [x, y], [x + w, y], [x, y + h], [x + w, y + h]: how deep two
+    // overlap (the least overlap of their projections on the edge normals), and whether one lies inside the other (a pill on a card)
+    const nrm = q => [q[1], q[2]].map(([x1, y1]) => { const [x0, y0] = q[0], l = Math.hypot(x1 - x0, y1 - y0) || 1; return [(y0 - y1) / l, (x1 - x0) / l]; });
+    const proj = (q, n) => { const d = q.map(([x, y]) => x * n[0] + y * n[1]); return [Math.min(...d), Math.max(...d)]; };
+    const depth = (p, q) => Math.min(...[...nrm(p), ...nrm(q)].map(n => { const [a0, a1] = proj(p, n), [b0, b1] = proj(q, n); return Math.min(a1, b1) - Math.max(a0, b0); }));
+    const within = (p, q) => nrm(q).every(n => { const [a0, a1] = proj(p, n), [b0, b1] = proj(q, n); return a0 >= b0 - 4 && a1 <= b1 + 4; });
     const overlaps = t => {
       const out = new Map(), at = `at lt=${t.toFixed(2)}s`, tx = TRACK.texts.filter(x => x.alpha > 0.3 && x.text.trim() && x.scale >= 0.9);
       const opq = TRACK.assets.filter(a => a.alpha > 0.5 && a.box && Math.max(fr(a.box).x1 - fr(a.box).x0, fr(a.box).y1 - fr(a.box).y0) >= 6);
@@ -1040,8 +1047,8 @@ window.validateShot = (code, shot, tl, ck = {}) => {
       const bx = [...(TRACK.boxes || []), ...(TRACK.panels || [])].filter(b => b.alpha > 0.3), labs = [];
       for (const x of tx) { const cx = (x.x0 + x.x1) / 2, cy = (x.y0 + x.y1) / 2, own = bx.filter(b => cx > b.x0 && cx < b.x1 && cy > b.y0 && cy < b.y1 && b.x1 - b.x0 >= x.x1 - x.x0 - 8).sort((p, q) => sz(p) - sz(q))[0];
         if (own) { const l = labs.find(q => q.box === own); if (l) l.text.add(x.text); else labs.push({ box: own, text: new Set([x.text]) }); } }
-      for (let i = 0; i < labs.length; i++) for (let j = i + 1; j < labs.length; j++) { const a = labs[i].box, b = labs[j].box, ow = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0), oh = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0), na = [...labs[i].text].join(' '), nb = [...labs[j].text].join(' ');
-        if (na !== nb && ow > 4 && oh > 4 && ow * oh < 0.9 * Math.min(sz(a), sz(b))) out.set(`label:${na}|${nb}`, `the label "${na}" (its pill or panel: ${xy(a)}) overlaps the label "${nb}" (${xy(b)}) ${at}: a pill is wider than its words, so place labels by their pill boxes with a gap of at least 20 px (or stack them)`); }
+      for (let i = 0; i < labs.length; i++) for (let j = i + 1; j < labs.length; j++) { const a = labs[i].box, b = labs[j].box, na = [...labs[i].text].join(' '), nb = [...labs[j].text].join(' ');
+        if (na !== nb && depth(a.q, b.q) > 4 && !within(a.q, b.q) && !within(b.q, a.q)) out.set(`label:${na}|${nb}`, `the label "${na}" (its pill or panel: ${xy(a)}) overlaps the label "${nb}" (${xy(b)}) ${at}: a pill is wider than its words, so place labels by their pill boxes with a gap of at least 20 px (or stack them)`); }
       for (const [k, b] of (TRACK.bubbles || []).entries()) {
         for (const o of TRACK.bubbles.slice(k + 1)) if (ov(b, o) > 0) out.set(`bub:${b.who}|${o.who}`, `the speech bubbles of ${b.who} and ${o.who} overlap ${at}: move the speakers further apart, or let one finish before the other starts`);
         for (const a of opq) if (a.who !== b.who && !scenery.has(a.id) && !(b.at[0] >= a.box.x0 && b.at[0] <= a.box.x1 && b.at[1] >= a.box.y0 - 60 && b.at[1] <= a.box.y1) && ov(b, fr(a.box)) > 0.3 * sz(fr(a.box))) out.set(`bubcover:${b.who}|${nm(a)}`, `the speech bubble of ${b.who} (${xy(b)}) covers ${nm(a)} ${at}: the bubble sits above its speaker's anchor, so move the speaker or the other thing so the space above the speaker is free`);
@@ -1089,14 +1096,15 @@ window.validateShot = (code, shot, tl, ck = {}) => {
       const tx = TRACK.texts.filter(x => x.alpha > 0.3 && x.text.trim() && x.scale >= 0.9);
       for (let i = 0; i < tx.length; i++) for (let j = i + 1; j < tx.length; j++) if (tx[i].text !== tx[j].text && area(tx[i], tx[j]) > 0.2 * Math.min(size(tx[i]), size(tx[j])))
         texts.set(`toverlap:${tx[i].text}|${tx[j].text}`, `text "${tx[i].text}" overlaps text "${tx[j].text}" at lt=${t.toFixed(2)}s: give each line its own space (measure them and place them apart)`);
-      // identity and the caption band (on the drawn part of each thing): one character drawn twice, words under the narrator caption
+      // identity and the caption band (on the drawn part of each thing): one character drawn twice, words under the narrator caption;
+      // then the overlaps. 2D reels only: 3D staging has its own checks (stage3d.js), and these were never replayed on 3D shots
       for (const a of TRACK.assets) if (shows(a)) seenIds.add(a.id);
-      const byWho = {}; for (const a of TRACK.assets) if (a.who && a.alpha > 0.5) (byWho[a.who] = byWho[a.who] || []).push(a);
+      if (!tl.d3) { const byWho = {}; for (const a of TRACK.assets) if (a.who && a.alpha > 0.5) (byWho[a.who] = byWho[a.who] || []).push(a);
       for (const [w, l] of Object.entries(byWho)) if (l.length > 1) texts.set('twice:' + w, `${w} is drawn ${l.length} times in one frame at lt=${t.toFixed(2)}s (${l.map(a => xy(a.box)).join('; ')}): each character or named thing appears once; draw it once and move it`);
       for (const [w, p] of Object.entries(TRACK.anchors || {})) if (p.some(q => Math.hypot(q[0] - p[0][0], q[1] - p[0][1]) > 80)) texts.set('twice:' + w, `${w} is anchored at ${p.length} places in one frame at lt=${t.toFixed(2)}s (${p.map(q => q.map(Math.round).join(', ')).join('; ')}), so it is drawn twice: each character appears once; draw it once and move it`);
       const band = CAP_BAND[TL.captions] || CAP_BAND.box;
       if (TL.captions !== 'select' && sh.lines.some(ln => ln.who === 'narrator' && t >= ln.start - 0.1 && t < ln.end + 0.25)) for (const x of tx) if (Math.min(x.y1, band[1]) - Math.max(x.y0, band[0]) > 8) texts.set('capband:' + x.text, `text "${x.text}" is drawn at y ${Math.round(x.y0)} to ${Math.round(x.y1)}, under the narrator caption (y ${band[0]} to ${band[1]}): keep every label, number and panel above y ${band[0] - 50}`);
-      for (const [k, m] of overlaps(t)) { const c = clash.get(k); if (c) c.n++; else clash.set(k, { n: 1, m, t }); }
+      for (const [k, m] of overlaps(t)) { const c = clash.get(k); if (c) c.n++; else clash.set(k, { n: 1, m, t }); } }
       if (ck.hero) { const hs = TRACK.assets.filter(a => a.id === ck.hero && a.alpha > 0.5); heroAt.push(hs.length ? hs.reduce((m, a) => (a.w > m.w ? a : m)) : null); }
       frameDetail.push(detail(shotsnaps[shotsnaps.length - 1]));
       for (const x of TRACK.texts) if (x.alpha > 0.3 && x.text.trim()) shown.add(x.text.trim());

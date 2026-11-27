@@ -56,6 +56,23 @@ await test('two name pills that touch are rejected; the same pills 20 px apart p
   assert.ok(!has(apart.errors, label), apart.errors.join(' | '));
 });
 
+await test('a tilted answer chip is checked on its own shape, not on its upright bounds', async () => {
+  // Sun reel shot 7: the answer chip turned -3 degrees; its upright bounds reached the name pill under it, the chip did not
+  const shot = (pillY: number) => `function draw(ctx, lt, sh, h, kit) {
+    kit.bg(ctx, lt);
+    h.asset('earth', 540, 900 + 20 * lt, 300 / 272);
+    ctx.save(); ctx.translate(540, 270); ctx.rotate(-3 * Math.PI / 180);
+    kit.panel(ctx, -420, -52.5, 840, 105); kit.title(ctx, 'ABOUT 109 ACROSS', 0, 0, { size: 60 });
+    ctx.restore();
+    kit.tag(ctx, 'Sun', 540, ${String(pillY)});
+  }`;
+  const label = /the label "ABOUT 109 ACROSS" .* overlaps the label "Sun"/;
+  const clear = await validateShot(stage, { code: shot(372), assets: [earth] });
+  assert.ok(!has(clear.errors, label), clear.errors.join(' | '));
+  const touching = await validateShot(stage, { code: shot(345), assets: [earth] });
+  assert.ok(has(touching.errors, label), touching.errors.join(' | '));
+});
+
 await test('a character drawn twice in one frame is rejected, by its who or by two anchors', async () => {
   // Norway reel shot 2: both countries drawn at their centres, then again beside the sign
   const twice = `function draw(ctx, lt, sh, h, kit) {
@@ -109,6 +126,34 @@ await test('a small thing on a scenery asset is not an overlap', async () => {
     h.asset('moon', 540 + 20 * lt, 900, 200 / 272);
   }`;
   const r = await validateShot(stage, { code, assets: [earth, moon], ck: { scenery: ['earth'] } });
+  assert.ok(!has(r.errors, /covers \d+% of/), r.errors.join(' | '));
+});
+
+await test('see-through things neither cover nor are covered: a light beam, ghosted context behind the subject', async () => {
+  // a beam at 35% over a body; breakdown-explainer's ghosted context (fill 15%, strokes 50%) behind its hero
+  const beam = {
+    id: 'beam',
+    w: 300,
+    h: 800,
+    code: `function drawAsset(ctx, p, h, kit) { ctx.globalAlpha = 0.35; ctx.fillStyle = '#fff6c0'; ctx.fillRect(-150, -400, 300, 800); }`,
+  };
+  const ghost = {
+    id: 'ghost',
+    w: 800,
+    h: 800,
+    code: `function drawAsset(ctx, p, h, kit) {
+      ctx.beginPath(); ctx.arc(0, 0, 380, 0, 2 * Math.PI); ctx.globalAlpha = 0.15; ctx.fillStyle = '#9fb4c8'; ctx.fill();
+      ctx.globalAlpha = 0.5; ctx.lineWidth = 10; ctx.strokeStyle = '#9fb4c8'; ctx.stroke();
+      for (let i = -3; i <= 3; i++) { ctx.beginPath(); ctx.moveTo(-300, i * 90); ctx.lineTo(300, i * 90); ctx.stroke(); }
+    }`,
+  };
+  const code = `function draw(ctx, lt, sh, h, kit) {
+    kit.bg(ctx, lt);
+    h.asset('ghost', 540, 900, 1);
+    h.asset('earth', 540, 900 + 10 * lt, 250 / 272);
+    h.asset('beam', 540, 900, 1);
+  }`;
+  const r = await validateShot(stage, { code, assets: [ghost, earth, beam] });
   assert.ok(!has(r.errors, /covers \d+% of/), r.errors.join(' | '));
 });
 
