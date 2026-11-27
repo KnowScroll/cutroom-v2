@@ -65,12 +65,16 @@ await test('the atom sheet: a hand-made conversion factor is rejected, a calc wi
     'f3',
   );
   assert.equal(unitsWrongText.length, 1);
-  assert.match(unitsWrongText[0] ?? '', /gives 1 billion, but its text says/);
+  // past the operand check the calc is exact, so the message trusts its value
   assert.match(
     unitsWrongText[0] ?? '',
-    /One of calc or text is wrong: check the calc's factors and units first/,
+    /the engine computed 1 mm \/ 1 pm = 1 billion, but its text says/,
   );
-  assert.doesNotMatch(unitsWrongText[0] ?? '', /write the computed value/);
+  assert.match(
+    unitsWrongText[0] ?? '',
+    /exact on the sheet's quantities: if the calc is the right formula for the claim, write that value \(fairly rounded\) in the text; if the formula is not what the text claims, fix the calc/,
+  );
+  assert.doesNotMatch(unitsWrongText[0] ?? '', /never change a true claim/);
 
   assert.deepEqual(errorsOf(sheet([derived('f3', '1 mm = 1,000,000,000 pm', '1 mm / 1 pm')])), []);
 });
@@ -82,7 +86,10 @@ await test("the Moon's mixed-units calc is rejected; the same walk with units co
   );
   assert.equal(mixed.length, 1);
   assert.match(mixed[0] ?? '', /uses 24, which no other fact on the sheet states/);
-  assert.match(mixed[0] ?? '', /Write each quantity with its unit/);
+  assert.match(
+    mixed[0] ?? '',
+    /Check the calc's factors and units: write each quantity with its unit/,
+  );
 
   for (const [text, calc] of [
     ['Walking to the Moon non-stop takes about 75,600 hours', '378000 km / (5 km/h)'],
@@ -97,7 +104,10 @@ await test("the Moon's mixed-units calc is rejected; the same walk with units co
     ]),
     'm4',
   );
-  assert.match(lessAMonth[0] ?? '', /gives 3120\.5 days, but its text says/);
+  assert.match(
+    lessAMonth[0] ?? '',
+    /computed .* = 3120\.5 days \(74892 h, 8\.54 yr\), but its text says/,
+  );
   const lengthPlusTime = errorsFor(sheet([derived('m4', 'It is 5', '378000 km + 29.5 d')]), 'm4');
   assert.match(lengthPlusTime[0] ?? '', /adds or subtracts a length and a time/);
 

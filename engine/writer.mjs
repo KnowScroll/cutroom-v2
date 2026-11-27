@@ -187,6 +187,8 @@ const fmtNum = v => Math.abs(v) >= 1e12 || (v && Math.abs(v) < 1e-3) ? v.toPreci
 const TIME_WORDS = { annually: 'year', yearly: 'year', monthly: 'month', weekly: 'week', daily: 'day', hourly: 'hour' };
 const timeUnitsIn = text => toks(text).filter(w => w.length > 2).map(w => [unitOf(TIME_WORDS[w] || w), TIME_WORDS[w] || w]).filter(([u]) => u && sameDim(u[1], TIME)).map(([u, w]) => [...u, w.replace(/s$/, '')]);
 const perTime = d => sameDim(d, [0, 0, -1]);
+// everyday units a result of a kind is also given in (a time in hours and years)
+const EVERYDAY = { '0,0,1': ['h', 'd', 'yr'], '1,0,0': ['m', 'km'], '0,1,0': ['kg', 't'], '1,0,-1': ['km/h'], '2,0,0': ['km2'] };
 // a calc's result as the text would state it: in the text's own unit of that kind nearest the result, a rate per a time unit the
 // text names, else in SI units
 const shownIn = (r, text) => {
@@ -212,11 +214,14 @@ function calcErrors(x, sheet) {
   }
   if (r.qs.filter(q => !q.u && q.n === 100).length > 1) odd.add('100 more than once');
   if (!odd.size && !r.qs.some(q => q.u || sheet.some(s => near(s.n, q.n) || near(s.raw, q.n)))) odd.add('no number the sheet states');
-  if (odd.size) return [`fact ${x.id}: "calc" ${x.calc} uses ${[...odd].join('; ')}. Write each quantity with its unit, as a fact on the sheet states it (e.g. "75600 h", "378000 km / (5 km/h)"); the engine converts units and states the result in the text's unit; never write a conversion factor`];
+  if (odd.size) return [`fact ${x.id}: "calc" ${x.calc} uses ${[...odd].join('; ')}. Check the calc's factors and units: write each quantity with its unit, as a fact on the sheet states it (e.g. "75600 h", "378000 km / (5 km/h)"); the engine converts units and states the result in the text's unit; never write a conversion factor`];
   const tq = quantitiesIn(x.text), close = (a, b) => Math.abs(a - b) <= Math.abs(b) * 0.05 + 1e-300; // relative only (an absolute margin let 0.00004 pass for 0.00017); 5% as for spoken numbers
   const ok = r.d.some(Boolean) ? tq.some(q => q.d && sameDim(q.d, r.d) && close(q.v, r.v)) || (perTime(r.d) && timeUnitsIn(x.text).some(u => tq.some(q => !q.d && close(q.n, r.v * u[0]))))
     : valuesIn(x.text).some(v => close(v, r.v));
-  return ok ? [] : [`fact ${x.id}: "calc" ${x.calc} gives ${shownIn(r, x.text)}, but its text says "${x.text}". One of calc or text is wrong: check the calc's factors and units first (every quantity with its unit, as the sheet states it), then the claim; never change a true claim to fit the arithmetic`];
+  // past the operand check the calc is exact arithmetic on the sheet's own quantities, so its value is the side to trust (a neutral
+  // "one of them is wrong" let M3 keep a wrong "2.4 million years" against a right calc four times)
+  const shown = shownIn(r, x.text), every = (EVERYDAY[r.d.join(',')] || []).map(u => `${fmtNum(r.v / unitOf(u)[0])} ${u}`).filter(e => parseFloat(e) !== parseFloat(shown));
+  return ok ? [] : [`fact ${x.id}: the engine computed ${x.calc} = ${shown}${every.length ? ` (${every.join(', ')})` : ''}, but its text says "${x.text}". The arithmetic and the unit conversion are exact on the sheet's quantities: if the calc is the right formula for the claim, write that value (fairly rounded) in the text; if the formula is not what the text claims, fix the calc`];
 }
 // a derived fact for the fact checker and the fixer: its calc, and that it holds (a second rounding of the result, "= 8.62 years"
 // beside a text of 8.63, set off a nitpick fix that split the narration from the tags)
