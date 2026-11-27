@@ -2,7 +2,7 @@
 
 Request in, vertical reel out. A TypeScript harness reads the request, picks a template, runs the fastreel engine (MiniMax-M3 writes, plans, draws and animates; voice, fitted music, mix; headless Chrome and FFmpeg render), checks the cut with measured gates and an M3 review, sends fixes back up to three times, and returns the best cut with a report. CLI and HTTP service.
 
-Status: being built. Design: [docs/design.md](docs/design.md). Plan: [docs/plan.md](docs/plan.md). Agent rules: [AGENTS.md](AGENTS.md).
+Status: complete (all milestones, 2026-11-27). **How to use it, what is available and where the output goes: [docs/usage.md](docs/usage.md).** Design: [docs/design.md](docs/design.md). Plan: [docs/plan.md](docs/plan.md). Agent rules: [AGENTS.md](AGENTS.md).
 
 ## Use
 
@@ -33,6 +33,8 @@ curl http://127.0.0.1:8080/health
 ```
 
 Body: `request` 1-4000 characters; `template` (optional, a name in `var/templates`, else 400); `seconds` (optional, 30-90).
+
+Templates, voices, job states, the run folder, the report and the gates: [docs/usage.md](docs/usage.md).
 
 ## Running on Linux
 
