@@ -14,6 +14,8 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 - [ ] Later, not blocking: look at #13's calibration table (posted: https://github.com/KnowScroll/cutroom-v2/issues/13#issuecomment-7206270682).
 - [x] #17: the user approved installing Node 22, FFmpeg and Chrome in WSL Ubuntu (2026-11-27).
 
+- [ ] Budget (decide before #18): 15 of 40 cuts used (~$1.2). Projection: CP3b ~4, CP4 ~4, CP5 5 jobs x up to 4 = 20 -> ~43, over 40. Cuts are cheap (~$0.04-0.15 each with the free voice). Orchestrator recommendation: raise the cap to 55 cuts. Until the user answers, work continues; the orchestrator stops before cut 40 if no answer.
+
 ## In flight
 
 | issue | agent / model | branch or worktree | started | note |
