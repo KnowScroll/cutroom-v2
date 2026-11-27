@@ -14,13 +14,13 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 - [ ] Later, not blocking: look at #13's calibration table (posted: https://github.com/KnowScroll/cutroom-v2/issues/13#issuecomment-7206270682).
 - [x] #17: the user approved installing Node 22, FFmpeg and Chrome in WSL Ubuntu (2026-11-27).
 
-- [ ] Budget (decide before #18): 19 of 40 cuts used (~$1.6). Projection: CP3b ~4, CP4 ~4, CP5 5 jobs x up to 4 = 20 -> ~43, over 40. Cuts are cheap (~$0.04-0.15 each with the free voice). Orchestrator recommendation: raise the cap to 55 cuts. Until the user answers, work continues; the orchestrator stops before cut 40 if no answer.
+- [ ] Budget (decide before #18): 23 of 40 cuts used (~$1.9). Projection: CP3b ~4, CP4 ~4, CP5 5 jobs x up to 4 = 20 -> ~43, over 40. Cuts are cheap (~$0.04-0.15 each with the free voice). Orchestrator recommendation: raise the cap to 55 cuts. Until the user answers, work continues; the orchestrator stops before cut 40 if no answer.
 
 ## In flight
 
 | issue | agent / model | branch or worktree | started | note |
 |---|---|---|---|---|
-| #17 | implementer / sonnet | claude/17-linux (worktree + WSL clone ~/cutroom-v2) | 2026-11-27 | cleared for the CP4 API job in WSL (WSL var ~/cutroom-var); no Windows engine meanwhile |
+| #17 | implementer / sonnet | claude/17-linux (worktree + WSL clone ~/cutroom-v2) | 2026-11-27 | PR #35 in review; CP4 job done |
 
 ## Real cuts (budget: 40 cuts with model calls, docs/plan.md)
 
@@ -47,6 +47,10 @@ Free re-renders (no model calls) not counted: #16 radio-lp-e4 resume (fonts-radi
 | 17 | 2026-11-27 | #15 | CP3b cut 2, notes round | heygen | 0.0517 | same |
 | 18 | 2026-11-27 | #15 | CP3b cut 3, notes round | heygen | 0.0548 | same |
 | 19 | 2026-11-27 | #15 | CP3b cut 4 (selected; job total 0.4103 incl. harness) | heygen | 0.1418 | same |
+| 20 | 2026-11-27 | #17 | CP4 API job in WSL "how big is the Sun" 30 s, cut 1 (kurzgesagt) | heygen | 0.1305 | WSL ~/cutroom-var/runs/20261127-024513-how-big-is-the-sun |
+| 21 | 2026-11-27 | #17 | CP4 cut 2 | heygen | 0.0307 | same |
+| 22 | 2026-11-27 | #17 | CP4 cut 3 (selected) | heygen | 0.0271 | same |
+| 23 | 2026-11-27 | #17 | CP4 cut 4 (job total 0.2477 incl. harness 0.0319) | heygen | 0.0283 | same |
 
 ## Next action
 
