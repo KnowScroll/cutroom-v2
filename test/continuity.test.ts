@@ -83,7 +83,7 @@ await test('things and tags that enter again after the cut, or leave before it, 
     pop.errors.join(' | '),
   );
   assert.ok(
-    has(pop.errors, /^the label "Moon" is carried across the cut .* does not show it in full/),
+    has(pop.errors, /^the label "Moon" is carried across the cut .* shows it .*at opacity 0\.13/),
     pop.errors.join(' | '),
   );
   const leaves = await shot(before(true), { carryOut: carry });
@@ -125,6 +125,48 @@ await test('one asset that shows several things is matched by its which', async 
     has(swapped.errors, /^"bodies" \(earth\) is carried .* draws it at x 840, y 840/),
     swapped.errors.join(' | '),
   );
+});
+
+await test('ghosted context carries at its planned opacity; a counter split into value and unit is one label', async () => {
+  // the Moon kept as faint context at 40%, and the distance as a counter drawn in two calls (the number, then its unit)
+  const faint = (alpha: number) => `function draw(ctx, lt, sh, h, kit) {
+    kit.bg(ctx, lt);
+    h.asset('earth', 380, 840, ${String(EARTH)});
+    ctx.globalAlpha = ${String(alpha)}; h.asset('moon', 840, 840, ${String(MOON)}); ctx.globalAlpha = 1;
+    kit.title(ctx, '384,400', 470, 1200, { size: 70 }); kit.title(ctx, 'KM', 690, 1200, { size: 70 });
+  }`;
+  const ck = {
+    carryIn: [
+      { thing: 'earth', x: 380, y: 840, scale: EARTH },
+      { thing: 'moon', x: 840, y: 840, scale: MOON, alpha: 0.4 },
+      { label: '384,400 KM', x: 540, y: 1200 },
+    ],
+  };
+  const kept = await shot(faint(0.4), ck);
+  assert.ok(!has(kept.errors, carryError), kept.errors.join(' | '));
+  const full = await shot(faint(1), ck);
+  assert.ok(
+    has(
+      full.errors,
+      /^"moon" is carried across the cut .*opacity 0\.4 .* draws it at opacity 1\.00/,
+    ),
+    full.errors.join(' | '),
+  );
+});
+
+await test('a carried label counts as said under "labels: from narration"', async () => {
+  // the shot after the cut keeps the Moon's tag, but its own line never says "Moon"
+  const quiet = [
+    { who: 'narrator', text: 'Earth is almost four times as wide.', start: 0.3, end: 3.6 },
+  ];
+  const run = (ck: Record<string, unknown>) =>
+    validateShot(stage, { code: after(MOON), lines: quiet, dur: 4.4, assets: [earth, moon], ck });
+  const never = /label "Moon" uses words this shot's narration never says/;
+  const alone = await run({ labels: 'from narration' });
+  assert.ok(has(alone.errors, never), 'without the carry, the tag is not from this narration');
+  const carried = await run({ labels: 'from narration', carryIn: carry });
+  assert.ok(!has(carried.errors, never), carried.errors.join(' | '));
+  assert.ok(!has(carried.errors, carryError), carried.errors.join(' | '));
 });
 
 await stage.close();

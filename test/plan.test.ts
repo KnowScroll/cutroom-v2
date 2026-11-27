@@ -80,6 +80,19 @@ await test('the hero that draws the brief’s subject passes', () => {
     cast: { norway: { asset: 'ball' }, sweden: { asset: 'ball' } },
   };
   assert.deepEqual(subjectErrors(balls, 'How did Norway break away from Sweden in 1905?'), []);
+  // a two-letter subject, and a plural in the brief with a singular asset
+  const ai = { id: 'robot', kind: 'character', description: 'AI shown as a friendly robot eye.' };
+  assert.deepEqual(
+    subjectErrors(plan({ name: 'AI', asset: 'robot' }, ai), 'How does AI learn to see?'),
+    [],
+  );
+  const cat = { id: 'cat', kind: 'character', description: 'A ginger cartoon cat.' };
+  for (const name of ['cats', 'cat'])
+    assert.deepEqual(
+      subjectErrors(plan({ name, asset: 'cat' }, cat), 'Why do cats purr?'),
+      [],
+      name,
+    );
 });
 
 await test('the subject must be the brief’s own, stated, and drawn by the first asset', () => {
@@ -114,7 +127,7 @@ await test('the subject must be the brief’s own, stated, and drawn by the firs
 const VENUS_SHOT =
   'CAMERA: from [0.0, 0.0, 0.95] to Venus [0.0, 0.0] at 0 s over 1.2 s. OVERLAYS: MARKER at Venus [0.0, 0.0] (pole on land, buoy at sea); LABEL "VENUS" at Venus [0.0, 0.0] (place). TOP: TITLE "VENUS".';
 const NEMO_SHOT =
-  'OVERLAYS: MARKER at Point Nemo [-123.4, -48.9]; MARKER at Ducie Island [-124.8, -24.7]; LINE from Point Nemo [-123.4, -48.9] to Ducie Island [-124.8, -24.7] in gold; LABEL "SOUTH PACIFIC GYRE" at [-110.0, -32.0]. TOP: COUNTER gold 2,688 KM.';
+  'OVERLAYS: MARKER at Point Nemo [-123.4, -48.9]; MARKER at Ducie Island [-124.8, -24.7]; LINE from Point Nemo [-123.4, -48.9] to Ducie Island [-124.8, -24.7] in gold; RING of 2,688 km around Point Nemo [-123.4, -48.9]; LABEL "SOUTH PACIFIC GYRE" at [-110.0, -32.0]. TOP: COUNTER gold 2,688 KM.';
 
 await test('a named place that cannot be located is a plan error, not skipped', async (t) => {
   wikipedia(t);

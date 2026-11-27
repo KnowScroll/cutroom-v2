@@ -211,6 +211,7 @@ function carryErrors(carry, i, ids) {
     if (!num(c.x) || !num(c.y) || !(num(c.scale) && c.scale > 0)) E.push(`shot ${i + 1} carry "${c.thing}" needs numbers x, y (its centre on screen) and scale (h.asset's scale)`);
     if (c.look != null && (typeof c.look !== 'object' || Array.isArray(c.look))) E.push(`shot ${i + 1} carry "${c.thing}": "look" is an object of its params, such as {"pose": "wave"}`);
   }
+  for (const c of carry) if (c?.alpha != null && !(num(c.alpha) && c.alpha > 0 && c.alpha <= 1)) E.push(`shot ${i + 1} carry "${c.thing ?? c.label}": "alpha" is its opacity, above 0 and at most 1 (leave it out for 1)`);
   return E;
 }
 // photos and quotes of a documentary plan; quotes are snapped to the reference's own words here (p.quotes is fixed in place)
@@ -425,11 +426,11 @@ const cast3d = plan => plan.assets.map(a => a.kind === 'character' ? { actor: a.
 const kitApiLp = plan => `Style kit API (kit), for the 2D layer drawn AFTER h.d3.render(): kit.palette = ${JSON.stringify(plan.style.palette)}; kit.header(ctx, n, total, text, {k}) draws the step header at the top left ("n/total" in the accent colour, then the text in white with a dark outline, wrapped to two lines; total 0 shows n alone); kit.title(ctx, text, x, y, {size, color, align, k}) draws outlined text centred on x, y; kit.panel(ctx, x, y, w, hgt) draws a wooden sign board (only with text on it); k = seconds since the text appeared (leave it out to simply show it). Sets (h.d3.set): ${plan.style.backgrounds.map(b => `"${b.name}" (${b.set?.kind || 'studio'})`).join(', ')}.`;
 // what the script asks of a shot (writer): the point the picture must make, its device, the word its change lands on, its silent hold
 // and the plan's demonstration (first and last frame) and what carries over each cut (prev: the shot before)
-const carried = list => (list || []).map(c => c.label != null ? `the label "${c.label}" centred at x ${c.x}, y ${c.y}` : `h.asset('${c.thing}', ${c.x}, ${c.y}, ${c.scale}${c.look && Object.keys(c.look).length ? `, ${JSON.stringify(c.look)}` : ''})`).join('; ');
+const carried = list => (list || []).map(c => `${c.label != null ? `the label "${c.label}" centred at x ${c.x}, y ${c.y}` : `h.asset('${c.thing}', ${c.x}, ${c.y}, ${c.scale}${c.look && Object.keys(c.look).length ? `, ${JSON.stringify(c.look)}` : ''})`}${c.alpha != null && c.alpha < 1 ? ` at opacity ${c.alpha}` : ''}`).join('; ');
 const shotStory = (s, prev) => [s.point && `Point (the claim the picture must make the viewer understand): ${s.point}`, s.device && `Device: ${s.device}${DEVICES[s.device] ? ` (${DEVICES[s.device]})` : ''}`,
   s.demo && `Demonstration: ${s.demo.how}\nFirst frame: ${s.demo.start}\nLast frame: ${s.demo.end}`,
   prev?.carry?.length && `Carried in from the shot before (it ends this way, so the cut must not jump): your first frame (lt = 0) already shows ${carried(prev.carry)}, in full, with no entrance; change them only after that, as the storyboard says. x, y and scale are on screen, after any camera move`,
-  s.carry?.length && `Carried into the next shot (it starts this way): your last frame shows ${carried(s.carry)}, in full`,
+  s.carry?.length && `Carried into the next shot (it starts this way): your last frame shows ${carried(s.carry)}, in full. x, y and scale are on screen, after any camera move`,
   s.cue?.word && `Cue: on the word "${s.cue.word}" (h.cue(${JSON.stringify(s.cue.word)})): ${s.cue.show || ''}`, s.hold && `Hold: ${s.hold} s of silent screen time after the last line: the payoff stays on screen, still and readable`].filter(Boolean).map(x => `\n${x}`).join('');
 // the narrator's sentences of a shot with times from the timeline's lines (the same split as h.d3.sentences() on the stage)
 function sentencesOfShot(sh) {

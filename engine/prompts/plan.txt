@@ -29,7 +29,7 @@ OUTPUT: one JSON object and nothing else.
       "background": "<background name>",
       "uses": ["<every asset this shot shows: each must be visible in it>", "..."],
       "demo": {"how": "how the picture proves the shot's point: the relation, comparison, journey, interaction or change the viewer watches happen, in one sentence", "start": "the first frame: what is on screen, where and how big", "end": "the last frame: the end state the demonstration reaches, held to the cut"},
-      "carry": [ {"thing": "<asset id>", "x": centre x on screen, "y": centre y on screen, "scale": the scale it is drawn at (h.asset's scale), "look": {"<param>": value, ...: the params it is drawn with, such as which, who, pose or state}} or {"label": "<its exact words>", "x": centre x, "y": centre y} ],
+      "carry": [ {"thing": "<asset id>", "x": centre x on screen, "y": centre y on screen, "scale": its scale on screen (h.asset's scale times any camera zoom), "look": {"<param>": value, ...: the params it is drawn with, such as which, who, pose or state}, "alpha": its opacity, only when under 1 (ghosted context)} or {"label": "<its exact words>", "x": centre x, "y": centre y, "alpha": only when under 1} ],
       "sfx": [ {"line": index, "at": "start" | "end", "offset": seconds, "kind": "pop" | "whoosh" | "boom" | "knock" | "splash" | "thunder" | "zap"} ]
     }
   ]

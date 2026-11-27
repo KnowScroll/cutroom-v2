@@ -5,8 +5,10 @@ import { STOP, numWords, requestOf } from './writer.mjs';
 
 // ---------- subject: the hero asset draws the brief's subject (findings §A: an Earth globe stood in for Venus and every check passed) ----------
 const toks = s => String(s || '').toLowerCase().match(/[a-z0-9]+/g) || [];
-const content = s => toks(s).filter(w => w.length > 2 && !STOP.has(w));
-const near = (w, n) => { let k = 0; while (k < w.length && k < n.length && w[k] === n[k]) k++; return w === n || (k >= 4 && k >= 0.7 * Math.min(w.length, n.length)); };
+// two letters count ("AI", "UK", "Io"); one word matches its plural ("cat", "cats"; "body", "bodies") and longer forms of it
+const content = s => toks(s).filter(w => w.length > 1 && !STOP.has(w));
+const one = w => w.replace(/ies$/, 'y').replace(/(s|x|z|ch|sh)es$/, '$1').replace(/([^s])s$/, '$1');
+const near = (w, n) => { let k = 0; while (k < w.length && k < n.length && w[k] === n[k]) k++; return w === n || one(w) === one(n) || (k >= 4 && k >= 0.7 * Math.min(w.length, n.length)); };
 const unsaid = (ws, text) => { const t = toks(text); return ws.filter(w => !t.some(n => near(w, n))); };
 // p: the plan as M3 wrote it, with "subject": {"name", "asset"}; d3: a 3D reel (its host may come first, so the subject need not)
 export function subjectErrors(p, brief, { d3 = false } = {}) {
@@ -59,6 +61,8 @@ export async function placeErrors(p) {
     const name = placeName(raw); if (/^(lon|lat|longitude|latitude|\d)/i.test(name)) return;
     const w = await wikiCoords(name); if (!w) return;
     if (!w.pts.length) { if (pinned && !reported.has(`none:${name}`)) { reported.add(`none:${name}`); E.push(`shot ${i + 1}: "${name}" cannot be located: ${w.missing ? `Wikipedia has no article "${name}"` : `Wikipedia "${w.title}" gives no coordinates on Earth`}. A MARKER, LINE end or RING centre is a real place on Earth, named by its Wikipedia title (a city, an island, a mountain, a point at sea) with its real coordinates; a body in space or a thing that is not a place is never a point on the globe: draw it as its own thing, or leave it out`); } return; }
+    // a page's other points are places it mentions ("Soviet Union" lists only Moscow): good enough for a pinned point, not for a label
+    if (!w.primary && !pinned) return;
     const [lo, la] = w.primary ? w.pts[0] : w.pts.reduce((b, q) => (gcKm(lon, lat, q[0], q[1]) < gcKm(lon, lat, b[0], b[1]) ? q : b));
     atPoint[`${name}|${key(lon, lat)}`] = atPoint[key(lon, lat)] = { lon: lo, lat: la, title: w.title, name };
     const off = gcKm(lon, lat, lo, la);
@@ -66,7 +70,8 @@ export async function placeErrors(p) {
   };
   for (const [i, s] of p.shots.entries()) {
     const idea = String(s.idea || '');
-    for (const m of idea.matchAll(AT)) await check(i, m[2], +m[3], +m[4], 80, m[1] !== 'to');
+    // pinned: a MARKER, a LINE's start, a RING's centre ("around" in prose, "spins around the globe to X [..]", is not one)
+    for (const m of idea.matchAll(AT)) await check(i, m[2], +m[3], +m[4], 80, m[1] === 'MARKER at' || m[1] === 'LINE from' || (m[1] === 'around' && /\bRING\b(?:[^.;]|\.(?=\d))*$/.test(idea.slice(0, m.index))));
     for (const m of idea.matchAll(LINE)) for (const [n, lon, lat] of [[m[1], m[2], m[3]], [m[4], m[5], m[6]]]) if (n) await check(i, n, +lon, +lat, 80, true);
     for (const m of idea.matchAll(LAB)) await check(i, m[1], +m[2], +m[3], 250, false); // a label may sit beside its place
   }
