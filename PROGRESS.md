@@ -18,7 +18,7 @@ Resume state for the orchestrator. Task status is in GitHub issues; this file ho
 
 | issue | agent / model | branch or worktree | started | note |
 |---|---|---|---|---|
-| #11 | implementer / opus | claude/11-fix-loop (worktree) | 2026-11-27 | CP2: cleared for 1 real job with notes rounds + 1 template-round script on a copy (var/runs/cp2-template) |
+| #11 | implementer / opus | claude/11-fix-loop (worktree) | 2026-11-27 | PR #31 in review; CP2 runs done |
 
 ## Real cuts (budget: 40 cuts with model calls, docs/plan.md)
 
@@ -32,6 +32,11 @@ Free re-renders (no model calls) not counted: #16 radio-lp-e4 resume (fonts-radi
 | 4 | 2026-11-27 | #9 | `--apply-notes --cut 2` rerun from cut-1 checkpoints (shot-6 note) | heygen | 0.0088 | var/runs/e2-check |
 | 5 | 2026-11-27 | #9 | `--rounds 1` through the shared function | heygen | 0.0409 | var/runs/e2-rounds |
 | 6 | 2026-11-27 | #8 | CP1 `make` "lighthouse Fresnel lens" (breakdown-explainer, fit good) | heygen (4.07 st) | 0.2391 (engine 0.2313, harness 0.0078) | var/runs/20261126-225022-how-does-a-lighthouse-fresnel-lens-make |
+| 7 | 2026-11-27 | #11 | CP2 job "heat pump" cut 1 (lowpoly-cutaway-explainer) | heygen | 0.1108 | var/runs/20261126-234053-how-does-a-heat-pump-pull-warmth-out-of |
+| 8 | 2026-11-27 | #11 | CP2 cut 2, notes round 1 | heygen | 0.0494 | same |
+| 9 | 2026-11-27 | #11 | CP2 cut 3, notes round 2 (selected) | heygen | 0.0411 | same |
+| 10 | 2026-11-27 | #11 | CP2 cut 4, notes round 3 (job harness total 0.0313) | heygen (3.91 st FAIL) | 0.0523 | same |
+| 11 | 2026-11-27 | #11 | template-round script: shots patch, rerun from plan.json (+ review 0.0064) | heygen | 0.1681 | var/runs/cp2-template |
 
 ## Next action
 
