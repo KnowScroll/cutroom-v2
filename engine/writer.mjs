@@ -67,12 +67,22 @@ export const rateMoved = (story, wps, model) => !!story?.voice_model && story.vo
 const toks = s => String(s).toLowerCase().replace(/[’‘]/g, "'").replace(/[^a-z0-9'\s-]+/g, ' ').replace(/-/g, ' ').split(/\s+/).filter(Boolean);
 // the magnitude words, in digits ("4.6 billion") and in words; past trillion too, so a payoff of 1.25e20 can be said and traced
 // ("one hundred and twenty-five quintillion": the atom script fell back on "an almost unimaginable number")
-const MAG = { thousand: 1e3, million: 1e6, billion: 1e9, trillion: 1e12, quadrillion: 1e15, quintillion: 1e18, sextillion: 1e21 }, MAGS = Object.keys(MAG).join('|');
+const MAG = { thousand: 1e3, million: 1e6, billion: 1e9, trillion: 1e12, quadrillion: 1e15, quintillion: 1e18, sextillion: 1e21, septillion: 1e24, octillion: 1e27, nonillion: 1e30 }, MAGS = Object.keys(MAG).join('|');
 const NUM_WORD = new Set([...ONES, ...TENS.filter(Boolean), 'hundred', ...Object.keys(MAG)]);
-// a number as the narrator says it, for a message: 1.25e20 -> "one hundred and twenty-five quintillion", 8.8 -> "eight point eight"
+// a spine shot's "when" as a signed time: a year AD, below zero for BC and for "... years ago" ("753 BC" before "509 BC", "252
+// million years ago" before "201 million years ago"); NaN when it holds no date
+const whenOf = when => {
+  const t = String(when || ''); if (/\bago\b/i.test(t)) { const v = valuesIn(t)[0]; return v ? -v : NaN; }
+  const bc = t.match(/\b(\d{1,4})\s*(?:BCE?|B\.C\.)/i); if (bc) return -bc[1];
+  const y = t.match(/\b\d{3,4}\b/); return y ? +y[0] : NaN;
+};
+// a number as the narrator says it: 1.25e20 -> "one hundred and twenty-five quintillion", 8.8 -> "eight point eight"; null when
+// that form does not read back as the value (1e-10 prints as digits; past the largest magnitude word, "five thousand nine
+// hundred and seventy sextillion" read as 9.7e23 for 5.97e24): such an answer is asked for, not demanded
 const sayNum = v => {
   const big = Object.entries(MAG).filter(([, m]) => m >= 1e6 && v >= m).at(-1), r = String(big ? +(v / big[1]).toPrecision(3) : v), m = r.match(/^(\d+)(?:\.(\d+))?$/), w = m && numWords(+m[1]);
-  return w ? `${w}${m[2] ? ` point ${[...m[2]].map(d => ONES[+d]).join(' ')}` : ''}${big ? ` ${big[0]}` : ''}` : String(v);
+  const s = w && `${w}${m[2] ? ` point ${[...m[2]].map(d => ONES[+d]).join(' ')}` : ''}${big ? ` ${big[0]}` : ''}`;
+  return s && numbersSaid(s).some(n => Math.abs(n.v - v) <= Math.abs(v) * 0.05) ? s : null;
 };
 export const STOP = new Set(('a an the and or but so of to in on at for by with from as is are was were be been being it its it\'s this that these those he she they his her their them ' +
   'you your we our i my me what which who whom how why when where then than there here into onto out up down over under about after before just only also very more most ' +
@@ -469,7 +479,7 @@ export function createWriter(E) {
     // the spine marks; the hook may tease the end and the last shot may look back
     let top = null;
     sp.shots.forEach((s, i) => {
-      const y = +(String(s.when || '').match(/\b\d{3,4}\b/) || [])[0]; if (!y || !i || i === n - 1) return;
+      const y = whenOf(s.when); if (!Number.isFinite(y) || !i || i === n - 1) return;
       if (top && y < top.y && !/flashback/i.test(`${s.when} ${s.beat || ''}`)) Er.push(soft(`shot ${i + 1} ("when": "${s.when}") goes back in time after shot ${top.i + 1} ("${top.when}"): tell the events in the order they happened, or make it a flashback its line announces ("when": "flashback: ${s.when}")`));
       else if (!top || y > top.y) top = { y, i, when: s.when };
     });
@@ -544,8 +554,10 @@ export function createWriter(E) {
         const pay = f.facts.find(x => x.id === f.payoff), other = f.facts.filter(x => x.id !== f.payoff).flatMap(x => valuesIn(x.text)), near5 = (a, b) => Math.abs(a - b) <= Math.abs(b) * 0.05;
         const own = [...new Set(valuesIn(pay?.text || ''))].filter(v => v && !other.some(o => near5(v, o))), said = t => numbersSaid(t).map(n => n.v);
         const hook = shots[0].lines.map(l => l.text).join(' '), ps = shots[+sp.payoff_shot - 1];
-        for (const v of own.filter(v => v >= 10 || !Number.isInteger(v))) if (said(hook).some(x => near5(x, v))) Er.push(soft(`the hook says ${sayNum(v)}, the answer's number: hold it back for the payoff shot (${sp.payoff_shot}) and open the question instead`));
-        if (own.length && ps && !ps.lines.some(l => said(l.text).some(x => own.some(v => near5(x, v))))) Er.push(`the payoff shot (${sp.payoff_shot}) must say the answer's own number in words (${own.map(v => `"${sayNum(v)}"`).join(' or ')}, from ${pay.id}: ${pay.text}), plainly, never "an unimaginable number"`);
+        for (const v of own.filter(v => v >= 10 || !Number.isInteger(v))) if (said(hook).some(x => near5(x, v))) Er.push(soft(`the hook says ${sayNum(v) || fmtNum(v)}, the answer's number: hold it back for the payoff shot (${sp.payoff_shot}) and open the question instead`));
+        // hard only when the number has a spoken form the trace reads back; otherwise asked for, and kept after the last try
+        const spoken = own.map(v => sayNum(v)).filter(Boolean);
+        if (own.length && ps && !ps.lines.some(l => said(l.text).some(x => own.some(v => near5(x, v))))) { const msg = `the payoff shot (${sp.payoff_shot}) must say the answer's own number in words (${(spoken.length ? spoken : own.map(fmtNum)).map(w => `"${w}"`).join(' or ')}, from ${pay.id}: ${pay.text}), plainly, never "an unimaginable number"`; Er.push(spoken.length ? msg : soft(msg)); }
         // every number said must be one the sheet states (nothing else checks a spoken number against the facts)
         shots.forEach((s, i) => s.lines.forEach(l => { const n = untraced(l.text, f.facts); if (n.length) Er.push(`shot ${i + 1}: "${l.text}" says ${quoted(n)}, which no fact on the sheet states: say the sheet's numbers (rounding is fine) or leave the number out`); }));
       }

@@ -973,44 +973,95 @@ await test('lead and tail are set per template, and by default a cut no longer l
   }
 });
 
-await test('the payoff shot must say the answer, and a number past trillion can be said and traced', async () => {
-  // q-t3-atom: the payoff 1.25e20 could not be said in a form the trace read, and its shot said "an almost unimaginable number"
-  const f7: Fact = {
-    id: 'f7',
-    text: 'A grain of sand holds about 1.25e20 atoms',
-    source: 'general',
-  };
-  const facts = {
-    ...SHEET,
-    payoff: 'f7',
-    answer: 'About 1.25e20 atoms fill a grain of sand.',
-    facts: [...SHEET.facts, f7],
-  };
+// the writer on a sheet whose payoff fact f7 (shot 4) states `text`; shot 4 says the given lines, its cue word `cue`
+const payoffRun = (text: string, cue: string, answers: Record<string, string>) => {
+  const f7: Fact = { id: 'f7', text, source: 'general' };
+  const facts = { ...SHEET, payoff: 'f7', answer: `${text}.`, facts: [...SHEET.facts, f7] };
   const spine = {
     ...SPINE,
     shots: SPINE.shots.map((s, i) => (i === 3 ? { ...s, facts: ['f7'] } : s)),
   };
-  const said = (text: string) => script(LINES.map((l, i) => (i === 3 ? [text, 'atoms'] : l)));
-  const answer = 'Which means one grain holds about one hundred and twenty-five quintillion atoms.';
-  const { story, logs } = await runWriter({
+  const said = (line: string) => script(LINES.map((l, i) => (i === 3 ? [line, cue] : l)));
+  return runWriter({
     ...passed(),
     facts,
     spine,
-    'script#1': said('Which means one grain holds an almost unimaginable number of atoms.'),
-    'script#2': said(answer),
+    ...Object.fromEntries(Object.entries(answers).map(([step, line]) => [step, said(line)])),
     factcheck: {
       facts: facts.facts.map((x) => ({ id: x.id, verdict: 'ok' })),
       lines: LINES.map((_, i) => ({ shot: i + 1, verdict: 'ok' })),
       problems: [],
     },
   });
-  const rejected = logs.filter((l) => l.startsWith('script rejected'));
+};
+const rejectionsOf = (logs: string[]) => logs.filter((l) => l.startsWith('script rejected'));
+
+await test('the payoff shot must say the answer, and a number past trillion can be said and traced', async () => {
+  // q-t3-atom: the payoff 1.25e20 could not be said in a form the trace read, and its shot said "an almost unimaginable number"
+  const answer = 'Which means one grain holds about one hundred and twenty-five quintillion atoms.';
+  const { story, logs } = await payoffRun('A grain of sand holds about 1.25e20 atoms', 'atoms', {
+    'script#1': 'Which means one grain holds an almost unimaginable number of atoms.',
+    'script#2': answer,
+  });
+  const rejected = rejectionsOf(logs);
   assert.equal(rejected.length, 1, rejected.join('\n'));
   assert.match(
     rejected[0] ?? '',
     /the payoff shot \(4\) must say the answer's own number in words \("one hundred and twenty-five quintillion"/,
   );
   assert.equal(story.shots[3]?.lines[0]?.text, answer);
+
+  // past sextillion: the hint must read back as the value (5.97e24 was offered as "five thousand ... sextillion", read as 9.7e23)
+  const mass = 'Which means the Earth weighs about five point nine seven septillion kilograms.';
+  const earth = await payoffRun("The Earth's mass is about 5.97e24 kg", 'weighs', {
+    'script#1': 'Which means the Earth weighs an unimaginable amount.',
+    'script#2': mass,
+  });
+  assert.match(rejectionsOf(earth.logs)[0] ?? '', /\("five point nine seven septillion"/);
+  assert.equal(earth.story.shots[3]?.lines[0]?.text, mass);
+
+  // a number with no spoken form the trace reads back (below 1e-6) is asked for, never a reason to stop the run
+  const vague = 'Which means an atom is far too small to picture.';
+  const tiny = await payoffRun('An atom is about 1e-10 m wide', 'atom', { script: vague });
+  assert.ok(
+    tiny.logs.some((l) =>
+      l.startsWith('script: kept the answer with only craft problems left: the payoff shot (4)'),
+    ),
+    tiny.logs.join('\n'),
+  );
+  assert.equal(tiny.story.shots[3]?.lines[0]?.text, vague);
+});
+
+await test('time runs forward for BC years and "years ago" too', async () => {
+  const dated = (...when: string[]) => ({
+    ...SPINE,
+    shots: SPINE.shots.map((s, i) => ({ ...s, when: when[i] ?? '' })),
+  });
+  for (const order of [
+    ['', '753 BC', '509 BC', '264 BC', ''],
+    ['', '252 million years ago', '201 million years ago', '145 million years ago', ''],
+    ['', '264 BC', '1905', '1914', ''],
+  ]) {
+    const { logs } = await runWriter({ ...passed(), 'spine#1': dated(...order) });
+    assert.ok(
+      !logs.some((l) => l.startsWith('spine rejected')),
+      `${order.join(', ')}\n${logs.join('\n')}`,
+    );
+  }
+  const back = await runWriter({
+    ...passed(),
+    'spine#1': dated(
+      '',
+      '145 million years ago',
+      '252 million years ago',
+      '201 million years ago',
+      '',
+    ),
+  });
+  assert.match(
+    back.logs.find((l) => l.startsWith('spine rejected')) ?? '',
+    /shot 3 \("when": "252 million years ago"\) goes back in time after shot 2/,
+  );
 });
 
 await test('the idea and takeaway are checked: an untraced number is sent back, a wrong takeaway takes the checker fix', async () => {
