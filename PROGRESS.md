@@ -153,6 +153,7 @@ A cut is one engine invocation that makes model calls (`--until script` counts).
 | 47 | 2026-11-28 | #81 | `--until assets` Norway on PR #82 9538712 (template only): Sweden flag right; Norway flag spec wrong (M3), border invisible, sheet balls grey, sign word swapped | none | 0.2070 | var/runs/q-t14-norway |
 | 48 | 2026-11-28 | #80 | `--until script` atom on PR #83 500cad7: sand answered ("Grain of sand" fetched: 2 mm, twenty million times) | none | 0.0231 | var/runs/q-t13-atom |
 | 49 | 2026-11-28 | #80 | `--until script` Norway on PR #83 500cad7: no flagged line left; 181 words for 112 (second fit 210 -> 183). Plus 3 direct M3 fit probes outside the engine ($0.024) | none | 0.0419 | var/runs/q-t13-norway |
+| 50 | 2026-11-28 | #80 #81 verify | `--until assets` Norway on main 6e412aa (orchestrator): 107 words (budget 111; second fit with low thinking, ~200-280 s each, ran twice), no flag left, subject Norway ball, voices gareth/lucian/bram, flags right, sign words whole; 1131 s wall | none | ~0.23 (tokens: 217k in, 132k out; no cost file at --until assets) | var/runs/q-v80-norway |
 
 ## Next action
 
