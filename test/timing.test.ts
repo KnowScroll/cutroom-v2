@@ -39,7 +39,9 @@ await test('the stage reads years, dates and "half a million" as the writer does
   assert.deepEqual(got, [1905, 26, 500000, 1987, 11, 12, 7]);
 });
 
-// a number on screen must be said in its shot (rounded at most 5%) or carried in, and land no earlier than 1 s before its words
+// template check "numbers: said": a number on screen must be said in its shot (rounded at most 5%) or carried in, and land no
+// earlier than 1 s before its words
+const said = { numbers: 'said' };
 const sayLine: Line[] = [
   {
     who: 'narrator',
@@ -54,7 +56,7 @@ const tagShot2 = (tag: string, from: string) => `function draw(ctx, lt, sh, h, k
   h.asset('moon', 800, 840, 60 / 272);
   if (lt >= ${from}) kit.tag(ctx, '${tag}', 540, 1280);
 }`;
-const sayShot = (tag: string, from: string, ck: Record<string, unknown> = {}) =>
+const sayShot = (tag: string, from: string, ck: Record<string, unknown> = said) =>
   validateShot(stage, {
     code: tagShot2(tag, from),
     lines: sayLine,
@@ -70,17 +72,21 @@ await test('a number on screen that the shot never says is rejected; a said, a r
   // qc3-moon shots 3 and 4: "12,742 km" and "3,474 km" under Earth and the Moon, never said
   const never = await sayShot('12,742 km', '0.4');
   assert.ok(has(never.errors, unsaid), never.errors.join(' | '));
-  for (const tag of ['380,000 km', '384,400 km']) {
+  for (const tag of ['380,000 km', '384,400 km', '380K km']) {
     const r = await sayShot(tag, onWord);
-    assert.ok(!has(r.errors, /^the number |^"\S+ km" appears/), `${tag}: ${r.errors.join(' | ')}`);
+    assert.ok(!has(r.errors, /^the number |^"[^"]+" appears/), `${tag}: ${r.errors.join(' | ')}`);
   }
   // carried in: by the plan's carry, or on screen from the first frame (the shot before showed it at the cut)
   const carried = await sayShot('12,742 km', '0.4', {
+    ...said,
     carryIn: [{ label: '12,742 km', x: 540, y: 1280 }],
   });
   assert.ok(!has(carried.errors, unsaid), carried.errors.join(' | '));
   const kept = await sayShot('12,742 km', '0');
   assert.ok(!has(kept.errors, unsaid), kept.errors.join(' | '));
+  // a template without the check (a stat card the line never reads is its design) is not held to it
+  const card = await sayShot('12,742 km', '0.4', {});
+  assert.ok(!has(card.errors, unsaid), card.errors.join(' | '));
 });
 
 await test('a number shown more than 1 s before its words is rejected; one on its words passes', async () => {
@@ -95,6 +101,17 @@ await test('a number shown more than 1 s before its words is rejected; one on it
   );
   const onTime = await sayShot('380,000 km', `${onWord} - 0.6`);
   assert.ok(!has(onTime.errors, /^"380,000 km" appears/), onTime.errors.join(' | '));
+  // a lone digit names (a step, a day): "STEP 2" is no early "two"
+  const step = await validateShot(stage, {
+    code: tagShot2('STEP 2', '0.4'),
+    lines: [
+      { who: 'narrator', text: 'The water boils away in about two minutes.', start: 0.3, end: 6 },
+    ],
+    dur: 7,
+    assets: [earth, moon],
+    ck: said,
+  });
+  assert.ok(!has(step.errors, /^"STEP 2" appears|^the number /), step.errors.join(' | '));
 });
 
 await test('a slow counter is judged on the value it lands on, not the values it passes', async () => {
@@ -107,7 +124,7 @@ await test('a slow counter is judged on the value it lands on, not the values it
   const days: Line[] = [
     { who: 'narrator', text: 'The trip takes twenty days.', start: 0.3, end: 2.2 },
   ];
-  const r = await validateShot(stage, { code, lines: days, dur: 4.5, assets: [earth] });
+  const r = await validateShot(stage, { code, lines: days, dur: 4.5, assets: [earth], ck: said });
   assert.ok(!has(r.errors, /^the number |DAYS" appears/), r.errors.join(' | '));
 });
 

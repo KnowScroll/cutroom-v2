@@ -30,7 +30,8 @@ html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style>
 // Generic host for model-made reels: a model-written style kit, model-drawn assets and model-animated shots.
 // The host adds only neutral craft (cut transitions; a slow push-in when the template asks), captions and bubbles, and runs the validators.
 const W = 1080, H = 1920, cv = document.getElementById('c'); let ctx = cv.getContext('2d', location.search.includes('cpu') ? { willReadFrequently: true } : undefined); // let: h.cache points the helpers at an offscreen canvas while it draws // validation pages (?cpu) use a CPU canvas from the start: Chrome otherwise switches GPU to CPU after a few readbacks mid-validation and the anti-aliasing change looked like randomness. The video render keeps the faster GPU canvas.
-CanvasRenderingContext2D.prototype.beezierCurveTo = CanvasRenderingContext2D.prototype.bezierCurveTo; // a typo M3 keeps writing
+const CTX0 = ctx; // the frame's own context (h.cache and the measuring canvas swap ctx while they draw)
+CanvasRenderingContext2D.prototype.beezierCurveTo =CanvasRenderingContext2D.prototype.bezierCurveTo; // a typo M3 keeps writing
 let TL = null, KIT = null, ASSETS = {}, SHOTS = {}, SPECS = {}, CUR = { sh: null, lt: 0 }, ANCH = {}, TRACK = null, STRICT = false;
 
 const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
@@ -82,6 +83,7 @@ function saidToks(sh) {
 const UNITW = 'zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen'.split(' '), TENW = 'twenty thirty forty fifty sixty seventy eighty ninety'.split(' ');
 // no prototype: a spoken "constructor" is no number word
 const SCALEW = Object.assign(Object.create(null), { thousand: 1e3, million: 1e6, billion: 1e9, trillion: 1e12, quadrillion: 1e15, quintillion: 1e18, sextillion: 1e21, septillion: 1e24, octillion: 1e27, nonillion: 1e30 }); // the writer's magnitude words
+const ABBR = new Map([['k', 1e3], ['m', 1e6], ['mn', 1e6], ['b', 1e9], ['bn', 1e9]]); // short magnitudes after digits on screen
 const ORDW = Object.assign(Object.create(null), Object.fromEntries([...'first second third fourth fifth sixth seventh eighth ninth tenth eleventh twelfth thirteenth fourteenth fifteenth sixteenth seventeenth eighteenth nineteenth'.split(' ').map((w, i) => [w, i + 1]), ['twentieth', 20], ['thirtieth', 30]]));
 const numKind = w => { const u = UNITW.indexOf(w); return u >= 0 ? (u < 10 ? 'u' : 't') : TENW.includes(w) ? 'T' : w === 'hundred' ? 'h' : SCALEW[w] ? 'S' : /^\d[\d,]*(\.\d+)?$/.test(w) ? 'd' : ''; };
 // the numbers the lines say, in order, each with its first and last word: "three hundred seventy-eight thousand" 378000,
@@ -750,7 +752,7 @@ function trackText(c, text, x, y, mw) {
   const al = c.textAlign, w = m.width, x0 = al === 'center' ? x - w / 2 : (al === 'right' || al === 'end') ? x - w : x;
   const pts = [[x0, y - size * 0.8], [x0 + w, y - size * 0.8], [x0, y + size * 0.3], [x0 + w, y + size * 0.3]].map(([px, py]) => [tf.a * px + tf.c * py + tf.e, tf.b * px + tf.d * py + tf.f]);
   const t = { text: String(text), size, scale: Math.hypot(tf.a, tf.b), squeeze: mw > 0 && m.width > mw ? m.width / mw : 1,x0: Math.min(...pts.map(p => p[0])), x1: Math.max(...pts.map(p => p[0])), y0: Math.min(...pts.map(p => p[1])), y1: Math.max(...pts.map(p => p[1])), alpha: c.globalAlpha, inAsset: IN_ASSET > 0 };
-  t.seq = TRACK.seq = (TRACK.seq || 0) + 1; TRACK.texts.push(t); // seq: drawing order among texts and things
+  TRACK.texts.push(t);
 }
 // rounded boxes a shot or its kit draws after the background (h.rr and kit pills use roundRect): a text inside one is a label with that box
 { const rr0 = ctx.roundRect; if (rr0) ctx.roundRect = function (x, y, w, hh, ...r) {
@@ -790,14 +792,15 @@ function placeAsset(id, x, y, s = 1, params = {}) {
     const box = dev(u), sig = JSON.stringify(Object.fromEntries(Object.entries(params).filter(([k]) => !['t', 'dt', 'mouth'].includes(k))));
     // a thing under R 3 on screen (at true scale beside a far bigger one) is a bright dot with a ring callout (DOT_R), and the ring is
     // its shape for h.label, h.measure and the checks: an atom at true scale beside a hair was 0.05 px, never seen, and failed the
-    // storyboard check 3 times in every shot. Scale 0 draws nothing (shots hide a thing so). A drawn R 3 measures up to 3.4 px
-    const R = Math.max(box.x1 - box.x0, box.y1 - box.y0) / 2;
-    if (!IN_ASSET && R > 0 && R < 3.5) dot = { x: (box.x0 + box.x1) / 2, y: (box.y0 + box.y1) / 2, col: u.col };
+    // storyboard check 3 times in every shot. Scale 0 draws nothing (shots hide a thing so). A drawn R 3 measures up to 3.4 px; its
+    // glow counts too (a big faint thing with a tiny solid core is no dot). Off the frame's own canvas (h.cache) no dot is drawn
+    const R = Math.max(box.x1 - box.x0, box.y1 - box.y0) / 2, sb = dev(u.seen), RS = Math.max(sb.x1 - sb.x0, sb.y1 - sb.y0) / 2;
+    if (!IN_ASSET && ctx === CTX0 && R > 0 && R < 3.5 && RS < 10) dot = { x: (box.x0 + box.x1) / 2, y: (box.y0 + box.y1) / 2, col: u.col, key: `${id}|${sig}|${Math.round(R * 100)}`, seen: sb };
     if (who && !AUTO[who]) AUTO[who] = [(box.x0 + box.x1) / 2, box.y0];
-    if (TRACK) { const sx = Math.hypot(tf.a, tf.b), sy = Math.hypot(tf.c, tf.d); TRACK.assets.push(tr = { id, who, front: !!params.front, sig, box, seq: TRACK.seq = (TRACK.seq || 0) + 1, dot: dot && [dot.x, dot.y], seen: dot ? { x0: dot.x - DOT_R, x1: dot.x + DOT_R, y0: dot.y - DOT_R, y1: dot.y + DOT_R } : dev(u.seen), u, tf, w: spec.w * sx, h: spec.h * sy, cx: tf.e, cy: tf.f, alpha: ctx.globalAlpha, act: JSON.stringify(Object.fromEntries(Object.entries(params).filter(([k, v]) => typeof v === 'string' && k !== 'mouth' && k !== 'who'))) }); } }
+    if (TRACK) { const sx = Math.hypot(tf.a, tf.b), sy = Math.hypot(tf.c, tf.d); TRACK.assets.push(tr = { id, who, front: !!params.front, sig, box, dot: dot && [dot.x, dot.y], seen: dot ? { x0: dot.x - DOT_R, x1: dot.x + DOT_R, y0: dot.y - DOT_R, y1: dot.y + DOT_R } : sb, u, tf, w: spec.w * sx, h: spec.h * sy, cx: tf.e, cy: tf.f, alpha: ctx.globalAlpha, act: JSON.stringify(Object.fromEntries(Object.entries(params).filter(([k, v]) => typeof v === 'string' && k !== 'mouth' && k !== 'who'))) }); } }
   let got; IN_ASSET++; try { got = fn(ctx, { ...params, t: CUR.lt + (params.dt || 0) }, HK, KIT); } catch (e) { if (STRICT) { ctx.restore(); throw e; } } finally { IN_ASSET--; }
   ctx.restore();
-  if (dot) drawDot(dot);
+  if (dot) { dot.alpha = ctx.globalAlpha; if (IN_SHOT && DOTS) DOTS.push({ ...dot, tr }); else drawDot(dot); } // in a shot, drawn when it ends (flushDots)
   // returned in the caller's coordinates: the drawn part of the box (a dot's ring), and every [x, y] point the drawing returns (head, hands)
   const at = (px, py) => [x + s * fl * px, y + s * py], xa = x + s * fl * u.x0, xb = x + s * fl * u.x1, out = { x, y, x0: Math.min(xa, xb), x1: Math.max(xa, xb), y0: y + s * u.y0, y1: y + s * u.y1 };
   if (dot) { const c = ct.inverse().transformPoint(new DOMPoint(dot.x, dot.y)), r = DOT_R / (Math.hypot(ct.a, ct.b) || 1); Object.assign(out, { x0: c.x - r, x1: c.x + r, y0: c.y - r, y1: c.y + r }); }
@@ -807,10 +810,18 @@ function placeAsset(id, x, y, s = 1, params = {}) {
 }
 // the tiny thing's callout in screen pixels (kurzgesagt's: a dot of R 3, a ring of R 3 + 22): its own colour lifted toward white,
 // over a soft dark edge so it also reads on a light ground; it fades with the thing (globalAlpha)
+// A shot's dots are drawn when its draw ends, on top of it, and only for a thing placed fewer than 3 times in the frame at that
+// scale and look: a row of copies (kurzgesagt's "N fit across", up to 250 at r = 400 / N) stays at its true size, unringed
 const DOT_R = 25;
+let DOTS = null;
+function flushDots() {
+  const list = DOTS || [], n = new Map(); DOTS = null;
+  for (const d of list) n.set(d.key, (n.get(d.key) || 0) + 1);
+  for (const d of list) if (n.get(d.key) < 3) drawDot(d); else if (d.tr) { d.tr.seen = d.seen; d.tr.dot = null; }
+}
 function drawDot(p) {
   const c = mix(p.col || '#ffffff', '#ffffff', 0.45);
-  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.setLineDash([]); ctx.shadowBlur = 0; ctx.globalCompositeOperation = 'source-over';
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.setLineDash([]); ctx.shadowBlur = 0; ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = p.alpha;
   ctx.beginPath(); ctx.arc(p.x, p.y, DOT_R, 0, TAU); ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.stroke(); ctx.lineWidth = 3; ctx.strokeStyle = c; ctx.stroke();
   ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, TAU); ctx.fillStyle = c; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.stroke();
   ctx.restore();
@@ -1041,10 +1052,10 @@ function render(t, opts = {}) {
   const z = opts.still || !(+TL.zoom > 0) || (TL.d3 && TL.d3.mode === 'lowpoly') ? 1 : 1 + +TL.zoom * lt / sh.dur;
   ctx.translate(W / 2, 960); ctx.scale(z, z); ctx.translate(-W / 2, -960);
   const fn = SHOTS[i];
-  SAVES = 0; BG_DONE = false; IN_SHOT = true; DEFER = PIXEL ? [] : null;
+  SAVES = 0; BG_DONE = false; IN_SHOT = true; DEFER = PIXEL ? [] : null; DOTS = [];
   // a crash must end the shot too: a stale IN_SHOT counted the next frame's black fill as the cover check's "solid rectangle over 100%"
   if (fn) { try { fn(ctx, lt, sh, HK, KIT); } catch (e) { DEFER = null; if (STRICT) { IN_SHOT = false; ctx.restore(); throw e; } } }
-  IN_SHOT = false; const unbalanced = SAVES; ctx.restore();
+  IN_SHOT = false; const unbalanced = SAVES; ctx.restore(); flushDots();
   if (DEFER) { const jobs = DEFER; DEFER = null; pixelate(PIXEL); replayText(jobs); }
   if (STRICT && unbalanced) throw new Error(`draw() calls ctx.save() ${Math.abs(unbalanced)} time(s) ${unbalanced > 0 ? 'more' : 'less'} than ctx.restore() in this frame, so the canvas state leaks into the next frame and the zoom builds up: every ctx.save() needs exactly one ctx.restore() after it (count them, including inside if blocks, loops and early returns)`); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.setLineDash([]); ctx.shadowBlur = 0;
   const at = { ...AUTO, ...ANCH }, bubbles = sh.lines.filter(ln => ln.who !== 'narrator' && lt >= ln.start - 0.05 && lt < ln.end + 0.3 && at[ln.who])
@@ -1274,9 +1285,9 @@ window.validateShot = (code, shot, tl, ck = {}) => {
       // identity and the caption band (on the drawn part of each thing): one character drawn twice, words under the narrator caption;
       // then the overlaps. 2D reels only: 3D staging has its own checks (stage3d.js), and these were never replayed on 3D shots
       for (const a of TRACK.assets) if (shows(a)) seenIds.add(a.id);
-      // a tiny thing's dot is the thing: words drawn over it hide it (qc3-atom shot 3: its "100 picometers" tag centred on the atom)
-      for (const a of TRACK.assets) if (a.dot && a.alpha > 0.3) for (const x of TRACK.texts) if (x.seq > a.seq && !x.inAsset && x.alpha > 0.3 && x.text.trim() && a.dot[0] > x.x0 - 4 && a.dot[0] < x.x1 + 4 && a.dot[1] > x.y0 - 4 && a.dot[1] < x.y1 + 4)
-        texts.set(`dotunder:${a.id}`, `"${a.id}" is under R 3 here, so the stage draws it as a bright dot with a ring at x ${Math.round(a.dot[0])}, y ${Math.round(a.dot[1])}, but the text "${x.text}" is drawn over that dot at lt=${t.toFixed(2)}s and hides it: place its tags beside the ring with h.label(thing, side, gap), which uses the ring's box, never on the dot`);
+      // a tiny thing's dot is the thing: a tag on it buries it in the pill (qc3-atom shot 3: "100 picometers" centred on the atom)
+      for (const a of TRACK.assets) if (a.dot && a.alpha > 0.3) for (const x of TRACK.texts) if (!x.inAsset && x.alpha > 0.3 && x.text.trim() && a.dot[0] > x.x0 - 4 && a.dot[0] < x.x1 + 4 && a.dot[1] > x.y0 - 4 && a.dot[1] < x.y1 + 4)
+        texts.set(`dotunder:${a.id}`, `"${a.id}" is under R 3 here, so the stage draws it as a bright dot with a ring at x ${Math.round(a.dot[0])}, y ${Math.round(a.dot[1])}, but the text "${x.text}" sits on that dot at lt=${t.toFixed(2)}s, so the thing is lost in its label: place its tags beside the ring with h.label(thing, side, gap), which uses the ring's box, never on the dot`);
       if (!tl.d3) { const byWho = {}; for (const a of TRACK.assets) if (a.who && a.alpha > 0.5) (byWho[a.who] = byWho[a.who] || []).push(a);
       for (const [w, l] of Object.entries(byWho)) if (l.length > 1) texts.set('twice:' + w, `${w} is drawn ${l.length} times in one frame at lt=${t.toFixed(2)}s (${l.map(a => xy(a.box)).join('; ')}): each character or named thing appears once; draw it once and move it`);
       for (const [w, p] of Object.entries(TRACK.anchors || {})) if (p.some(q => Math.hypot(q[0] - p[0][0], q[1] - p[0][1]) > 80)) texts.set('twice:' + w, `${w} is anchored at ${p.length} places in one frame at lt=${t.toFixed(2)}s (${p.map(q => q.map(Math.round).join(', ')).join('; ')}), so it is drawn twice: each character appears once; draw it once and move it`);
@@ -1397,30 +1408,34 @@ window.validateShot = (code, shot, tl, ck = {}) => {
           if (scan[i].t <= due || has(frameAt(due))) continue;
           texts.set('late:' + text, `the label "${text}" appears at lt=${scan[i].t.toFixed(1)}s, ${(scan[i].t - w.s).toFixed(1)} s after the voice starts saying "${w.said}" (lt=${w.s.toFixed(1)}s): a label or number lands with its words, at most 0.5 s after they are said; time it to h.cue(${JSON.stringify(w.said)}${w.n > 1 ? `, ${w.n}` : ''}), with its thing already on screen`);
         }
-        // a number on screen is one this shot's lines say, rounded at most 5% (the writer's limit: a spoken number further off a fact
-        // is no fact), or one carried in from the shot before, and it shows no earlier than 1 s before its words (QC3: "400 px = 1 nm"
+        // template check "numbers: said": a number on screen is one this shot's lines say, rounded at most 5% (the writer's limit: a
+        // spoken number further off a fact is no fact), or one carried in from the shot before, and it shows no earlier than 1 s before its words (QC3: "400 px = 1 nm"
         // never said, "1 million atoms wide" 23 s early). Carried in: the plan's carry labels, or on screen from the first frame (the
         // shot before showed it at the cut and was held to its own lines: an answer tag kept through the close). A lone digit (Day 1,
         // step 2) names, as the writer reads it; a counter is judged on the value it lands on (a value replaced within 0.2 s by one of
-        // the same form nearby is passing)
+        // the same form nearby is passing). Only where the template asks: cards of data the line never reads (lowpoly-chain's stat
+        // cards, minecraft's number panel, a story's date card) are other templates' design
         // digits as the writer reads them: not glued to a word (CO2), no ordinal (21st), a magnitude word after them (1.4 million)
         const numsIn = t => [...String(t).matchAll(/(?<![\p{L}\d.,^])(\d+(?:,\d{3})*(?:\.\d+)?)(?!\d|,\d|(?:st|nd|rd|th)\b)\s*([\p{L}]+)?/giu)].map(m => { const v = +m[1].replace(/,/g, ''), w = (m[2] || '').toLowerCase();
-          return SCALEW[w] ? { s: m[0].trim(), v: v * SCALEW[w], lone: false } : { s: m[1], v, lone: /^\d$/.test(m[1]) }; });
-        const close = (a, b) => Math.abs(a - b) <= 0.05 * Math.abs(b), carried = (ck.carryIn || []).filter(c => c && c.label != null).flatMap(c => numsIn(c.label).map(n => n.v));
+          // a short magnitude ("380K km", "1.4M", "4.6 bn") may also be a unit ("5 m"): either value counts
+          const ab = ABBR.get(w);
+          return SCALEW[w] ? { s: m[0].trim(), vals: [v * SCALEW[w]], lone: false } : { s: ab ? m[0].trim() : m[1], vals: ab ? [v, v * ab] : [v], lone: /^\d$/.test(m[1]) && !ab }; });
+        const close = (a, b) => Math.abs(a - b) <= 0.05 * Math.abs(b), carried = (ck.carryIn || []).filter(c => c && c.label != null).flatMap(c => numsIn(c.label).flatMap(n => n.vals));
         const shownAt = new Map(); scan.forEach((f, i) => { for (const x of f.texts) { const t = x.text.trim(); if (!/\d/.test(t)) continue;
           const o = shownAt.get(t) || { i0: i, n: 0, x: (x.x0 + x.x1) / 2, y: (x.y0 + x.y1) / 2 }; if (o.i1 !== i) o.n++; o.i1 = i; shownAt.set(t, o); } });
         const passing = (t, o) => [...shownAt].some(([u, p]) => u !== t && skel(u) === skel(t) && p.i0 > o.i1 && p.i0 <= o.i1 + 2 && Math.hypot(p.x - o.x, p.y - o.y) < 200);
-        for (const [text, o] of shownAt) {
+        if (ck.numbers === 'said') for (const [text, o] of shownAt) {
           if (o.n < 3 || o.i0 === 0 || passing(text, o)) continue;
-          // the text's numbers are one phrase (a date, a range): it lands with the first of them said
-          const t0 = scan[o.i0].t, from = `lt=${t0.toFixed(1)}s`; let first = null;
+          // the text's numbers are one phrase (a date, a range): it lands with the first of them said; lone digits alone set no time
+          const t0 = scan[o.i0].t, from = `lt=${t0.toFixed(1)}s`; let first = null, whole = false;
           for (const n of numsIn(text)) {
-            if (carried.some(c => close(c, n.v))) continue;
-            const hit = nums.filter(m => close(m.v, n.v)).sort((p, q) => said[p.at].s - said[q.at].s)[0], w = hit && saidSpan(said, hit.at, hit.to);
+            if (carried.some(c => n.vals.some(v => close(c, v)))) continue;
+            const hit = nums.filter(m => n.vals.some(v => close(m.v, v))).sort((p, q) => said[p.at].s - said[q.at].s)[0], w = hit && saidSpan(said, hit.at, hit.to);
+            if (w && !n.lone) whole = true;
             if (w && !(n.lone && hit.said === 'one') && (!first || w.s < first.s)) first = w; // a lone "one" is often a pronoun
             if (!w && !n.lone) { texts.set('unsaid:' + text, `the number "${n.s}" in "${text}" is on screen from ${from} to lt=${scan[o.i1].t.toFixed(1)}s, but this shot's lines never say it (they say ${nums.length ? nums.map(m => `"${m.said}"`).join(', ') : 'no number'}): a number on screen is one the voice says in this shot (rounded at most 5%) or one carried in from the shot before (on screen from the first frame); remove it, or show the number the line says`); first = null; break; }
           }
-          if (first && t0 < first.s - 1) texts.set('early:' + text, `"${text}" appears at ${from}, ${(first.s - t0).toFixed(1)} s before the voice says "${first.said}" (lt=${first.s.toFixed(1)}s): a number lands with its words, at most 1 s before they are said; time it to h.cue(${JSON.stringify(first.said)}${first.n > 1 ? `, ${first.n}` : ''})`);
+          if (first && whole && t0 < first.s - 1) texts.set('early:' + text, `"${text}" appears at ${from}, ${(first.s - t0).toFixed(1)} s before the voice says "${first.said}" (lt=${first.s.toFixed(1)}s): a number lands with its words, at most 1 s before they are said; time it to h.cue(${JSON.stringify(first.said)}${first.n > 1 ? `, ${first.n}` : ''})`);
         }
         // a label shows only while its thing is visible. Its thing: the placement(s) h.label or h.measure gave its point (within 80 px
         // of its words), else the asset its words name (id, who or which: "Earth" for which: 'earth'). A country's name in a shot that

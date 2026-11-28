@@ -175,8 +175,8 @@ await test('text under the narrator caption is rejected; above it passes', async
 });
 
 await test('an asset the storyboard puts in the shot but never shows is rejected', async () => {
-  // Sun reel shot 6: "109 Earths" scaled twice came out 0.05 px wide, never seen (now a ringed dot, which shows); a thing below the
-  // frame, at 20% opacity or at scale 0 is still never seen
+  // Sun reel shot 6: "109 Earths" scaled twice came out 0.05 px wide (copies get no ring, so they are still never seen); a thing
+  // below the frame, at 20% opacity or at scale 0 neither. One thing alone at 0.05 px is a ringed dot (the next test)
   const shot = (y: number, r: number, alpha: number) => `function draw(ctx, lt, sh, h, kit) {
     kit.bg(ctx, lt);
     h.asset('sun', 540, 900 + 10 * lt, 400 / 272);
@@ -196,6 +196,7 @@ await test('an asset the storyboard puts in the shot but never shows is rejected
     [2100, 4, 1],
     [1350, 4, 0.2],
     [1350, 0, 1],
+    [1350, 0.025, 1],
   ] as const) {
     const unseen = await run(y, r, alpha);
     assert.ok(
@@ -203,10 +204,8 @@ await test('an asset the storyboard puts in the shot but never shows is rejected
       `y ${String(y)}, R ${String(r)}, alpha ${String(alpha)}: ${unseen.errors.join(' | ')}`,
     );
   }
-  for (const r of [4, 0.025]) {
-    const seen = await run(1350, r, 1);
-    assert.ok(!has(seen.errors, never), `R ${String(r)}: ${seen.errors.join(' | ')}`);
-  }
+  const seen = await run(1350, 4, 1);
+  assert.ok(!has(seen.errors, never), seen.errors.join(' | '));
 });
 
 await test('a thing under R 3 is a bright dot with a ring: it counts as seen, carried and labelled, and its tags attach to the ring', async () => {
@@ -233,7 +232,7 @@ await test('a thing under R 3 is a bright dot with a ring: it counts as seen, ca
   assert.ok(!has(r.errors, /"atom" in this shot, but it is never visible/), r.errors.join(' | '));
   assert.ok(!has(r.errors, /^"atom" is carried across the cut/), r.errors.join(' | '));
   assert.ok(!has(r.errors, /^the label "Atom" shows .* while its thing/), r.errors.join(' | '));
-  const dotUnder = /^"atom" is under R 3 here, .* but the text "Atom" is drawn over that dot/;
+  const dotUnder = /^"atom" is under R 3 here, .* but the text "Atom" sits on that dot/;
   assert.ok(!has(r.errors, dotUnder), r.errors.join(' | '));
   // qc3-atom shot 3: its tag centred on the atom hid the dot
   const onDot = code.replace("...h.label(atom, 'above', 50)", '875, 1010');
@@ -298,6 +297,63 @@ await test('a thing under R 3 is a bright dot with a ring: it counts as seen, ca
   near(px.zoomed.x1 - px.zoomed.x0, 25, 'the ring box under a camera zoom of 2');
   near(px.hidden.box.x1 - px.hidden.box.x0, 0, 'scale 0: an empty box');
   near(px.hidden.ring, 0, 'scale 0: no ring drawn');
+});
+
+await test('a row of tiny copies stays at its true size, unringed; a big faint thing with a tiny solid core gets no ring', async () => {
+  // kurzgesagt's copies view: up to 250 copies at r = 400 / N along the big one's middle, "a copy stays at its true r even under R 3"
+  const sun = body('sun', '#ffcf4d');
+  const row = (n: number) => `function draw(ctx, lt, sh, h, kit) {
+    kit.bg(ctx, lt);
+    h.asset('sun', 540, 900, 400 / 272);
+    const r = 400 / 150;
+    for (let i = 0; i < ${String(n)}; i++) h.asset('earth', 140 + r + 2 * r * i, 900, r / 272);
+  }`;
+  const ck = { uses: ['sun', 'earth'] };
+  const r = await validateShot(stage, { code: row(150), assets: [sun, earth], ck });
+  assert.ok(!has(r.errors, /"earth" in this shot, but it is never visible/), r.errors.join(' | '));
+  const nebula = {
+    id: 'nebula',
+    w: 800,
+    h: 800,
+    code: `function drawAsset(ctx, p, h, kit) {
+      ctx.globalAlpha = 0.5; ctx.fillStyle = '#88aaff'; ctx.beginPath(); ctx.arc(0, 0, 300, 0, 2 * Math.PI); ctx.fill();
+      ctx.globalAlpha = 1; ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(0, 0, 4, 0, 2 * Math.PI); ctx.fill();
+    }`,
+  };
+  const px = await stage.page.evaluate(
+    async (tls) => {
+      // the mean brightness 24 px above the row, on the Sun's face: a ring of R 25 around each copy would cross it
+      const above = async (tl: unknown) => {
+        await setup(tl);
+        render(1, { still: true });
+        let sum = 0;
+        for (let x = 200; x < 880; x += 4) {
+          const d = ctx.getImageData(x, 876, 1, 1).data;
+          sum += ((d[0] ?? 0) + (d[1] ?? 0) + (d[2] ?? 0)) / 3;
+        }
+        return sum / 170;
+      };
+      const copies = await above(tls[0]);
+      const none = await above(tls[1]);
+      await setup(tls[2]);
+      return { copies, none, faint: HK.asset('nebula', 540, 600, 0.5) };
+    },
+    [150, 0, 0].map((n, i) => ({
+      W: 1080,
+      H: 1920,
+      kit: KIT,
+      assets: i < 2 ? [sun, earth] : [nebula],
+      shots: [{ start: 0, dur: 4, lines: [], code: row(n) }],
+    })),
+  );
+  assert.ok(
+    Math.abs(px.copies - px.none) < 3,
+    `above the row: ${String(px.copies)} with copies, ${String(px.none)} without`,
+  );
+  assert.ok(
+    px.faint.x1 - px.faint.x0 < 10,
+    `a faint thing's box is its core, not a ring: ${JSON.stringify(px.faint)}`,
+  );
 });
 
 await test('two places on top of each other, or one place drawn twice, are rejected; places apart pass', async () => {
