@@ -490,7 +490,7 @@ export function parseLog(log: string): {
   for (const raw of log.split('\n')) {
     const line = stripStamp(raw.trimEnd());
     const last =
-      /^(\S+): no attempt passed every check; using the last one that runs \(it failed: (.*)\)$/.exec(
+      /^(\S+): no attempt passed every check(?:; using the last one that runs| and none runs; the shot ships blank) \(it failed: (.*)\)$/.exec(
         line,
       );
     if (last?.[1] !== undefined && last[2] !== undefined) {

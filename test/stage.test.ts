@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { body, openStage, validateShot, type Stage } from './fixtures/stage.ts';
+import { body, KIT, openStage, validateShot, type Stage } from './fixtures/stage.ts';
 
 // The stage's own globals, called inside the page (engine/stage_asset.html).
 interface View {
@@ -191,6 +191,35 @@ await test('one small thing alone in the frame is still rejected by the subject-
   const code = `function draw(ctx, lt, sh, h, kit) { kit.bg(ctx, lt); h.asset('earth', 540, 900 + 10 * lt, 16 / 272); }`;
   const r = await validateShot(stage, { code, assets: [earth], ck: { hero: 'earth' } });
   assert.equal(size(r.errors).length, 1, r.errors.join(' | '));
+});
+
+await test('a NaN raised inside a kit function names the line of the shot that called it', async () => {
+  // QC4 Jupiter shot 3: six attempts got "ctx.translate(NaN, undefined)" with no code line (the innermost frame was the kit's) (#87)
+  const kit = KIT.replace(
+    'return { palette,',
+    'const spot = (ctx, x, y) => { ctx.save(); ctx.translate(x, y); ctx.fillRect(-5, -5, 10, 10); ctx.restore(); }; return { spot, palette,',
+  );
+  const code = `function draw(ctx, lt, sh, h, kit) {
+  kit.bg(ctx, lt);
+  const p = { x: 300, y: 400 };
+  kit.spot(ctx, p[0] + 1);
+}`;
+  const r = await validateShot(stage, { code, kit });
+  const nan = r.errors.find((e) => e.includes('ctx.translate(NaN, undefined)')) ?? '';
+  assert.ok(
+    nan.includes(
+      'your code line 4: `kit.spot(ctx, p[0] + 1);`, raised inside the kit function it calls',
+    ),
+    nan,
+  );
+  const own = await validateShot(stage, {
+    code: `function draw(ctx, lt, sh, h, kit) {
+  kit.bg(ctx, lt);
+  ctx.translate(NaN, 0);
+}`,
+  });
+  const mine = own.errors.find((e) => e.includes('ctx.translate(NaN, 0)')) ?? '';
+  assert.ok(mine.includes('your code line 3: `ctx.translate(NaN, 0);`)'), mine);
 });
 
 await stage.close();

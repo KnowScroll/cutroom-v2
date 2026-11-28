@@ -481,3 +481,17 @@ await test(
     assert.equal(engine.rejections.length, 7);
   },
 );
+
+await test('a shot no attempt could draw counts as a failing step', () => {
+  // QC4 Jupiter shot 3: six crashed attempts, the shot shipped blank without a word (#87)
+  const log = [
+    '[ 70.5s] shot3 attempt 3: rejected: runtime error at lt=0.25s: ctx.translate(NaN, undefined)',
+    '[ 70.6s] shot3: no attempt passed every check and none runs; the shot ships blank (it failed: runtime error at lt=0.25s: ctx.translate(NaN, undefined))',
+  ].join(String.fromCharCode(10));
+  const r = parseLog(log);
+  assert.deepEqual(
+    r.failingSteps.map((f) => f.step),
+    ['shot3'],
+  );
+  assert.ok(r.failingSteps[0]?.reason.includes('ctx.translate(NaN, undefined)'));
+});
