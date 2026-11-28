@@ -98,6 +98,7 @@ QC0 items done directly: patched working copies reset (Windows globe-zoom-explai
 - Merged: #82 (234ab2f, #81), #83 (6e412aa, #80), #84 (fbd0412, #79). #79-#81 closed and verified (cut 50; #79 by free re-render and a 43-shot replay). Both vars synced (WSL clone at fbd0412).
 - Running: QC4 runner (11 single cuts: jupiter, olympus, reunification, virus, iceland, louisiana, burj, panama on kurzgesagt/globe-zoom/countryball; microwave, fresnel, focus for regression), folders var/runs/qc4-*.
 - Voice blocked 2026-11-28 10:10 UTC (heygen free 429 free-models-per-day, OpenRouter credit $0). User ruling 13:00 UTC: the voices are not under test, make the videos. #85 (PR #86, 7b51d7b): `--voice-model local`, Windows built-in speech, free and offline; QC4 runs on it (robotic; pitch gate logs LOW).
+- Merged: #87 (PR #88, b9f42bd): a kit-raised crash names the shot's own line; a blank shot is a failing step; kurzgesagt copies row on its big one. Both vars synced (WSL clone at b9f42bd).
 - Scope moves: line-note checks from #54 to #49 (engine applyNotes reuses the writer checks).
 
 ### Real cuts, phase Q (budget 80)
@@ -155,8 +156,10 @@ A cut is one engine invocation that makes model calls (`--until script` counts).
 | 47 | 2026-11-28 | #81 | `--until assets` Norway on PR #82 9538712 (template only): Sweden flag right; Norway flag spec wrong (M3), border invisible, sheet balls grey, sign word swapped | none | 0.2070 | var/runs/q-t14-norway |
 | 48 | 2026-11-28 | #80 | `--until script` atom on PR #83 500cad7: sand answered ("Grain of sand" fetched: 2 mm, twenty million times) | none | 0.0231 | var/runs/q-t13-atom |
 | 49 | 2026-11-28 | #80 | `--until script` Norway on PR #83 500cad7: no flagged line left; 181 words for 112 (second fit 210 -> 183). Plus 3 direct M3 fit probes outside the engine ($0.024) | none | 0.0419 | var/runs/q-t13-norway |
-$1| 51 | 2026-11-28 | #60 QC4 | full cut Q1 Jupiter (kurzgesagt), main 7b51d7b, --rounds 0; script/plan/assets from the 10:10 run (stopped at voice), resumed: 47.2 s | local | 0.0457 + the first run's spend (not printed) | var/runs/qc4-jupiter |
+$1| 51 | 2026-11-28 | #60 QC4 | full cut Q1 Jupiter (kurzgesagt), main 7b51d7b, --rounds 0; script/plan/assets from the 10:10 run (stopped at voice), resumed: 47.2 s; AV FAIL 2/5 (shot 3 blank: 6 crashed attempts, #87) | local | 0.0457 + the first run's spend (not printed) | var/runs/qc4-jupiter |
+| 52 | 2026-11-28 | #60 QC4 | full cut Q4 Olympus (globe-zoom), main 7b51d7b, --rounds 0: 48.5 s; AV FAIL 2/5 (no Earth comparison, marker at zoom scale) | local | 0.1833 | var/runs/qc4-olympus |
+| 53 | 2026-11-28 | #87 | diagnostic redraw of qc4-jupiter shot 3 alone (copied folder, an engine copy under var/ that saves rejected code, `--apply-notes {}`): passed on attempt 3, the NaN not reproduced | local | 0.0084 | var/runs/dbg-jupiter-s3 |
 
 ## Next action
 
-T11 (#60): AV review each QC4 reel as it lands, then QC4 fixes and QC5 (briefs Q1-Q10 + atom regression) and QC5 (5 API jobs). Voice: `local` (#85) until OpenRouter credit is added. Budget: 51 of 80 cuts used.
+T11 (#60): AV review each QC4 reel as it lands, then QC4 fixes and QC5 (briefs Q1-Q10 + atom regression) and QC5 (5 API jobs). Voice: `local` (#85) until OpenRouter credit is added. Budget: 53 of 80 cuts used.
