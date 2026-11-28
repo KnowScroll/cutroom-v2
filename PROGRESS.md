@@ -94,7 +94,8 @@ QC0 items done directly: patched working copies reset (Windows globe-zoom-explai
 - Merged also: #50 (PR #66, e2681fd), #46 (PR #67, 172e613).
 - Merged also: #51 (PR #69, 3cfa79d), #52 (PR #71, 969ca15).
 - Merged also: #47 (PR #68, 204ece4), #59 (PR #72, cb21389; Windows var synced), #56 (PR #75, de56474), #53 (PR #73, 240fd3a), #70 (PR #74, 4559432), #49 (PR #76, 8fbcc6d), #55 (PR #77, c6ead60), #57 (PR #78, 1eded8c). All implementation issues closed; both vars synced (WSL clone at 1eded8c).
-- QC3 cuts done 2026-11-28 00:05-00:51 UTC (rows 41-46; the free voice served all 6). Running: 6 fresh AV reviews (one per reel).
+- QC3 cuts done 2026-11-28 00:05-00:51 UTC (rows 41-46). AV: all 6 FAIL (viewer 2-3/5), report on #60 (issuecomment-7231376533). Fix issues #79 (stage), #80 (writer/plan/voice), #81 (countryball template).
+- Running: implementers for #79 (free re-renders only), #80 (2 script cuts), #81 (1 cut).
 - Scope moves: line-note checks from #54 to #49 (engine applyNotes reuses the writer checks).
 
 ### Real cuts, phase Q (budget 80)
@@ -152,4 +153,4 @@ A cut is one engine invocation that makes model calls (`--until script` counts).
 
 ## Next action
 
-T11 (#60): read the 6 QC3 AV reports, trace each objective failure to a stage and file, open fix issues, then QC4 (briefs Q1-Q10 + atom regression) and QC5 (5 API jobs). Voice: heygen free ~50 requests/day, resets 00:00 UTC; OpenRouter credit would lift it. Budget: 46 of 80 cuts used.
+T11 (#60): merge #79-#81 (review each, sync both vars), then QC4 (briefs Q1-Q10 + atom regression) and QC5 (5 API jobs). Voice: heygen free ~50 requests/day, resets 00:00 UTC; OpenRouter credit would lift it. Budget: 46 of 80 cuts used.
