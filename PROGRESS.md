@@ -99,6 +99,7 @@ QC0 items done directly: patched working copies reset (Windows globe-zoom-explai
 - Running: QC4 runner (11 single cuts: jupiter, olympus, reunification, virus, iceland, louisiana, burj, panama on kurzgesagt/globe-zoom/countryball; microwave, fresnel, focus for regression), folders var/runs/qc4-*.
 - Voice blocked 2026-11-28 10:10 UTC (heygen free 429 free-models-per-day, OpenRouter credit $0). User ruling 13:00 UTC: the voices are not under test, make the videos. #85 (PR #86, 7b51d7b): `--voice-model local`, Windows built-in speech, free and offline; QC4 runs on it (robotic; pitch gate logs LOW).
 - Merged: #87 (PR #88, b9f42bd): a kit-raised crash names the shot's own line; a blank shot is a failing step; kurzgesagt copies row on its big one. Both vars synced (WSL clone at b9f42bd).
+- Merged: #89 (PR #90, 7baba2e): an unanswered request asks the sheet once for what it needs; the calc message says to state a compared value as a fact; globe marker keeps its screen size. Both vars synced (WSL clone at 7baba2e). Open: #91 (PR #92, undefined asset param; countryball flag fallback).
 - Scope moves: line-note checks from #54 to #49 (engine applyNotes reuses the writer checks).
 
 ### Real cuts, phase Q (budget 80)
@@ -159,7 +160,10 @@ A cut is one engine invocation that makes model calls (`--until script` counts).
 $1| 51 | 2026-11-28 | #60 QC4 | full cut Q1 Jupiter (kurzgesagt), main 7b51d7b, --rounds 0; script/plan/assets from the 10:10 run (stopped at voice), resumed: 47.2 s; AV FAIL 2/5 (shot 3 blank: 6 crashed attempts, #87) | local | 0.0457 + the first run's spend (not printed) | var/runs/qc4-jupiter |
 | 52 | 2026-11-28 | #60 QC4 | full cut Q4 Olympus (globe-zoom), main 7b51d7b, --rounds 0: 48.5 s; AV FAIL 2/5 (no Earth comparison, marker at zoom scale) | local | 0.1833 | var/runs/qc4-olympus |
 | 53 | 2026-11-28 | #87 | diagnostic redraw of qc4-jupiter shot 3 alone (copied folder, an engine copy under var/ that saves rejected code, `--apply-notes {}`): passed on attempt 3, the NaN not reproduced | local | 0.0084 | var/runs/dbg-jupiter-s3 |
+| 54 | 2026-11-28 | #60 QC4 | full cut Q6 Reunification (countryball), main ef244bb (b9f42bd pulled mid-run: stage error text only), --rounds 0; first start killed at its script (log 1795872448), resumed: 60.6 s; AV FAIL 2/5 (grey balls: flag keys, #91) | local | 0.2602 + the first start's spend (not printed) | var/runs/qc4-reunification |
+| 55 | 2026-11-28 | #60 QC4 | full cut Q2 virus (kurzgesagt), main b9f42bd: died at facts ("no usable fact sheet": 4 rejections of a calc using a value no fact states) | none | ~0.01 (5 facts calls, not printed) | var/runs/qc4-virus-failed1 |
+| 56 | 2026-11-28 | #89 | `--until script` virus on PR #90 (engine copy saving writer answers): facts passed on the 4th try, facts-answer added the hair comparison, 98 words; QC4 virus resumes from this script | none | 0.0362 | var/runs/dbg-virus-script |
 
 ## Next action
 
-T11 (#60): AV review each QC4 reel as it lands, then QC4 fixes and QC5 (briefs Q1-Q10 + atom regression) and QC5 (5 API jobs). Voice: `local` (#85) until OpenRouter credit is added. Budget: 53 of 80 cuts used.
+T11 (#60): AV review each QC4 reel as it lands, then QC4 fixes and QC5 (briefs Q1-Q10 + atom regression) and QC5 (5 API jobs). Voice: `local` (#85) until OpenRouter credit is added. Budget: 56 of 80 cuts used.
