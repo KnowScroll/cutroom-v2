@@ -347,7 +347,7 @@ async function make(label, system, firstUser, validate, craftAsk, prevCode = nul
     log(`${label}: no attempt passed every check; using the last one that runs (it failed: ${lastRunnable ? `${tried}; the previous code fails too: ${errs(old.errors)}` : `the previous code is kept and fails now: ${errs(old.errors)}`})`);
     return { code: lastRunnable ? lastRunnable.code : prevCode, preview: null, crafted: false };
   }
-  if (!code) return { code: lastRunnable?.code || null, preview: null, crafted: false };
+  if (!code) return { code: lastRunnable?.code || null, preview: null, crafted: false, errors: (lastRunnable || res).errors };
   if (craftAsk && res.preview && !label.endsWith('-rev')) { // craft pass: the model looks at its own render and improves it (not on director revisions: the director's notes are that review)
     messages.push({ role: 'user', content: [{ type: 'text', text: craftAsk }, img(res.preview), { type: 'text', text: 'If it already meets the craft guide fully, reply with just KEEP. Otherwise return the complete improved code.' }] });
     const text = await m3(`${label}-craft`, system, messages);
@@ -600,6 +600,7 @@ async function sheetReview(plan, stage, maxRounds = 2) {
   ckSave('sheet-review.json', { rounds: history.length });
 }
 // recheck: the shot's lines changed (applyNotes); its code is kept while it still passes against them, and redrawn only when not
+const shotErrors = {}; // the last errors of a shot no attempt could draw, for the blank-shot line
 async function makeShot(plan, stage, tl, i, notes = null, recheck = false) {
   const page = await stage.newPage(), s = plan.shots[i], sh = tl.shots[i];
   try {
@@ -637,7 +638,7 @@ async function makeShot(plan, stage, tl, i, notes = null, recheck = false) {
       : `Speakers and the asset that represents each: ${JSON.stringify(cast)}\nAssets (every one is yours to use; the storyboard shows ${JSON.stringify(s.uses || [])} in this shot, and each of those must be visible): ${JSON.stringify(assetCatalog(plan))}`}${evidence}${notes ? `\n\nThe director reviewed this shot and asks:\n${notes}\n\nCurrent code:\n\`\`\`js\n${s.code}\n\`\`\`` : ''}\n\nWrite draw.`;
     const craft = LPMODE() ? 'These are three frames of your shot (20%, 55% and 92% of its length, side by side; each is a separate vertical frame). Judge like a viewer: is the subject big and clearly the real thing, does the slice open it where the line explains it and does the one label point at the right part, is the host beside it (never inside it) in a pose that fits the sentence, is the header readable?' : D3MODE() ? 'These are three frames of your shot (20%, 55% and 92% of its length, side by side; each is a separate vertical frame). Judge like a viewer: does everyone stand where a person could stand, face whom they deal with, does each camera setup show the right person clearly, do the expressions match the lines, do the insert panels read? Fix staging with positions, facing, poses and camera types.' : 'These are three frames of your shot (20%, 55% and 92% of its length, side by side; each is a separate vertical frame). Judge staging, hero size, depth, motion and payoff timing against the template directions and the storyboard.';
     const r = await make(`shot${i + 1}${notes ? '-rev' : ''}`, `${prompt(D3MODE() ? 'shot3d' : 'shot')}${PHOTOMODE() ? `\n\n${prompt('shotphotos')}` : ''}\n\n${guide('look', 'motion', 'shots')}`, user, validate, craft, s.code);
-    if (r.code) s.code = r.code;
+    if (r.code) s.code = r.code; else shotErrors[i] = r.errors;
   } finally { await page.close(); }
 }
 
@@ -799,6 +800,8 @@ async function main() {
     plan.shots.forEach((s, i) => { s.code = ckLoad(`shot_${i + 1}.js`) || s.code; });
     for (let pass = 1; pass <= 2 && plan.shots.some(s => !s.code); pass++)
       await pool(plan.shots.map((s, i) => [s, i]).filter(([s]) => !s.code).map(([, i]) => async () => { try { await makeShot(plan, stage, tl, i); if (plan.shots[i].code) ckSave(`shot_${i + 1}.js`, plan.shots[i].code); } catch (e) { log(`shot ${i + 1} failed (${e.message.slice(0, 80)}); will retry`); } }), 10); // all at once
+    // a shot no attempt could draw is blank in the reel: never silent, and the harness's shipped_failing gate counts it (QC4 Jupiter shot 3: 10 s of black)
+    plan.shots.forEach((s, i) => { if (!s.code) log(`shot${i + 1}: no attempt passed every check and none runs; the shot ships blank (it failed: ${(shotErrors[i] || ['no code']).slice(0, 2).join('; ').replace(/\s+/g, ' ').slice(0, 200)})`); });
     if (NOTES_FILE) { tl = await applyNotes(plan, stage, JSON.parse(fs.readFileSync(path.resolve(NOTES_FILE), 'utf8')), dir); }
     else tl = await produce(plan, dir);
     for (let r = 1; r <= (NOTES_FILE ? 0 : rounds); r++) {

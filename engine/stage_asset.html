@@ -905,8 +905,18 @@ const dupHint = (code, m) => {
   const at = String(code).split('\n').map((l, i) => (re.test(l) ? i + 1 : 0)).filter(Boolean);
   return at.length ? `. It is declared on lines ${at.join(', ')}: rename one of them (for example ${d[1]}2) or merge them` : '';
 };
-// point M3 at the exact line of ITS code that crashed (new Function adds 3 lines before the code)
-const at = (e, code) => { const m = String(e && e.stack || '').match(/<anonymous>:(\d+):\d+/); if (!m) return ''; const n = +m[1] - 3, src = String(code).split('\n')[n - 1]; return src ? ' (your code line ' + n + ': `' + src.trim().slice(0, 160) + '`)' : ''; };
+// point M3 at the exact line of ITS code that crashed (new Function adds 3 lines before the code). Kit, asset and shot code are all
+// <anonymous>: the code under check is the outermost compiled frame, and an error raised inside the kit or an asset it calls names
+// the calling line (QC4 Jupiter: 6 attempts got "ctx.translate(NaN, undefined)" with no line, the innermost frame being the kit's)
+Error.stackTraceLimit = 50;
+const at = (e, code) => {
+  const fr = [...String(e && e.stack || '').matchAll(/(?:eval at (compile\w+)[^\n]*?)?<anonymous>:(\d+):\d+/g)].map(m => ({ kind: m[1] || '', n: +m[2] - 3 }));
+  if (!fr.length) return '';
+  const own = fr[fr.length - 1].kind, mine = fr.find(f => f.kind === own), src = String(code).split('\n')[mine.n - 1];
+  if (!src) return '';
+  const inside = fr[0].kind !== own ? `, raised inside the ${fr[0].kind === 'compileKit' ? 'kit function' : 'asset'} it calls: check that call's arguments against its signature` : '';
+  return ' (your code line ' + mine.n + ': `' + src.trim().slice(0, 160) + '`' + inside + ')';
+};
 const hint = m => /non-finite/.test(m) ? '. A number passed here is NaN or Infinity: look for a division by zero, a param or kit field that is undefined, or a misspelt variable' : /reading '\d+'/.test(m) ? '. You indexed into something that is undefined: check that the array or object exists (and has that many items) before indexing it' : '';
 const compileKit = code => { const f = new Function('h', `"use strict";\n${code}\nreturn makeKit(h);`); return hk => { for (const k in CACHE) delete CACHE[k]; return f(hk); }; };
 const compileAsset = code => new Function('ctx', 'p', 'h', 'kit', `"use strict";\n${code}\nreturn drawAsset(${argsFor(code, 'drawAsset', ['ctx', 'p', 'h', 'kit'])});`);
