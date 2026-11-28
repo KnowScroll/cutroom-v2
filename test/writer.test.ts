@@ -1348,7 +1348,7 @@ await test('the viewer judges the reel against the request, and a request left u
   const brief = `${BRIEF}\n\nGoal: The viewer should feel awe.`;
   const noAnswer = { ...VIEWER, answers_request: 'no: it never says how much smaller' };
   const { calls, logs } = await runWriter(
-    { ...passed(), viewer: noAnswer, 'spine-revise': SPINE },
+    { ...passed(), viewer: noAnswer, 'facts-answer': SHEET, 'spine-revise': SPINE },
     brief,
   );
   const input = userMessage(calls, 'viewer');
@@ -1356,7 +1356,55 @@ await test('the viewer judges the reel against the request, and a request left u
   assert.doesNotMatch(input, /Goal:/, "the intake's Goal line is no part of the request");
   assert.equal(steps(calls, 'spine-revise#1'), 1);
   assert.match(userMessage(calls, 'spine-revise#1'), /it never says how much smaller/);
+  assert.ok(logs.includes('facts-answer: no fact added'), logs.join('\n'));
   assert.ok(logs.includes('spine-revise: the script was written again on the new spine'));
+});
+
+await test('an unanswered request asks the sheet once for what the viewer still wants; its new fact reaches the new spine', async () => {
+  // QC4 Olympus: "taller than any mountain on Earth" with no Earth mountain on the sheet; the spine was rebuilt from the same sheet
+  const noAnswer = {
+    ...VIEWER,
+    answers_request: 'no: it never says how wide a hair is',
+    want: 'how the atom compares with a hair',
+  };
+  const hair = { id: 'f9', text: 'A human hair is about 0.1 mm wide', source: 'general' };
+  const { calls, logs } = await runWriter({
+    ...passed(),
+    viewer: noAnswer,
+    'facts-answer': { ...SHEET, facts: [...SHEET.facts, hair] },
+    'spine-revise': SPINE,
+    'factcheck-2-again': PROBLEMS,
+  });
+  assert.equal(steps(calls, 'facts-answer#1'), 1);
+  const asked = userMessage(calls, 'facts-answer#1');
+  assert.ok(
+    asked.includes('It does not answer the request: no: it never says how wide a hair is'),
+    asked,
+  );
+  assert.ok(asked.includes('They still want: how the atom compares with a hair'), asked);
+  assert.ok(
+    logs.includes('facts-answer: added "A human hair is about 0.1 mm wide"'),
+    logs.join('\n'),
+  );
+  const spine = JSON.stringify(calls.find((c) => c.step === 'spine-revise#1'));
+  assert.ok(
+    spine.includes('A human hair is about 0.1 mm wide'),
+    'the new fact reaches the rebuilt spine',
+  );
+});
+
+await test('a calc using a quantity no fact states is told to put it on the sheet, not to drop the comparison', () => {
+  const sheet = {
+    ...SHEET,
+    facts: [
+      ...SHEET.facts,
+      derived('f9', 'The atom is 1,000,000 times smaller than a hair', '0.1 mm / 100 pm'),
+    ],
+  };
+  const e = errorsOf(sheet).find((x) => x.startsWith('fact f9')) ?? '';
+  assert.ok(e.includes('0.1 mm, which no other fact on the sheet states'), e);
+  assert.ok(e.includes('goes on the sheet first as its own fact'), e);
+  assert.ok(e.includes('never drop a comparison the request asks for'), e);
 });
 
 await test('a sheet that cannot answer the request says what is missing', async () => {
