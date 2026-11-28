@@ -487,11 +487,12 @@ export function createWriter(E) {
   }
 
   // ---------- facts ----------
+  const checkSheet = x => factErrors(x, E);
+  const cleanSheet = x => { if (!x) return x; const drop = new Set(checkSheet(x).map(e => e.drop).filter(Boolean)); if (drop.has('yardstick')) { log(`facts: dropped the yardstick "${x.yardstick}" (a number not on the sheet)`); x.yardstick = ''; drop.delete('yardstick'); } if (drop.size) { log(`facts: dropped ${[...drop].join(', ')} (failed their check)`); x.facts = x.facts.filter(y => !drop.has(y.id)); } return x; };
   async function writeFacts() {
     const saved = E.ckLoad('facts.json'); if (saved) { log('facts: restored from checkpoint'); return JSON.parse(saved); }
     const system = () => `${E.prompt('facts')}\n\n${E.guide('about', 'story')}${E.refBlock()}`;
-    const check = x => factErrors(x, E);
-    const clean = x => { if (!x) return x; const drop = new Set(check(x).map(e => e.drop).filter(Boolean)); if (drop.has('yardstick')) { log(`facts: dropped the yardstick "${x.yardstick}" (a number not on the sheet)`); x.yardstick = ''; drop.delete('yardstick'); } if (drop.size) { log(`facts: dropped ${[...drop].join(', ')} (failed their check)`); x.facts = x.facts.filter(y => !drop.has(y.id)); } return x; };
+    const check = checkSheet, clean = cleanSheet;
     let f = clean(await ask('facts', system(), [{ role: 'user', content: `Brief: ${briefFor(brief)}\nReturn only the JSON object.` }], check));
     if (!f) throw new Error('no usable fact sheet');
     // "need": {article, look_for} (its passages holding those words) or an article title (its first 4000 chars)
@@ -852,8 +853,8 @@ export function createWriter(E) {
   async function answerFacts(f, v) {
     const system = `${E.prompt('facts')}\n\n${E.guide('about', 'story')}${E.refBlock()}`, had = new Set(f.facts.map(x => x.text));
     const f2 = await ask('facts-answer', system, [{ role: 'user', content: `Brief: ${briefFor(brief)}\nReturn only the JSON object.` }, { role: 'assistant', content: JSON.stringify(f) },
-      { role: 'user', content: `A test viewer who made this request watched a reel made from your sheet. It does not answer the request: ${v.answers_request}${v.want ? `. They still want: ${v.want}` : ''}. Add the facts that answer needs: from the REFERENCE with its quote, or "general" for a well-known standard value (a height, a size or a distance every textbook gives), and derived ones from those; keep every fact you have. When neither can give it, say so in "missing". Return the complete JSON object, with "need" empty.` }], x => factErrors(x, E));
-    const added = (f2?.facts || []).filter(x => !had.has(x.text));
+      { role: 'user', content: `A test viewer who made this request watched a reel made from your sheet. It does not answer the request: ${v.answers_request}${v.want ? `. They still want: ${v.want}` : ''}. Add the facts that answer needs: from the REFERENCE with its quote, or "general" for a well-known standard value (a height, a size or a distance every textbook gives), and derived ones from those; keep every fact you have. When neither can give it, say so in "missing". Return the complete JSON object, with "need" empty.` }], checkSheet);
+    const added = (cleanSheet(f2)?.facts || []).filter(x => !had.has(x.text)); // a new fact that fails its check is dropped, as on the first sheet
     log(`facts-answer: ${added.length ? `added ${added.map(x => `"${x.text}"`).join(', ')}` : 'no fact added'}`);
     if (!added.length) return f;
     const ids = new Set(f.facts.map(x => x.id)); let n = f.facts.length;

@@ -1391,6 +1391,25 @@ await test('an unanswered request asks the sheet once for what the viewer still 
     spine.includes('A human hair is about 0.1 mm wide'),
     'the new fact reaches the rebuilt spine',
   );
+
+  // a new fact that fails its check is dropped, as on the first sheet: a "brief" number the brief never states
+  const bad = { id: 'f10', text: 'A human hair is 75 mm wide', source: 'brief' };
+  const second = await runWriter({
+    ...passed(),
+    viewer: noAnswer,
+    'facts-answer': { ...SHEET, facts: [...SHEET.facts, hair, bad] },
+    'spine-revise': SPINE,
+    'factcheck-2-again': PROBLEMS,
+  });
+  assert.ok(
+    second.logs.includes('facts: dropped f10 (failed their check)'),
+    second.logs.join('\n'),
+  );
+  assert.ok(
+    second.logs.includes('facts-answer: added "A human hair is about 0.1 mm wide"'),
+    second.logs.join('\n'),
+  );
+  assert.ok(!JSON.stringify(second.story).includes(bad.text));
 });
 
 await test('a calc using a quantity no fact states is told to put it on the sheet, not to drop the comparison', () => {
