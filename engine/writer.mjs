@@ -301,7 +301,7 @@ function calcErrors(x, sheet) {
   odd.delete(''); if (r.qs.filter(q => !q.u && q.n === 100).length > 1) odd.add('100 more than once');
   if (r.pointless) odd.add('"* 1" or "/ 1", which changes nothing');
   if (!odd.size && !r.qs.some(q => q.u || sheet.some(s => near(s.n, q.n) || near(s.raw, q.n)))) odd.add('no number the sheet states');
-  if (odd.size) return [`fact ${x.id}: "calc" ${x.calc} uses ${[...odd].join('; ')}. Check the calc's factors and units: write each quantity with its unit, as a fact on the sheet states it (e.g. "75600 h", "378000 km / (5 km/h)"); the engine converts units itself and states the result in the text's unit: to state hours as years, write the hours quantity and put years in the text; no calendar factors needed`];
+  if (odd.size) return [`fact ${x.id}: "calc" ${x.calc} uses ${[...odd].join('; ')}. Check the calc's factors and units: write each quantity with its unit, as a fact on the sheet states it (e.g. "75600 h", "378000 km / (5 km/h)"); the engine converts units itself and states the result in the text's unit: to state hours as years, write the hours quantity and put years in the text; no calendar factors needed${[...odd].some(o => /which no other fact on the sheet states$/.test(o)) ? '. A quantity no fact states (the thing it is compared with) goes on the sheet first as its own fact, from the REFERENCE with its quote or "general" for a well-known standard value (a mountain\'s height, a planet\'s size); never drop a comparison the request asks for' : ''}`];
   const tq = quantitiesIn(x.text), close = (a, b) => Math.abs(a - b) <= Math.abs(b) * 0.05 + 1e-300; // relative only (an absolute margin let 0.00004 pass for 0.00017); 5% as for spoken numbers
   const ok = conversion ? tq.some(q => q.d && sameDim(q.d, r.d)) && tq.every(q => !q.d || !sameDim(q.d, r.d) || close(q.v, r.v))
     : r.d.some(Boolean) ? tq.some(q => q.d && sameDim(q.d, r.d) && close(q.v, r.v)) || (perTime(r.d) && timeUnitsIn(x.text).some(u => tq.some(q => !q.d && close(q.n, r.v * u[0]))))
@@ -487,11 +487,12 @@ export function createWriter(E) {
   }
 
   // ---------- facts ----------
+  const checkSheet = x => factErrors(x, E);
+  const cleanSheet = x => { if (!x) return x; const drop = new Set(checkSheet(x).map(e => e.drop).filter(Boolean)); if (drop.has('yardstick')) { log(`facts: dropped the yardstick "${x.yardstick}" (a number not on the sheet)`); x.yardstick = ''; drop.delete('yardstick'); } if (drop.size) { log(`facts: dropped ${[...drop].join(', ')} (failed their check)`); x.facts = x.facts.filter(y => !drop.has(y.id)); } return x; };
   async function writeFacts() {
     const saved = E.ckLoad('facts.json'); if (saved) { log('facts: restored from checkpoint'); return JSON.parse(saved); }
     const system = () => `${E.prompt('facts')}\n\n${E.guide('about', 'story')}${E.refBlock()}`;
-    const check = x => factErrors(x, E);
-    const clean = x => { if (!x) return x; const drop = new Set(check(x).map(e => e.drop).filter(Boolean)); if (drop.has('yardstick')) { log(`facts: dropped the yardstick "${x.yardstick}" (a number not on the sheet)`); x.yardstick = ''; drop.delete('yardstick'); } if (drop.size) { log(`facts: dropped ${[...drop].join(', ')} (failed their check)`); x.facts = x.facts.filter(y => !drop.has(y.id)); } return x; };
+    const check = checkSheet, clean = cleanSheet;
     let f = clean(await ask('facts', system(), [{ role: 'user', content: `Brief: ${briefFor(brief)}\nReturn only the JSON object.` }], check));
     if (!f) throw new Error('no usable fact sheet');
     // "need": {article, look_for} (its passages holding those words) or an article title (its first 4000 chars)
@@ -846,6 +847,21 @@ export function createWriter(E) {
     return { viewer, factcheck: fc };
   }
   const unanswered = v => /^no\b/i.test(String(v?.answers_request || '').trim());
+  // a request the reel leaves unanswered may be one the sheet cannot answer: the sheet is asked once for what the viewer still wants,
+  // and its new facts join the sheet before the spine is built again (QC4 Olympus: "taller than any mountain on Earth" with no Earth
+  // mountain on the sheet, the first sheet's Everest calc having been rejected; the rebuilt spine could not answer from the same sheet)
+  async function answerFacts(f, v) {
+    const system = `${E.prompt('facts')}\n\n${E.guide('about', 'story')}${E.refBlock()}`, had = new Set(f.facts.map(x => x.text));
+    const f2 = await ask('facts-answer', system, [{ role: 'user', content: `Brief: ${briefFor(brief)}\nReturn only the JSON object.` }, { role: 'assistant', content: JSON.stringify(f) },
+      { role: 'user', content: `A test viewer who made this request watched a reel made from your sheet. It does not answer the request: ${v.answers_request}${v.want ? `. They still want: ${v.want}` : ''}. Add the facts that answer needs: from the REFERENCE with its quote, or "general" for a well-known standard value (a height, a size or a distance every textbook gives), and derived ones from those; keep every fact you have. When neither can give it, say so in "missing". Return the complete JSON object, with "need" empty.` }], checkSheet);
+    const added = (cleanSheet(f2)?.facts || []).filter(x => !had.has(x.text)); // a new fact that fails its check is dropped, as on the first sheet
+    log(`facts-answer: ${added.length ? `added ${added.map(x => `"${x.text}"`).join(', ')}` : 'no fact added'}`);
+    if (!added.length) return f;
+    const ids = new Set(f.facts.map(x => x.id)); let n = f.facts.length;
+    for (const x of added) if (ids.has(x.id)) { while (ids.has(`f${++n}`)); x.id = `f${n}`; ids.add(x.id); }
+    if (E.hasRef()) for (const x of added.filter(x => x.source === 'reference')) { const q = quoteErrors(x, E.refBlock()); if (q.length) x.quote_check = q.join('; '); }
+    const g = { ...f, facts: [...f.facts, ...added] }; E.ckSave('facts.json', g); return g;
+  }
   const needsRevision = r => {
     const v = r.viewer, sc = v?.scores || {};
     return !!(toFix(r.factcheck).length || v?.lost?.length || v?.flat?.length || unanswered(v) || ['hook', 'clarity', 'flow', 'payoff'].some(k => +sc[k] && +sc[k] < 4));
@@ -859,7 +875,7 @@ export function createWriter(E) {
       const { o } = await writeScript(null, null);
       story = { title: o.title, music: { ...(o.music || {}), payoff_shot: +o.payoff_shot || o.shots.length }, cast: o.cast, shots: o.shots.map(s => ({ beat: s.beat, point: s.point, device: DEVICES[s.device] ? s.device : 'act', hold: Math.max(0, Math.min(2, +s.hold || 0)), lines: s.lines, cue: s.cue, see: s.see })) };
     } else {
-      const f = await writeFacts();
+      let f = await writeFacts();
       let sp = await writeSpine(f), { o, messages } = await writeScript(f, sp);
       o = await fitWords(o, sp, f); messages[messages.length - 1] = { role: 'assistant', content: JSON.stringify(o) }; // the revision starts from the cut script
       const review = await reviewScript(o, sp, f), v = review.viewer;
@@ -871,6 +887,7 @@ export function createWriter(E) {
         const fix = toFix(review.factcheck);
         // a viewer lost in the story, or a request the reel does not answer: the story is wrong, not only its words, so the spine is
         // built again once (a revision held to the spine kept the chronology jump the viewer had named); the new script is checked below
+        if (unanswered(v)) f = await answerFacts(f, v);
         let sp2 = v?.lost?.length || unanswered(v) ? await writeSpine(f, { sp, viewer: v, script: readAloud(o, sp), fix }) : null;
         if (sp2) {
           try {
