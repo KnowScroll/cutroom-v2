@@ -108,6 +108,7 @@ shots: 5-10
 beats: hook, locate, measure, compare, together, spin, orbit, turn, answer, close
 required beats: hook, answer
 hook: number or question
+numbers: said
 places: wikipedia
 reference analysis: studio/refs/test4
 gate balance: info

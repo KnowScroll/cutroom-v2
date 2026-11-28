@@ -1467,8 +1467,10 @@ window.validateShot = (code, shot, tl, ck = {}) => {
           texts.set('cue:' + key, `the change timed to h.cue(${JSON.stringify(c.word)}${c.n > 1 ? `, ${c.n}` : ''}) (said at lt=${c.t.toFixed(1)}s) is still under way at lt=${tE.toFixed(1)}s, 0.8 s before this ${sh.dur.toFixed(1)} s shot ends${lands != null ? `, and lands at about ${lands.toFixed(1)}s` : ', and has not settled by the cut'}, so it is cut off or gone before it reads: a cued change lands at least 0.8 s before the shot ends. Time it to an earlier word where the thing first matters (or the line's start), then hold it (gentle idle motion on lt is fine)`);
         }
       }
-      // an overlap counts when it lasts: seen in two checked frames, or still there 0.3 s before or after (a pop's overshoot is not one)
-      for (const [k, c] of clash) for (const tt of [c.t - 0.3, c.t + 0.3]) if (c.n < 2 && tt > 0.05 && tt < sh.dur - 0.05) { TRACK = { texts: [], assets: [] }; try { render(tt, { still: true }); if (overlaps(tt).has(k)) c.n++; } catch { } TRACK = null; }
+      // an overlap counts when it lasts: seen in two checked frames, or still there 0.3 s before or after (a pop's overshoot is not one);
+      // a counter's label is the same label at another value (qc3-moon shot 4: "3,474 km" over the rolling "67,832 hours")
+      const digits = s => s.replace(/\d[\d,]*(?:\.\d+)?/g, '#');
+      for (const [k, c] of clash) for (const tt of [c.t - 0.3, c.t + 0.3]) if (c.n < 2 && tt > 0.05 && tt < sh.dur - 0.05) { TRACK = { texts: [], assets: [] }; try { render(tt, { still: true }); if ([...overlaps(tt).keys()].some(o => o === k || (o.startsWith('label:') && digits(o) === digits(k)))) c.n++; } catch { } TRACK = null; }
       for (const c of clash.values()) if (c.n >= 2) errors.push(c.m);
       errors.push(...texts.values());
       if (maxMs > 180) errors.push(`too slow: ${maxMs.toFixed(0)} ms per frame`);

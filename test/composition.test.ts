@@ -57,6 +57,21 @@ await test('two name pills that touch are rejected; the same pills 20 px apart p
   assert.ok(!has(apart.errors, label), apart.errors.join(' | '));
 });
 
+await test('a rolling counter whose pill sits on a tag is rejected, though its value changes from frame to frame', async () => {
+  // qc3-moon shot 4: the "hours" counter's pill over the "3,474 km" tag; the words alone do not overlap
+  const code = `function draw(ctx, lt, sh, h, kit) {
+    kit.bg(ctx, lt);
+    h.asset('earth', 540, 840 + 20 * lt, 300 / 272);
+    kit.tag(ctx, '3,474 km', 860, 1290);
+    kit.tag(ctx, h.fmt(Math.round(60000 + 1000 * lt)) + ' hours', 810, 1342);
+  }`;
+  const r = await validateShot(stage, { code, assets: [earth] });
+  assert.ok(
+    has(r.errors, /^the label "3,474 km" .* overlaps the label "[\d,]+ hours"/),
+    r.errors.join(' | '),
+  );
+});
+
 await test('a tilted answer chip is checked on its own shape, not on its upright bounds', async () => {
   // Sun reel shot 7: the answer chip turned -3 degrees; its upright bounds reached the name pill under it, the chip did not
   const shot = (pillY: number) => `function draw(ctx, lt, sh, h, kit) {

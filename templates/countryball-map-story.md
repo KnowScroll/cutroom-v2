@@ -155,6 +155,7 @@ shots: 5-12
 beats: hook, setup, flashback, word, cost, pressure, ally, odds, order, event, outcome, moment, aftermath, payoff
 required beats: hook, payoff
 hook: number or question
+numbers: said
 acting beat: 7
 captions: phrases
 places: wikipedia
