@@ -158,6 +158,48 @@ await test('ghosted context carries at its planned opacity; a counter split into
   );
 });
 
+await test('a carried thing placed by its foot instead of its centre is told what x, y means and the call that meets it', async () => {
+  // qc3-nemo shot 2: the plan carries the marker at y 810 (its centre, the foot on the place at y 960); the coder drew its centre on
+  // the place three times over the same message
+  const marker: Asset = {
+    id: 'marker',
+    w: 140,
+    h: 300,
+    code: `function drawAsset(ctx, p, h, kit) {
+      ctx.fillStyle = '#c4443a'; ctx.fillRect(-11, -120, 22, 240);
+      ctx.beginPath(); ctx.moveTo(-13, 116); ctx.lineTo(13, 116); ctx.lineTo(0, 150); ctx.closePath(); ctx.fill();
+    }`,
+  };
+  const pin = (y: string) => `function draw(ctx, lt, sh, h, kit) {
+    kit.bg(ctx, lt);
+    h.asset('earth', 540, 960, 400 / 272);
+    h.asset('marker', 540, ${y}, 0.9);
+  }`;
+  const ck = { scenery: ['earth'], carryOut: [{ thing: 'marker', x: 540, y: 810, scale: 0.9 }] };
+  const centre = await validateShot(stage, {
+    code: pin('960'),
+    lines,
+    dur: 4.4,
+    assets: [earth, marker],
+    ck,
+  });
+  assert.ok(
+    has(
+      centre.errors,
+      /^"marker" is carried .* draws it at x 540, y 960 \(150 px away\).*\(the centre of its box, not a foot .*h\.asset\('marker', 540, 810, 0\.9, \.\.\.\)/,
+    ),
+    centre.errors.join(' | '),
+  );
+  const foot = await validateShot(stage, {
+    code: pin('960 - 150 * 0.9'),
+    lines,
+    dur: 4.4,
+    assets: [earth, marker],
+    ck,
+  });
+  assert.ok(!has(foot.errors, carryError), foot.errors.join(' | '));
+});
+
 await test('a carried label counts as said under "labels: from narration"', async () => {
   // the shot after the cut keeps the Moon's tag, but its own line never says "Moon"
   const quiet = [

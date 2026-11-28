@@ -23,6 +23,7 @@ declare const HK: {
   toScale: (sizes: number[], px: number) => number[];
 };
 declare function setup(tl: unknown): Promise<boolean>;
+declare const ctx: CanvasRenderingContext2D;
 declare function render(t: number, opts: { still: boolean }): void;
 declare let TRACK: {
   texts: unknown[];
@@ -174,26 +175,174 @@ await test('text under the narrator caption is rejected; above it passes', async
 });
 
 await test('an asset the storyboard puts in the shot but never shows is rejected', async () => {
-  // Sun reel shot 6: "109 Earths" scaled twice came out 0.05 px wide
-  const shot = (r: number) => `function draw(ctx, lt, sh, h, kit) {
+  // Sun reel shot 6: "109 Earths" scaled twice came out 0.05 px wide, never seen (now a ringed dot, which shows); a thing below the
+  // frame, at 20% opacity or at scale 0 is still never seen
+  const shot = (y: number, r: number, alpha: number) => `function draw(ctx, lt, sh, h, kit) {
     kit.bg(ctx, lt);
     h.asset('sun', 540, 900 + 10 * lt, 400 / 272);
-    for (let i = 0; i < 5; i++) h.asset('earth', 380 + 80 * i, 1350, ${String(r)} / 272);
+    ctx.globalAlpha = ${String(alpha)};
+    for (let i = 0; i < 5; i++) h.asset('earth', 380 + 80 * i, ${String(y)}, ${String(r)} / 272);
+    ctx.globalAlpha = 1;
   }`;
   const sun = body('sun', '#ffcf4d');
   const never = /the storyboard puts "earth" in this shot, but it is never visible/;
-  const tiny = await validateShot(stage, {
-    code: shot(0.025),
-    assets: [sun, earth],
-    ck: { uses: ['sun', 'earth'] },
-  });
-  assert.ok(has(tiny.errors, never), tiny.errors.join(' | '));
-  const seen = await validateShot(stage, {
-    code: shot(4),
-    assets: [sun, earth],
-    ck: { uses: ['sun', 'earth'] },
-  });
-  assert.ok(!has(seen.errors, never), seen.errors.join(' | '));
+  const run = (y: number, r: number, alpha: number) =>
+    validateShot(stage, {
+      code: shot(y, r, alpha),
+      assets: [sun, earth],
+      ck: { uses: ['sun', 'earth'] },
+    });
+  for (const [y, r, alpha] of [
+    [2100, 4, 1],
+    [1350, 4, 0.2],
+    [1350, 0, 1],
+  ] as const) {
+    const unseen = await run(y, r, alpha);
+    assert.ok(
+      has(unseen.errors, never),
+      `y ${String(y)}, R ${String(r)}, alpha ${String(alpha)}: ${unseen.errors.join(' | ')}`,
+    );
+  }
+  for (const r of [4, 0.025]) {
+    const seen = await run(1350, r, 1);
+    assert.ok(!has(seen.errors, never), `R ${String(r)}: ${seen.errors.join(' | ')}`);
+  }
+});
+
+await test('a thing under R 3 is a bright dot with a ring: it counts as seen, carried and labelled, and its tags attach to the ring', async () => {
+  // qc3-atom shots 3 to 6: an atom at true scale beside a hair (R 0.024) was never seen, its carry and its tag failed every attempt
+  const atom = body('atom', '#9be7ff');
+  const hair = body('hair', '#8a5a3c');
+  const S = 0.0000882;
+  const lines = [
+    {
+      who: 'narrator',
+      text: 'A typical atom is a tiny point beside the hair.',
+      start: 0.3,
+      end: 3.4,
+    },
+  ];
+  const code = `function draw(ctx, lt, sh, h, kit) {
+    kit.bg(ctx, lt);
+    h.asset('hair', 375, 1010 + 4 * lt, 240 / 272);
+    const atom = h.asset('atom', 875, 1010, ${String(S)});
+    kit.tag(ctx, 'Atom', ...h.label(atom, 'above', 50));
+  }`;
+  const ck = { uses: ['hair', 'atom'], carryOut: [{ thing: 'atom', x: 875, y: 1010, scale: S }] };
+  const r = await validateShot(stage, { code, lines, assets: [hair, atom], ck });
+  assert.ok(!has(r.errors, /"atom" in this shot, but it is never visible/), r.errors.join(' | '));
+  assert.ok(!has(r.errors, /^"atom" is carried across the cut/), r.errors.join(' | '));
+  assert.ok(!has(r.errors, /^the label "Atom" shows .* while its thing/), r.errors.join(' | '));
+  const dotUnder = /^"atom" is under R 3 here, .* but the text "Atom" is drawn over that dot/;
+  assert.ok(!has(r.errors, dotUnder), r.errors.join(' | '));
+  // qc3-atom shot 3: its tag centred on the atom hid the dot
+  const onDot = code.replace("...h.label(atom, 'above', 50)", '875, 1010');
+  const hidden = await validateShot(stage, { code: onDot, lines, assets: [hair, atom], ck });
+  assert.ok(has(hidden.errors, dotUnder), hidden.errors.join(' | '));
+  // on the frame: a bright ring of R 25 and a dot at the thing's place, dark between them; h.asset returns the ring's box, in the
+  // caller's coordinates (a camera zoom of 2 halves it); at scale 0 nothing is drawn
+  const px = await stage.page.evaluate(
+    async (tl, s) => {
+      await setup(tl);
+      render(1, { still: true });
+      const lum = (x: number, y: number) => {
+        const d = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data;
+        return ((d[0] ?? 0) + (d[1] ?? 0) + (d[2] ?? 0)) / 3;
+      };
+      const round = (x: number, y: number, rad: number) => {
+        let sum = 0;
+        for (let k = 0; k < 32; k++)
+          sum += lum(
+            x + rad * Math.cos((k * Math.PI) / 16),
+            y + rad * Math.sin((k * Math.PI) / 16),
+          );
+        return sum / 32;
+      };
+      const box = HK.asset('atom', 875, 1010, s);
+      ctx.save();
+      ctx.translate(540, 960);
+      ctx.scale(2, 2);
+      const zoomed = HK.asset('atom', 0, 0, s);
+      ctx.restore();
+      const empty = round(300, 400, 25);
+      const hidden = HK.asset('atom', 300, 400, 0);
+      return {
+        ring: round(875, 1010, 25),
+        gap: round(875, 1010, 13),
+        dot: lum(875, 1010),
+        box,
+        zoomed,
+        hidden: { box: hidden, ring: round(300, 400, 25) - empty },
+      };
+    },
+    {
+      W: 1080,
+      H: 1920,
+      kit: KIT,
+      assets: [hair, atom],
+      shots: [{ start: 0, dur: 4, lines, code }],
+    },
+    S,
+  );
+  assert.ok(
+    px.ring > px.gap + 60 && px.dot > px.gap + 60,
+    `ring ${String(px.ring)}, dot ${String(px.dot)}, between ${String(px.gap)}`,
+  );
+  const near = (x: number, want: number, what: string) => {
+    assert.ok(Math.abs(x - want) <= 1, `${what}: ${String(x)}, want ${String(want)}`);
+  };
+  near(px.box.x0, 850, 'ring box left');
+  near(px.box.x1, 900, 'ring box right');
+  near(px.box.y0, 985, 'ring box top');
+  near(px.box.y1, 1035, 'ring box bottom');
+  near(px.zoomed.x1 - px.zoomed.x0, 25, 'the ring box under a camera zoom of 2');
+  near(px.hidden.box.x1 - px.hidden.box.x0, 0, 'scale 0: an empty box');
+  near(px.hidden.ring, 0, 'scale 0: no ring drawn');
+});
+
+await test('two places on top of each other, or one place drawn twice, are rejected; places apart pass', async () => {
+  // qc3-venus shot 3: the orbit view (the Sun, a small Venus) drawn over the full-frame Venus globe, and a third Venus beside it
+  const globe = body('globe', '#d9a441');
+  const sun = body('sun', '#ffcf4d');
+  const shot = (more: string) => `function draw(ctx, lt, sh, h, kit) {
+    kit.bg(ctx, lt);
+    h.asset('globe', 540, 1000 + 4 * lt, 400 / 272);
+    ${more}
+  }`;
+  const run = (more: string) =>
+    validateShot(stage, {
+      code: shot(more),
+      assets: [globe, sun],
+      ck: { scenery: ['globe', 'sun'] },
+    });
+  const inside = await run("h.asset('sun', 540, 900, 90 / 272);");
+  assert.ok(
+    has(inside.errors, /^"sun" \(.*\) is drawn on "globe" .*both are places/),
+    inside.errors.join(' | '),
+  );
+  const twice = await run("h.asset('globe', 160, 300, 40 / 272);");
+  assert.ok(
+    has(
+      twice.errors,
+      /^"globe" is drawn 2 times at lt=\S+ \(.* at scale 1\.47\d*; .* at scale 0\.147\)/,
+    ),
+    twice.errors.join(' | '),
+  );
+  const apart = await run("h.asset('sun', 540, 330, 90 / 272);");
+  assert.ok(!has(apart.errors, /is drawn on "globe"|is drawn \d times/), apart.errors.join(' | '));
+});
+
+await test('a place (scenery) hero is not held to acting beats; a character hero still is', async () => {
+  // qc3-norway: the hero was its map; given acting beats, the coder flipped the map's highlight and broke the carry 3 times
+  const map = body('map', '#c8102e');
+  const code = `function draw(ctx, lt, sh, h, kit) { kit.bg(ctx, lt); h.asset('map', 540, 900, 400 / 272); }`;
+  const run = (scenery: string[]) =>
+    validateShot(stage, { code, assets: [map], ck: { hero: 'map', acting: 2, scenery } });
+  const acts = /^the hero "map" barely acts/;
+  const place = await run(['map']);
+  assert.ok(!has(place.errors, acts), place.errors.join(' | '));
+  const character = await run([]);
+  assert.ok(has(character.errors, acts), character.errors.join(' | '));
 });
 
 await test('the reel opens on its subject: waiting for the last word is rejected, a pop on the first word passes', async () => {

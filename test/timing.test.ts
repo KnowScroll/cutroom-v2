@@ -28,6 +28,89 @@ await test('the stage reads the numbers the voice says, in words or digits', asy
   assert.deepEqual(got, [378000, 3150, 8.6, 1400000, 100, 75600]);
 });
 
+await test('the stage reads years, dates and "half a million" as the writer does, and never a year across a comma', async () => {
+  // qc3-norway's titles "7 JUNE 1905" and "26 OCTOBER 1905", said "the seventh of June nineteen oh five"
+  const text =
+    'In nineteen oh five, on the twenty-sixth of October, half a million people came at first; nineteen eighty-seven; eleven, twelve; for a second; the seventh day.';
+  const got = await stage.page.evaluate(
+    (t) => saidNumbers(saidToks({ lines: [t] })).map((n) => n.v),
+    { who: 'narrator', text, start: 0.3, end: 9 },
+  );
+  assert.deepEqual(got, [1905, 26, 500000, 1987, 11, 12, 7]);
+});
+
+// a number on screen must be said in its shot (rounded at most 5%) or carried in, and land no earlier than 1 s before its words
+const sayLine: Line[] = [
+  {
+    who: 'narrator',
+    text: 'Between the Earth and the Moon lie about three hundred eighty thousand kilometres of empty space.',
+    start: 0.3,
+    end: 6,
+  },
+];
+const tagShot2 = (tag: string, from: string) => `function draw(ctx, lt, sh, h, kit) {
+  kit.bg(ctx, lt);
+  h.asset('earth', 300, 840 + 10 * lt, 200 / 272);
+  h.asset('moon', 800, 840, 60 / 272);
+  if (lt >= ${from}) kit.tag(ctx, '${tag}', 540, 1280);
+}`;
+const sayShot = (tag: string, from: string, ck: Record<string, unknown> = {}) =>
+  validateShot(stage, {
+    code: tagShot2(tag, from),
+    lines: sayLine,
+    dur: 7,
+    assets: [earth, moon],
+    ck,
+  });
+const unsaid =
+  /^the number "12,742" in "12,742 km" is on screen from lt=\S+ to \S+, but this shot's lines never say it/;
+const onWord = "h.cue('three hundred eighty thousand')";
+
+await test('a number on screen that the shot never says is rejected; a said, a rounded and a carried one pass', async () => {
+  // qc3-moon shots 3 and 4: "12,742 km" and "3,474 km" under Earth and the Moon, never said
+  const never = await sayShot('12,742 km', '0.4');
+  assert.ok(has(never.errors, unsaid), never.errors.join(' | '));
+  for (const tag of ['380,000 km', '384,400 km']) {
+    const r = await sayShot(tag, onWord);
+    assert.ok(!has(r.errors, /^the number |^"\S+ km" appears/), `${tag}: ${r.errors.join(' | ')}`);
+  }
+  // carried in: by the plan's carry, or on screen from the first frame (the shot before showed it at the cut)
+  const carried = await sayShot('12,742 km', '0.4', {
+    carryIn: [{ label: '12,742 km', x: 540, y: 1280 }],
+  });
+  assert.ok(!has(carried.errors, unsaid), carried.errors.join(' | '));
+  const kept = await sayShot('12,742 km', '0');
+  assert.ok(!has(kept.errors, unsaid), kept.errors.join(' | '));
+});
+
+await test('a number shown more than 1 s before its words is rejected; one on its words passes', async () => {
+  // qc3-atom: "1 million atoms wide" on screen 23 s before the voice said it
+  const early = await sayShot('380,000 km', '0.4');
+  assert.ok(
+    has(
+      early.errors,
+      /^"380,000 km" appears at lt=0\.\ds, \d\.\d s before the voice says "three hundred eighty thousand"/,
+    ),
+    early.errors.join(' | '),
+  );
+  const onTime = await sayShot('380,000 km', `${onWord} - 0.6`);
+  assert.ok(!has(onTime.errors, /^"380,000 km" appears/), onTime.errors.join(' | '));
+});
+
+await test('a slow counter is judged on the value it lands on, not the values it passes', async () => {
+  // a day counter ticking 10, 11 ... 20 DAYS, one value every 0.25 s, to the number the line says
+  const code = `function draw(ctx, lt, sh, h, kit) {
+    kit.bg(ctx, lt);
+    h.asset('earth', 300, 840 + 10 * lt, 200 / 272);
+    if (lt >= 0.5) kit.title(ctx, (10 + Math.min(10, Math.floor((lt - 0.5) * 4))) + ' DAYS', 540, 1280, { size: 80 });
+  }`;
+  const days: Line[] = [
+    { who: 'narrator', text: 'The trip takes twenty days.', start: 0.3, end: 2.2 },
+  ];
+  const r = await validateShot(stage, { code, lines: days, dur: 4.5, assets: [earth] });
+  assert.ok(!has(r.errors, /^the number |DAYS" appears/), r.errors.join(' | '));
+});
+
 // the number is said at the start of the line; its tag pops on the word, or 3 s later
 const numberLine: Line[] = [
   {
