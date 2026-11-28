@@ -151,6 +151,8 @@ A cut is one engine invocation that makes model calls (`--until script` counts).
 | 45 | 2026-11-28 | #60 QC3 | full cut C Sun (kurzgesagt), main 1eded8c, --rounds 0 | heygen free | 0.1116 | var/runs/qc3-sun |
 | 46 | 2026-11-28 | #60 QC3 | full cut F Nemo (globe-zoom), main 1eded8c, --rounds 0 | heygen free | 0.1677 | var/runs/qc3-nemo |
 | 47 | 2026-11-28 | #81 | `--until assets` Norway on PR #82 9538712 (template only): Sweden flag right; Norway flag spec wrong (M3), border invisible, sheet balls grey, sign word swapped | none | 0.2070 | var/runs/q-t14-norway |
+| 48 | 2026-11-28 | #80 | `--until script` atom on PR #83 500cad7: sand answered ("Grain of sand" fetched: 2 mm, twenty million times) | none | 0.0231 | var/runs/q-t13-atom |
+| 49 | 2026-11-28 | #80 | `--until script` Norway on PR #83 500cad7: no flagged line left; 181 words for 112 (second fit 210 -> 183). Plus 3 direct M3 fit probes outside the engine ($0.024) | none | 0.0419 | var/runs/q-t13-norway |
 
 ## Next action
 
