@@ -232,8 +232,11 @@ await test('an asset param passed as undefined is rejected with its name; a para
   const bad = await validateShot(stage, { code: code('glow: looks.earth_glow'), assets: [earth] });
   const e = bad.errors.find((x) => x.includes('got glow: undefined')) ?? '';
   assert.ok(e.includes('your code line 4'), bad.errors.join(' | '));
-  const fine = await validateShot(stage, { code: code('dt: 0'), assets: [earth] });
+  // the param left out (empty params): the asset's default, no error
+  const fine = await validateShot(stage, { code: code(''), assets: [earth] });
   assert.ok(!fine.errors.some((x) => x.includes('undefined')), fine.errors.join(' | '));
+  const given = await validateShot(stage, { code: code('glow: looks.earth'), assets: [earth] });
+  assert.ok(!given.errors.some((x) => x.includes('undefined')), given.errors.join(' | '));
 });
 
 await stage.close();
