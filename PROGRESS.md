@@ -97,7 +97,7 @@ QC0 items done directly: patched working copies reset (Windows globe-zoom-explai
 - QC3 cuts done 2026-11-28 00:05-00:51 UTC (rows 41-46). AV: all 6 FAIL (viewer 2-3/5), report on #60 (issuecomment-7231376533). Fix issues #79 (stage), #80 (writer/plan/voice), #81 (countryball template).
 - Merged: #82 (234ab2f, #81), #83 (6e412aa, #80), #84 (fbd0412, #79). #79-#81 closed and verified (cut 50; #79 by free re-render and a 43-shot replay). Both vars synced (WSL clone at fbd0412).
 - Running: QC4 runner (11 single cuts: jupiter, olympus, reunification, virus, iceland, louisiana, burj, panama on kurzgesagt/globe-zoom/countryball; microwave, fresnel, focus for regression), folders var/runs/qc4-*.
-- **Voice blocked again (2026-11-28 10:10 UTC):** heygen free HTTP 429 free-models-per-day during qc4-jupiter (its script is checkpointed; it resumes, not counted as a new cut). MiniMax Token Plan limit also hit (20 min wait). The QC4 runner now waits for the voice and resumes at 00:00 UTC. The heygen free tier ends 2026-11-30: QC5 needs OpenRouter credit (user item).
+- Voice blocked 2026-11-28 10:10 UTC (heygen free 429 free-models-per-day, OpenRouter credit $0). User ruling 13:00 UTC: the voices are not under test, make the videos. #85 (PR #86, 7b51d7b): `--voice-model local`, Windows built-in speech, free and offline; QC4 runs on it (robotic; pitch gate logs LOW).
 - Scope moves: line-note checks from #54 to #49 (engine applyNotes reuses the writer checks).
 
 ### Real cuts, phase Q (budget 80)
@@ -155,8 +155,8 @@ A cut is one engine invocation that makes model calls (`--until script` counts).
 | 47 | 2026-11-28 | #81 | `--until assets` Norway on PR #82 9538712 (template only): Sweden flag right; Norway flag spec wrong (M3), border invisible, sheet balls grey, sign word swapped | none | 0.2070 | var/runs/q-t14-norway |
 | 48 | 2026-11-28 | #80 | `--until script` atom on PR #83 500cad7: sand answered ("Grain of sand" fetched: 2 mm, twenty million times) | none | 0.0231 | var/runs/q-t13-atom |
 | 49 | 2026-11-28 | #80 | `--until script` Norway on PR #83 500cad7: no flagged line left; 181 words for 112 (second fit 210 -> 183). Plus 3 direct M3 fit probes outside the engine ($0.024) | none | 0.0419 | var/runs/q-t13-norway |
-| 50 | 2026-11-28 | #80 #81 verify | `--until assets` Norway on main 6e412aa (orchestrator): 107 words (budget 111; second fit with low thinking, ~200-280 s each, ran twice), no flag left, subject Norway ball, voices gareth/lucian/bram, flags right, sign words whole; 1131 s wall | none | ~0.23 (tokens: 217k in, 132k out; no cost file at --until assets) | var/runs/q-v80-norway |
+$1| 51 | 2026-11-28 | #60 QC4 | full cut Q1 Jupiter (kurzgesagt), main 7b51d7b, --rounds 0; script/plan/assets from the 10:10 run (stopped at voice), resumed: 47.2 s | local | 0.0457 + the first run's spend (not printed) | var/runs/qc4-jupiter |
 
 ## Next action
 
-T11 (#60): AV review each QC4 reel as it lands, then QC4 fixes and QC5 (briefs Q1-Q10 + atom regression) and QC5 (5 API jobs). Voice: heygen free ~50 requests/day, resets 00:00 UTC; OpenRouter credit would lift it. Budget: 46 of 80 cuts used.
+T11 (#60): AV review each QC4 reel as it lands, then QC4 fixes and QC5 (briefs Q1-Q10 + atom regression) and QC5 (5 API jobs). Voice: `local` (#85) until OpenRouter credit is added. Budget: 51 of 80 cuts used.
