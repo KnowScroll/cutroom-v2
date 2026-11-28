@@ -784,6 +784,9 @@ function placeAsset(id, x, y, s = 1, params = {}) {
   if (STRICT && spec.poses && spec.poses.length && !spec.poses.includes(params.pose)) throw new Error(`asset "${id}" has no pose "${params.pose}"; its poses are: ${spec.poses.join(', ')} (pick the closest one; expression, eyes and mouth are separate params)`);
   if (STRICT) { const bad = [['x', x], ['y', y], ['s', s]].filter(([, n]) => !Number.isFinite(+n)); if (bad.length) throw new Error(`h.asset('${id}', x, y, s) got ${bad.map(([k, n]) => `${k} = ${n}`).join(', ')}, so the canvas ignores the move or the scale and the asset is drawn at the wrong place or size: ${NAN_CAUSES}`); }
   params = params && typeof params === 'object' ? params : {};
+  // a param passed as undefined is a misspelt name or a key its object lacks, and the asset silently draws its default (QC4
+  // Reunification: flag: kit.flags.gdr_flag, but kit.flags is keyed gdr, so every ball was a plain grey ball)
+  if (STRICT && IN_SHOT && !IN_ASSET) { const und = Object.keys(params).filter(k => params[k] === undefined); if (und.length) throw new Error(`h.asset('${id}', ...) got ${und.map(k => `${k}: undefined`).join(', ')}, so the asset draws its default instead: the name or key you read it from is misspelt or missing (check the object's keys); leave a param out to get its default`); }
   // params.who: the character or named thing this placement shows (one asset can show several): it moves their mouth and anchors their bubble
   const who = params.who != null && params.who !== '' ? String(params.who) : null, fl = params.flip ? -1 : 1, u = drawnBox(id, spec, params);
   if (who && params.mouth === undefined) params = { ...params, mouth: mouth(CUR.sh, who, CUR.lt) };

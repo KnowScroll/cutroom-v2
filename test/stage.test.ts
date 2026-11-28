@@ -222,4 +222,21 @@ await test('a NaN raised inside a kit function names the line of the shot that c
   assert.ok(mine.includes('your code line 3: `ctx.translate(NaN, 0);`)'), mine);
 });
 
+await test('an asset param passed as undefined is rejected with its name; a param left out is fine', async () => {
+  // QC4 Reunification: flag: kit.flags.gdr_flag, but kit.flags is keyed by cast id, so every ball was a plain grey ball (#91)
+  const code = (glow: string) => `function draw(ctx, lt, sh, h, kit) {
+  kit.bg(ctx, lt);
+  const looks = { earth: 0.7 };
+  h.asset('earth', 540, 900 + 40 * lt, 1, { ${glow} });
+}`;
+  const bad = await validateShot(stage, { code: code('glow: looks.earth_glow'), assets: [earth] });
+  const e = bad.errors.find((x) => x.includes('got glow: undefined')) ?? '';
+  assert.ok(e.includes('your code line 4'), bad.errors.join(' | '));
+  // the param left out (empty params): the asset's default, no error
+  const fine = await validateShot(stage, { code: code(''), assets: [earth] });
+  assert.ok(!fine.errors.some((x) => x.includes('undefined')), fine.errors.join(' | '));
+  const given = await validateShot(stage, { code: code('glow: looks.earth'), assets: [earth] });
+  assert.ok(!given.errors.some((x) => x.includes('undefined')), given.errors.join(' | '));
+});
+
 await stage.close();
