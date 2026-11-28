@@ -97,6 +97,7 @@ QC0 items done directly: patched working copies reset (Windows globe-zoom-explai
 - QC3 cuts done 2026-11-28 00:05-00:51 UTC (rows 41-46). AV: all 6 FAIL (viewer 2-3/5), report on #60 (issuecomment-7231376533). Fix issues #79 (stage), #80 (writer/plan/voice), #81 (countryball template).
 - Merged: #82 (234ab2f, #81), #83 (6e412aa, #80), #84 (fbd0412, #79). #79-#81 closed and verified (cut 50; #79 by free re-render and a 43-shot replay). Both vars synced (WSL clone at fbd0412).
 - Running: QC4 runner (11 single cuts: jupiter, olympus, reunification, virus, iceland, louisiana, burj, panama on kurzgesagt/globe-zoom/countryball; microwave, fresnel, focus for regression), folders var/runs/qc4-*.
+- **Voice blocked again (2026-11-28 10:10 UTC):** heygen free HTTP 429 free-models-per-day during qc4-jupiter (its script is checkpointed; it resumes, not counted as a new cut). MiniMax Token Plan limit also hit (20 min wait). The QC4 runner now waits for the voice and resumes at 00:00 UTC. The heygen free tier ends 2026-11-30: QC5 needs OpenRouter credit (user item).
 - Scope moves: line-note checks from #54 to #49 (engine applyNotes reuses the writer checks).
 
 ### Real cuts, phase Q (budget 80)
