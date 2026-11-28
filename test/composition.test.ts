@@ -305,8 +305,9 @@ await test('a row of tiny copies stays at its true size, unringed; a big faint t
   const row = (n: number) => `function draw(ctx, lt, sh, h, kit) {
     kit.bg(ctx, lt);
     h.asset('sun', 540, 900, 400 / 272);
-    const r = 400 / 150;
-    for (let i = 0; i < ${String(n)}; i++) h.asset('earth', 140 + r + 2 * r * i, 900, r / 272);
+    const r = 400 / 150, back = (t, s) => { t = h.clamp(t, 0, 1); return 1 + (s + 1) * Math.pow(t - 1, 3) + s * Math.pow(t - 1, 2); };
+    // the row fills in 1.5 s, each copy popping in over 0.35 s: at lt 1 some have landed and some are still growing
+    for (let i = 0; i < ${String(n)}; i++) h.asset('earth', 140 + r + 2 * r * i, 900, (r / 272) * back((lt - 0.01 * i) / 0.35, 2.5));
   }`;
   const ck = { uses: ['sun', 'earth'] };
   const r = await validateShot(stage, { code: row(150), assets: [sun, earth], ck });

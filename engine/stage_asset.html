@@ -795,7 +795,7 @@ function placeAsset(id, x, y, s = 1, params = {}) {
     // storyboard check 3 times in every shot. Scale 0 draws nothing (shots hide a thing so). A drawn R 3 measures up to 3.4 px; its
     // glow counts too (a big faint thing with a tiny solid core is no dot). Off the frame's own canvas (h.cache) no dot is drawn
     const R = Math.max(box.x1 - box.x0, box.y1 - box.y0) / 2, sb = dev(u.seen), RS = Math.max(sb.x1 - sb.x0, sb.y1 - sb.y0) / 2;
-    if (!IN_ASSET && ctx === CTX0 && R > 0 && R < 3.5 && RS < 10) dot = { x: (box.x0 + box.x1) / 2, y: (box.y0 + box.y1) / 2, col: u.col, key: `${id}|${sig}|${Math.round(R * 100)}`, seen: sb };
+    if (!IN_ASSET && ctx === CTX0 && R > 0 && R < 3.5 && RS < 10) dot = { x: (box.x0 + box.x1) / 2, y: (box.y0 + box.y1) / 2, col: u.col, key: `${id}|${sig}`, seen: sb };
     if (who && !AUTO[who]) AUTO[who] = [(box.x0 + box.x1) / 2, box.y0];
     if (TRACK) { const sx = Math.hypot(tf.a, tf.b), sy = Math.hypot(tf.c, tf.d); TRACK.assets.push(tr = { id, who, front: !!params.front, sig, box, dot: dot && [dot.x, dot.y], seen: dot ? { x0: dot.x - DOT_R, x1: dot.x + DOT_R, y0: dot.y - DOT_R, y1: dot.y + DOT_R } : sb, u, tf, w: spec.w * sx, h: spec.h * sy, cx: tf.e, cy: tf.f, alpha: ctx.globalAlpha, act: JSON.stringify(Object.fromEntries(Object.entries(params).filter(([k, v]) => typeof v === 'string' && k !== 'mouth' && k !== 'who'))) }); } }
   let got; IN_ASSET++; try { got = fn(ctx, { ...params, t: CUR.lt + (params.dt || 0) }, HK, KIT); } catch (e) { if (STRICT) { ctx.restore(); throw e; } } finally { IN_ASSET--; }
@@ -810,8 +810,8 @@ function placeAsset(id, x, y, s = 1, params = {}) {
 }
 // the tiny thing's callout in screen pixels (kurzgesagt's: a dot of R 3, a ring of R 3 + 22): its own colour lifted toward white,
 // over a soft dark edge so it also reads on a light ground; it fades with the thing (globalAlpha)
-// A shot's dots are drawn when its draw ends, on top of it, and only for a thing placed fewer than 3 times in the frame at that
-// scale and look: a row of copies (kurzgesagt's "N fit across", up to 250 at r = 400 / N) stays at its true size, unringed
+// A shot's dots are drawn when its draw ends, on top of it, and only for a thing placed fewer than 3 times in the frame with that
+// look: a row of copies (kurzgesagt's "N fit across", up to 250 at r = 400 / N, each popping in) stays at its true size, unringed
 const DOT_R = 25;
 let DOTS = null;
 function flushDots() {
