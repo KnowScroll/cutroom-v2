@@ -137,7 +137,7 @@ A history story told by countries as flag-balls on a real map. Every country in 
   - help: the third country gives what it really gave (as hand over) or turns away (as ask/refuse) when it really refused.
   A third ball on screen watches (arms_down, looking at whoever acts).
 - Every ball stays whole inside the frame: kit.seat keeps the seats inside the ball area; a ball above scale 0.9 keeps its centre x between 60 + 175 * s and 1020 - 175 * s and y between 480 + 175 * s and 1400 - 175 * s.
-- Towns (MARKER lines): const [tx, ty] = kit.pt(lon, lat, v); kit.flag(ctx, tx, ty, 0.9, kit.flags['<cast id of the country that holds the town>'] (or that country's fill colour when it is no ball), lt) and kit.label 50 px below it.
+- Towns (MARKER lines): const [tx, ty] = kit.pt(lon, lat, v); kit.flag(ctx, tx, ty, 0.9, kit.flags['<cast id of the country that holds the town>'] (or kit.palette['<that country's fill role>'] when it is no ball), lt) and kit.label 50 px below it.
 - Medallions: radius 110 to 140 at kit.seat of their country with the balls' seats in avoid and gap 300 (on it, or beside it when it has no room).
 - Map labels sit where no ball, sign or bubble is: their dx, dy move them clear.
 - Fixed layout:
