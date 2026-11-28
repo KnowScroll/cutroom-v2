@@ -28,46 +28,6 @@ Voice refusals not counted as cuts (#18): 4 eleven-v4 HTTP 402 invocations; thei
 
 | # | date | issue | purpose | voice | cost USD | run folder |
 |---|---|---|---|---|---|---|
-| 1 | 2026-11-27 | #45 | `--until script` atom brief (code before review fixes) | none (script only) | 0.0205 | var/runs/q-t1-atom |
-| 2 | 2026-11-27 | #45 | `--until script` Moon brief on final PR #65 code (orchestrator) | none (script only) | 0.0260 | var/runs/q-t1-moon |
-| 3 | 2026-11-27 | #45 | `--until script` Moon re-run on 92a8982 (orchestrator): false "longer than most lives" kept as a brief conflict | none (script only) | 0.0205 | var/runs/q-t1-moon2 |
-| 4 | 2026-11-27 | #45 | `--until script` Moon on 78e0f34 (orchestrator): failed, no usable fact sheet (M3 kept a wrong payoff number against the neutral message) | none | ~0.008 (tokens; no cost file) | var/runs/q-t1-moon3 |
-| 5 | 2026-11-27 | #45 | `--until script` Moon on 2775dc2 (orchestrator): failed, no usable fact sheet (derived facts cannot chain; bare unit in a rate rejected). The atom re-run resumed the old q-t1-atom checkpoints: 0 calls, not counted | none | ~0.0075 (tokens) | var/runs/q-t1-moon4 |
-| 6 | 2026-11-27 | #45 | `--until script` Moon on cea8190: failed, no usable fact sheet (conversion calc rejected) | none | ~0.008 | var/runs/q-t1-moon5 |
-| 7 | 2026-11-27 | #45 | `--until script` atom on cea8190: false sheet passed (hair fact relabelled as sand, meaningless calcs, lazy fact check) | none | 0.0166 | var/runs/q-t1-atom2 |
-| 8 | 2026-11-27 | #45 | `--until script` Moon on 9875f2e: maths right (8.6 years, a fraction of a lifetime); wall 342 s | none | 0.0407 | var/runs/q-t1-moon6 |
-| 9 | 2026-11-27 | #45 | `--until script` atom on 9875f2e: maths right (0.5 mm / 100 pm = 5 million) | none | 0.0438 | var/runs/q-t1-atom3 |
-| 10 | 2026-11-27 | #45 | `--until script` Venus on 9875f2e: premise inverted (reference lacks the 243-day spin: T2) | none | 0.0342 | var/runs/q-t1-venus |
-| 11 | 2026-11-27 | #50 | full cut on PR #66 (Moon): stopped at voice, heygen free HTTP 429 free-models-per-day | heygen (refused) | ~0.03 (script stage) | var/runs/q-t6-moon |
-| 12 | 2026-11-27 | #50 | cut on PR #66 from the old Moon script (cached voice, new plan/assets/shots): 4 first-attempt shot rejections, all real; no overlaps | heygen (cached) | 0.1114 | var/runs/q-t6-moon2 |
-| 13 | 2026-11-27 | #46 | `--until script` Venus on PR #67: premise kept (243-day spin vs 224.7-day year) | none | 0.0467 | var/runs/q-t2-venus |
-| 14 | 2026-11-27 | #46 | `--until script` Norway on PR #67: right article, 1905 events in order | none | 0.0712 | var/runs/q-t2-norway |
-| 15 | 2026-11-27 | #47 | `--until script` atom on PR #68 (T3 agent): question drifted to a volume count, answer unsaid | none | 0.0543 | var/runs/q-t3-atom |
-| 16 | 2026-11-27 | #47 | `--until script` Moon on PR #68 (T3 agent): connected, right numbers; takeaway inverted | none | 0.0226 | var/runs/q-t3-moon |
-| 17 | 2026-11-27 | #47 QC1 | `--until script` atom on PR #68 b69c316: ok | none | 0.0276 | var/runs/qc1-atom |
-| 18 | 2026-11-27 | #47 QC1 | `--until script` moon on PR #68 b69c316: ok | none | 0.0460 | var/runs/qc1-moon |
-| 19 | 2026-11-27 | #47 QC1 | `--until script` sun on PR #68 b69c316: ok | none | 0.0371 | var/runs/qc1-sun |
-| 20 | 2026-11-27 | #47 QC1 | `--until script` venus on PR #68 b69c316: ok | none | 0.0398 | var/runs/qc1-venus |
-| 21 | 2026-11-27 | #47 QC1 | `--until script` nemo on PR #68 b69c316: ok | none | 0.0578 | var/runs/qc1-nemo |
-| 22 | 2026-11-27 | #47 QC1 | `--until script` norway on PR #68 b69c316: failed: hard payoff-number check on a date | none | ~0.024 | var/runs/qc1-norway |
-| 23 | 2026-11-27 | #47 QC1 | `--until script` proxima on PR #68 b69c316: ok (new topic) | none | 0.0760 | var/runs/qc1-proxima |
-| 24 | 2026-11-27 | #47 QC1 | `--until script` mariana on PR #68 b69c316: ok (new topic) | none | 0.1000 | var/runs/qc1-mariana |
-| 25 | 2026-11-27 | #47 QC1 | `--until script` panama on PR #68 b69c316: failed: fit could not reach the budget (new topic) | none | ~0.021 | var/runs/qc1-panama |
-| 26 | 2026-11-27 | #47 QC1 | `--until script` quit on PR #68 b69c316: ok (new topic, dan-koe) | none | 0.0403 | var/runs/qc1-quit |
-| 27 | 2026-11-27 | #47 | `--until script` Norway re-run on 98449c1: completes; months out of order | none | 0.0779 | var/runs/qc1-norway2 |
-| 28 | 2026-11-27 | #47 | `--until script` Panama re-run on 98449c1: completes (154 words, budget 103, warning); factcheck-2 took 551 s | none | 0.0843 | var/runs/qc1-panama2 |
-| 29 | 2026-11-28 | #70 QC1b | `--until script` nemo on PR #74 cf22854 (completes, 1-3 min) | none | 0.0460 | var/runs/qc1b-nemo |
-| 30 | 2026-11-28 | #70 QC1b | `--until script` venus on PR #74 cf22854 (completes, 1-3 min) | none | 0.0206 | var/runs/qc1b-venus |
-| 31 | 2026-11-28 | #70 QC1b | `--until script` mariana on PR #74 cf22854 (completes, 1-3 min) | none | 0.0340 | var/runs/qc1b-mariana |
-| 32 | 2026-11-28 | #70 QC1b | `--until script` proxima on PR #74 cf22854 (completes, 1-3 min) | none | 0.0329 | var/runs/qc1b-proxima |
-| 33 | 2026-11-28 | #70 QC1b | `--until script` sun on PR #74 cf22854 (completes, 1-3 min) | none | 0.0309 | var/runs/qc1b-sun |
-| 34 | 2026-11-28 | #70 QC1b | `--until script` quit on PR #74 cf22854 (completes, 1-3 min) | none | 0.0286 | var/runs/qc1b-quit |
-| 35 | 2026-11-28 | #70 QC1c | `--until script` nemo on PR #74 6ef300c | none | 0.0447 | var/runs/qc1c-nemo |
-| 36 | 2026-11-28 | #70 QC1c | `--until script` venus on PR #74 6ef300c | none | 0.0334 | var/runs/qc1c-venus |
-| 37 | 2026-11-28 | #70 QC1c | `--until script` mariana on PR #74 6ef300c | none | 0.0271 | var/runs/qc1c-mariana |
-| 38 | 2026-11-28 | #70 QC1c | `--until script` proxima on PR #74 6ef300c | none | 0.0388 | var/runs/qc1c-proxima |
-| 39 | 2026-11-28 | #70 QC1c | `--until script` sun on PR #74 6ef300c | none | 0.0315 | var/runs/qc1c-sun |
-| 40 | 2026-11-28 | #70 QC1c | `--until script` quit on PR #74 6ef300c | none | 0.0295 | var/runs/qc1c-quit |
 | 1 | 2026-11-27 | #2 | `--until script` import check | none | 0.0289 | var/runs/import-check |
 | 2 | 2026-11-27 | #2 | full reel `--rounds 0` (resumed from script) | heygen (4.66 st) | 0.0537 (folder total 0.0826) | var/runs/import-check |
 | 3 | 2026-11-27 | #9 | `--apply-notes --cut 2`, attempt 1 (shot-5 note rejected by validator; kept as reel-v2-attempt1) | heygen (4.72 st) | 0.0153 | var/runs/e2-check |
@@ -134,7 +94,7 @@ QC0 items done directly: patched working copies reset (Windows globe-zoom-explai
 - Merged also: #50 (PR #66, e2681fd), #46 (PR #67, 172e613).
 - Merged also: #51 (PR #69, 3cfa79d), #52 (PR #71, 969ca15).
 - Merged also: #47 (PR #68, 204ece4), #59 (PR #72, cb21389; Windows var synced), #56 (PR #75, de56474), #53 (PR #73, 240fd3a), #70 (PR #74, 4559432), #49 (PR #76, 8fbcc6d), #55 (PR #77, c6ead60), #57 (PR #78, 1eded8c). All implementation issues closed; both vars synced (WSL clone at 1eded8c).
-- Running: none. Next: QC3-QC5 (#60). Voice blocked until 00:00 UTC (free limit) unless credit is added.
+- QC3 cuts done 2026-11-28 00:05-00:51 UTC (rows 41-46; the free voice served all 6). Running: 6 fresh AV reviews (one per reel).
 - Scope moves: line-note checks from #54 to #49 (engine applyNotes reuses the writer checks).
 
 ### Real cuts, phase Q (budget 80)
@@ -143,7 +103,53 @@ A cut is one engine invocation that makes model calls (`--until script` counts).
 
 | # | date | issue | purpose | voice | cost USD | run folder |
 |---|---|---|---|---|---|---|
+| 1 | 2026-11-27 | #45 | `--until script` atom brief (code before review fixes) | none (script only) | 0.0205 | var/runs/q-t1-atom |
+| 2 | 2026-11-27 | #45 | `--until script` Moon brief on final PR #65 code (orchestrator) | none (script only) | 0.0260 | var/runs/q-t1-moon |
+| 3 | 2026-11-27 | #45 | `--until script` Moon re-run on 92a8982 (orchestrator): false "longer than most lives" kept as a brief conflict | none (script only) | 0.0205 | var/runs/q-t1-moon2 |
+| 4 | 2026-11-27 | #45 | `--until script` Moon on 78e0f34 (orchestrator): failed, no usable fact sheet (M3 kept a wrong payoff number against the neutral message) | none | ~0.008 (tokens; no cost file) | var/runs/q-t1-moon3 |
+| 5 | 2026-11-27 | #45 | `--until script` Moon on 2775dc2 (orchestrator): failed, no usable fact sheet (derived facts cannot chain; bare unit in a rate rejected). The atom re-run resumed the old q-t1-atom checkpoints: 0 calls, not counted | none | ~0.0075 (tokens) | var/runs/q-t1-moon4 |
+| 6 | 2026-11-27 | #45 | `--until script` Moon on cea8190: failed, no usable fact sheet (conversion calc rejected) | none | ~0.008 | var/runs/q-t1-moon5 |
+| 7 | 2026-11-27 | #45 | `--until script` atom on cea8190: false sheet passed (hair fact relabelled as sand, meaningless calcs, lazy fact check) | none | 0.0166 | var/runs/q-t1-atom2 |
+| 8 | 2026-11-27 | #45 | `--until script` Moon on 9875f2e: maths right (8.6 years, a fraction of a lifetime); wall 342 s | none | 0.0407 | var/runs/q-t1-moon6 |
+| 9 | 2026-11-27 | #45 | `--until script` atom on 9875f2e: maths right (0.5 mm / 100 pm = 5 million) | none | 0.0438 | var/runs/q-t1-atom3 |
+| 10 | 2026-11-27 | #45 | `--until script` Venus on 9875f2e: premise inverted (reference lacks the 243-day spin: T2) | none | 0.0342 | var/runs/q-t1-venus |
+| 11 | 2026-11-27 | #50 | full cut on PR #66 (Moon): stopped at voice, heygen free HTTP 429 free-models-per-day | heygen (refused) | ~0.03 (script stage) | var/runs/q-t6-moon |
+| 12 | 2026-11-27 | #50 | cut on PR #66 from the old Moon script (cached voice, new plan/assets/shots): 4 first-attempt shot rejections, all real; no overlaps | heygen (cached) | 0.1114 | var/runs/q-t6-moon2 |
+| 13 | 2026-11-27 | #46 | `--until script` Venus on PR #67: premise kept (243-day spin vs 224.7-day year) | none | 0.0467 | var/runs/q-t2-venus |
+| 14 | 2026-11-27 | #46 | `--until script` Norway on PR #67: right article, 1905 events in order | none | 0.0712 | var/runs/q-t2-norway |
+| 15 | 2026-11-27 | #47 | `--until script` atom on PR #68 (T3 agent): question drifted to a volume count, answer unsaid | none | 0.0543 | var/runs/q-t3-atom |
+| 16 | 2026-11-27 | #47 | `--until script` Moon on PR #68 (T3 agent): connected, right numbers; takeaway inverted | none | 0.0226 | var/runs/q-t3-moon |
+| 17 | 2026-11-27 | #47 QC1 | `--until script` atom on PR #68 b69c316: ok | none | 0.0276 | var/runs/qc1-atom |
+| 18 | 2026-11-27 | #47 QC1 | `--until script` moon on PR #68 b69c316: ok | none | 0.0460 | var/runs/qc1-moon |
+| 19 | 2026-11-27 | #47 QC1 | `--until script` sun on PR #68 b69c316: ok | none | 0.0371 | var/runs/qc1-sun |
+| 20 | 2026-11-27 | #47 QC1 | `--until script` venus on PR #68 b69c316: ok | none | 0.0398 | var/runs/qc1-venus |
+| 21 | 2026-11-27 | #47 QC1 | `--until script` nemo on PR #68 b69c316: ok | none | 0.0578 | var/runs/qc1-nemo |
+| 22 | 2026-11-27 | #47 QC1 | `--until script` norway on PR #68 b69c316: failed: hard payoff-number check on a date | none | ~0.024 | var/runs/qc1-norway |
+| 23 | 2026-11-27 | #47 QC1 | `--until script` proxima on PR #68 b69c316: ok (new topic) | none | 0.0760 | var/runs/qc1-proxima |
+| 24 | 2026-11-27 | #47 QC1 | `--until script` mariana on PR #68 b69c316: ok (new topic) | none | 0.1000 | var/runs/qc1-mariana |
+| 25 | 2026-11-27 | #47 QC1 | `--until script` panama on PR #68 b69c316: failed: fit could not reach the budget (new topic) | none | ~0.021 | var/runs/qc1-panama |
+| 26 | 2026-11-27 | #47 QC1 | `--until script` quit on PR #68 b69c316: ok (new topic, dan-koe) | none | 0.0403 | var/runs/qc1-quit |
+| 27 | 2026-11-27 | #47 | `--until script` Norway re-run on 98449c1: completes; months out of order | none | 0.0779 | var/runs/qc1-norway2 |
+| 28 | 2026-11-27 | #47 | `--until script` Panama re-run on 98449c1: completes (154 words, budget 103, warning); factcheck-2 took 551 s | none | 0.0843 | var/runs/qc1-panama2 |
+| 29 | 2026-11-28 | #70 QC1b | `--until script` nemo on PR #74 cf22854 (completes, 1-3 min) | none | 0.0460 | var/runs/qc1b-nemo |
+| 30 | 2026-11-28 | #70 QC1b | `--until script` venus on PR #74 cf22854 (completes, 1-3 min) | none | 0.0206 | var/runs/qc1b-venus |
+| 31 | 2026-11-28 | #70 QC1b | `--until script` mariana on PR #74 cf22854 (completes, 1-3 min) | none | 0.0340 | var/runs/qc1b-mariana |
+| 32 | 2026-11-28 | #70 QC1b | `--until script` proxima on PR #74 cf22854 (completes, 1-3 min) | none | 0.0329 | var/runs/qc1b-proxima |
+| 33 | 2026-11-28 | #70 QC1b | `--until script` sun on PR #74 cf22854 (completes, 1-3 min) | none | 0.0309 | var/runs/qc1b-sun |
+| 34 | 2026-11-28 | #70 QC1b | `--until script` quit on PR #74 cf22854 (completes, 1-3 min) | none | 0.0286 | var/runs/qc1b-quit |
+| 35 | 2026-11-28 | #70 QC1c | `--until script` nemo on PR #74 6ef300c | none | 0.0447 | var/runs/qc1c-nemo |
+| 36 | 2026-11-28 | #70 QC1c | `--until script` venus on PR #74 6ef300c | none | 0.0334 | var/runs/qc1c-venus |
+| 37 | 2026-11-28 | #70 QC1c | `--until script` mariana on PR #74 6ef300c | none | 0.0271 | var/runs/qc1c-mariana |
+| 38 | 2026-11-28 | #70 QC1c | `--until script` proxima on PR #74 6ef300c | none | 0.0388 | var/runs/qc1c-proxima |
+| 39 | 2026-11-28 | #70 QC1c | `--until script` sun on PR #74 6ef300c | none | 0.0315 | var/runs/qc1c-sun |
+| 40 | 2026-11-28 | #70 QC1c | `--until script` quit on PR #74 6ef300c | none | 0.0295 | var/runs/qc1c-quit |
+| 41 | 2026-11-28 | #60 QC3 | full cut G atom (kurzgesagt), main 1eded8c, --rounds 0 | heygen free | 0.1421 | var/runs/qc3-atom |
+| 42 | 2026-11-28 | #60 QC3 | full cut A Venus (globe-zoom), main 1eded8c, --rounds 0 | heygen free | 0.1450 | var/runs/qc3-venus |
+| 43 | 2026-11-28 | #60 QC3 | full cut D Norway (countryball), 73.6 s: script 53% over budget; voice bram pitch 3.39 LOW, main 1eded8c, --rounds 0 | heygen free | 0.2741 | var/runs/qc3-norway |
+| 44 | 2026-11-28 | #60 QC3 | full cut B Moon (kurzgesagt), main 1eded8c, --rounds 0 | heygen free | 0.1641 | var/runs/qc3-moon |
+| 45 | 2026-11-28 | #60 QC3 | full cut C Sun (kurzgesagt), main 1eded8c, --rounds 0 | heygen free | 0.1116 | var/runs/qc3-sun |
+| 46 | 2026-11-28 | #60 QC3 | full cut F Nemo (globe-zoom), main 1eded8c, --rounds 0 | heygen free | 0.1677 | var/runs/qc3-nemo |
 
 ## Next action
 
-T11 (#60): QC3 single cuts for briefs A, B, C, D, F, G with fresh AV reviews, then QC4 (new topics + 3 regression templates), then QC5 (5 API jobs). Blocked on voice: heygen free allows ~50 requests/day (~3-4 reels); resets 00:00 UTC. User asked to add OpenRouter credit (unlocks paid voices and 1000 free/day). Budget: 40 of 80 cuts used.
+T11 (#60): read the 6 QC3 AV reports, trace each objective failure to a stage and file, open fix issues, then QC4 (briefs Q1-Q10 + atom regression) and QC5 (5 API jobs). Voice: heygen free ~50 requests/day, resets 00:00 UTC; OpenRouter credit would lift it. Budget: 46 of 80 cuts used.
