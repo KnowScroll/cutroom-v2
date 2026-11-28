@@ -580,6 +580,7 @@ const fixOf = (shot: number, text: string) => ({ shot, lines: [{ who: 'narrator'
 
 interface Call {
   step: string;
+  system: string;
   messages: Message[];
   efforts?: string[] | undefined;
 }
@@ -587,6 +588,7 @@ async function runWriter(
   answers: Record<string, unknown>,
   brief = BRIEF,
   checks: Record<string, string> = {},
+  more: Partial<WriterEnv> = {},
 ): Promise<{ story: Story; calls: Call[]; logs: string[] }> {
   const calls: Call[] = [];
   const logs: string[] = [];
@@ -594,8 +596,8 @@ async function runWriter(
     brief,
     seconds: 24,
     budget: 60,
-    m3: (step, _system, messages, _max, efforts) => {
-      calls.push({ step, messages: messages.map((m) => ({ ...m })), efforts });
+    m3: (step, system, messages, _max, efforts) => {
+      calls.push({ step, system, messages: messages.map((m) => ({ ...m })), efforts });
       const answer = answers[step] ?? answers[step.replace(/#\d+$/, '')];
       if (answer === undefined) throw new Error(`no fake answer for ${step}`);
       return Promise.resolve(JSON.stringify(answer));
@@ -620,6 +622,7 @@ async function runWriter(
     feels: '',
     wpsOf: () => 2.5,
     padOf: () => 0,
+    ...more,
   };
   const story = await createWriter(E).writeStory();
   return { story, calls, logs };
@@ -838,15 +841,55 @@ await test('a draft over the word budget is cut to length by the fit step, not s
   assert.ok(hook.logs.includes('script-fit: 98 -> 67 words (budget 60)'), hook.logs.join('\n'));
 
   // a fit that takes no cut leaves the draft far over budget: length never ends a run (QC1 Panama: 208 words for 96 stopped it);
-  // the shortest script is kept and the overrun logged
-  const stuck = await runWriter({ ...passed(), script: script(long), 'script-fit': { shots: [] } });
+  // the fit runs once more, then the shortest script is kept and the overrun logged
+  const stuck = await runWriter({
+    ...passed(),
+    script: script(long),
+    'script-fit': { shots: [] },
+    'script-fit-2': { shots: [] },
+  });
   assert.equal(stuck.story.shots[0]?.lines[0]?.text, long[0]?.[0]);
+  assert.ok(
+    stuck.logs.includes('script-fit-2: no cut was taken; 98 words (budget 60)'),
+    stuck.logs.join('\n'),
+  );
   assert.ok(
     stuck.logs.includes(
       'script-fit: WARNING: 98 words after the fit, 63% over the budget of 60; the reel will run long',
     ),
     stuck.logs.join('\n'),
   );
+  assert.equal(steps(stuck.calls, 'script-fit-2#1'), 1);
+  assert.ok(
+    !stuck.calls.some((c) => c.step === 'script-fit-2#2' || c.step.startsWith('script-fit-3')),
+    'it fits again once, in one call',
+  );
+
+  // QC3 Norway: the fit left 162 words for 106 (53% over). More than 20% over is fitted once more, from the cut script
+  const half = long.map((l, i): [string, string] => (i < 2 ? (LINES[i] ?? l) : l));
+  const again = await runWriter({
+    ...passed(),
+    script: script(long),
+    'script-fit': { shots: half.map(([text], i) => fixOf(i + 1, text)) },
+    'script-fit-2': { shots: LINES.map(([text], i) => fixOf(i + 1, text)) },
+  });
+  assert.ok(again.logs.includes('script-fit: 98 -> 78 words (budget 60)'), again.logs.join('\n'));
+  assert.ok(
+    again.logs.includes('script-fit: 30% over the budget of 60; fitting once more'),
+    again.logs.join('\n'),
+  );
+  assert.ok(again.logs.includes('script-fit-2: 78 -> 55 words (budget 60)'), again.logs.join('\n'));
+  const fit2 = again.calls.find((c) => c.step === 'script-fit-2#1');
+  assert.match(fit2?.system ?? '', /AN EARLIER CUT LEFT THIS SCRIPT 30% OVER ITS LENGTH/);
+  // without thinking M3 returned the q-t13-norway shots unchanged; the second fit thinks (low effort)
+  assert.deepEqual(fit2?.efforts, ['low', 'off']);
+  assert.equal(again.calls.find((c) => c.step === 'script-fit#1')?.efforts, undefined);
+  assert.deepEqual(
+    again.story.shots.map((s) => s.lines[0]?.text),
+    LINES.map(([text]) => text),
+  );
+  // within 20% the fit does not run again (the hook run above: 67 words for 60)
+  assert.ok(!hook.calls.some((c) => c.step.startsWith('script-fit-2')), hook.logs.join('\n'));
 });
 
 await test('the spine is told how many shots the word budget carries', async () => {
@@ -1329,6 +1372,95 @@ await test('a sheet that cannot answer the request says what is missing', async 
   assert.equal(story.missing, 'the width of a grain in atoms');
 });
 
+// QC3 atom (var/runs/qc3-atom): facts#2 asked for "Grain" (size, millimetres), the fetch gave 0 chars, and the sheet went on
+// without the grain's size ("The reference does not state the size of a grain of sand ..."), so the reel never answered the request
+const NO_GRAIN = {
+  ...SHEET,
+  question: 'How small is an atom?',
+  answer: 'An atom is about 100 pm across.',
+  payoff: 'f2',
+  yardstick: '',
+  need: [{ article: 'Grain', look_for: ['size', 'millimetres'] }],
+  missing:
+    'The reference does not state the size of a grain of sand, so it cannot support a direct numerical atom-to-grain comparison.',
+  facts: [...BASE.filter((x) => x.id !== 'f1'), ...MOON],
+};
+
+await test('a missing fact whose fetch comes back empty is asked for once as a general value', async () => {
+  const { story, calls, logs } = await runWriter({
+    ...passed(),
+    facts: NO_GRAIN,
+    'facts-general': SHEET,
+  });
+  assert.ok(
+    logs.includes('facts: fetched Grain (size, millimetres) (0 chars) for missing facts'),
+    logs.join('\n'),
+  );
+  const asked = userMessage(calls, 'facts-general#1');
+  assert.match(
+    asked,
+    /does not give what you asked for \(Grain \(size, millimetres\)\): the fetch found nothing/,
+  );
+  assert.match(
+    asked,
+    /the sheet says it is missing: The reference does not state the size of a grain/,
+  );
+  assert.match(asked, /add it as a "general" fact with its usual value/);
+  assert.ok(
+    logs.includes(
+      'facts: asked for Grain (size, millimetres) as a general value: f1 "A grain of sand is about 1 mm across"',
+    ),
+    logs.join('\n'),
+  );
+  assert.equal(story.missing, undefined);
+  assert.ok(
+    !logs.some((l) => l.startsWith('facts: the sheet cannot fully answer')),
+    logs.join('\n'),
+  );
+
+  // no general value added: the sheet stays, and only then is the gap reported missing
+  const lacking = { ...SHEET, need: NO_GRAIN.need, missing: NO_GRAIN.missing };
+  const none = await runWriter({ ...passed(), facts: lacking, 'facts-general': lacking });
+  assert.ok(
+    none.logs.includes(
+      'facts: asked for Grain (size, millimetres) as a general value: no general fact added',
+    ),
+    none.logs.join('\n'),
+  );
+  assert.equal(none.story.missing, NO_GRAIN.missing);
+  assert.equal(steps(none.calls, 'facts-general#1'), 1, 'asked once');
+  assert.equal(steps(none.calls, 'facts-general#2'), 0, 'asked once');
+  // an answer that empties "missing" without adding a fact leaves the gap reported
+  const emptied = await runWriter({
+    ...passed(),
+    facts: lacking,
+    'facts-general': { ...lacking, missing: '' },
+  });
+  assert.equal(emptied.story.missing, NO_GRAIN.missing);
+
+  // the fetch found text, but the sheet built on it still lacks the value: asked for the same way
+  const fetched = await runWriter(
+    { ...passed(), facts: NO_GRAIN, 'facts-more': NO_GRAIN, 'facts-general': SHEET },
+    BRIEF,
+    {},
+    { addArticles: () => Promise.resolve(1200) },
+  );
+  assert.equal(steps(fetched.calls, 'facts-more#1'), 1);
+  const again = userMessage(fetched.calls, 'facts-general#1');
+  assert.doesNotMatch(again, /the fetch found nothing/);
+  assert.match(again, /the sheet says it is missing/);
+  assert.equal(fetched.story.missing, undefined);
+
+  // the fetch filled the gap: nothing more is asked
+  const filled = await runWriter(
+    { ...passed(), facts: NO_GRAIN, 'facts-more': SHEET },
+    BRIEF,
+    {},
+    { addArticles: () => Promise.resolve(1200) },
+  );
+  assert.equal(steps(filled.calls, 'facts-general#1'), 0, filled.logs.join('\n'));
+});
+
 await test('spoken numbers are rounded, one quantity keeps one value, and a year is said in full', () => {
   const shot = (text: string) => ({ lines: [{ who: 'narrator', text }] });
   const facts = [
@@ -1533,6 +1665,117 @@ await test('a line still flagged after the fix gets a second fix pass, then is d
   );
   assert.deepEqual(dropped.story.review?.factcheck2?.problems ?? [], []);
   assert.equal(dropped.story.review?.fixed2?.[0]?.dropped, true);
+});
+
+// QC3 Norway shot 8: "That night, Oscar renounced his Norwegian throne rather than fight." was flagged (the night and the motive
+// are invented), held the cue word "renounced", and shipped. Here shot 2's flagged line holds its cue word "picometres"
+const withShot2 = (...texts: string[]) => {
+  const s = script(LINES);
+  const shot2 = s.shots[1];
+  if (shot2) shot2.lines = texts.map((text) => ({ who: 'narrator', text }));
+  return s;
+};
+const flaggedLine = (claim: string) =>
+  checked({
+    problems: [{ shot: 2, kind: 'wrong', claim, problem: 'it invents the time', fix: 'cut it' }],
+  });
+const CUE_LINE = LINES[1]?.[0] ?? '';
+const flaggedRun = (s: ReturnType<typeof script>, claim: string, fixes: Record<string, unknown>) =>
+  runWriter({
+    ...passed(),
+    viewer: flatViewer,
+    script: s,
+    'script-revise': s,
+    'factcheck-2': flaggedLine(claim),
+    ...fixes,
+  });
+
+await test('a flagged line never ships: the second fix may cut it with its cue word, and the cue moves', async () => {
+  const cut = {
+    shots: [
+      {
+        shot: 2,
+        lines: [
+          { who: 'narrator', text: 'But an atom is tiny.' },
+          { who: 'narrator', text: 'That is almost none of it.' },
+        ],
+        cue: 'tiny',
+      },
+    ],
+  };
+  const { story, calls, logs } = await flaggedRun(
+    withShot2(CUE_LINE, 'That is almost none of it.'),
+    CUE_LINE,
+    { 'script-fix': cut, 'script-fix-2': cut },
+  );
+  // the first pass keeps the cue word, so it cannot take a fix that cuts it
+  assert.ok(
+    logs.includes('script-fix: no fix was taken for shots 2; keeping the script'),
+    logs.join('\n'),
+  );
+  const asked = JSON.parse(
+    userMessage(calls, 'script-fix-2').replace(/\n\nReturn only the JSON object\.$/, ''),
+  ) as { shots: { keep: string[]; cue_word?: string }[] };
+  assert.deepEqual(asked.shots[0]?.keep, []);
+  assert.equal(asked.shots[0].cue_word, 'picometres');
+  assert.ok(
+    logs.includes('script-fix-2: shot 2\'s cue moved from "picometres" to "tiny"'),
+    logs.join('\n'),
+  );
+  assert.deepEqual(
+    story.shots[1]?.lines.map((l) => l.text),
+    ['But an atom is tiny.', 'That is almost none of it.'],
+  );
+  assert.equal(story.shots[1].cue?.word, 'tiny');
+  assert.deepEqual(story.review?.factcheck2?.problems ?? [], []);
+});
+
+await test('a flagged line no fix takes is dropped, its cue word moving to a word the shot still says', async () => {
+  const { story, logs } = await flaggedRun(
+    withShot2(CUE_LINE, 'That is almost none of it.'),
+    CUE_LINE,
+    {},
+  );
+  assert.ok(
+    logs.includes(
+      `script-fix: dropped shot 2's line "${CUE_LINE}", still flagged: it invents the time; its cue moved from "picometres" to "almost"`,
+    ),
+    logs.join('\n'),
+  );
+  assert.deepEqual(
+    story.shots[1]?.lines.map((l) => l.text),
+    ['That is almost none of it.'],
+  );
+  assert.equal(story.shots[1].cue?.word, 'almost');
+  assert.deepEqual(story.review?.factcheck2?.problems ?? [], []);
+
+  // a shot with one line loses the claim's own sentence
+  const one = await flaggedRun(
+    withShot2(`${CUE_LINE} That is almost none of it.`),
+    'almost none of it',
+    {},
+  );
+  assert.deepEqual(
+    one.story.shots[1]?.lines.map((l) => l.text),
+    [CUE_LINE],
+  );
+  assert.ok(
+    one.logs.some((l) =>
+      l.startsWith('script-fix: dropped shot 2\'s sentence "That is almost none of it."'),
+    ),
+    one.logs.join('\n'),
+  );
+
+  // only a shot's one sentence stays, reported and warned about
+  const only = await flaggedRun(withShot2(CUE_LINE), 'one hundred picometres across', {});
+  assert.equal(lineOf(only.story, 2), CUE_LINE);
+  assert.ok(
+    only.logs.includes(
+      'script-fix: WARNING: shot 2\'s line stays flagged (it is the shot\'s only sentence): "one hundred picometres across"',
+    ),
+    only.logs.join('\n'),
+  );
+  assert.equal(only.story.review?.factcheck2?.problems?.length, 1);
 });
 
 await test('a spoken number must be within 2% of the sheet, and the rounding hint stays within it', async () => {

@@ -98,7 +98,7 @@ export interface Story {
   missing?: string;
   voice_model?: string;
   wps?: number;
-  shots: { point?: string; lines: Line[]; see?: string }[];
+  shots: { point?: string; lines: Line[]; see?: string; cue?: { word?: string; show?: string } }[];
   review?: {
     factcheck2?: { problems?: FactCheckProblem[] } | null;
     fixed2?: FactCheckProblem[];

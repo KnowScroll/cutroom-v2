@@ -13,7 +13,7 @@ import https from 'node:https';
 import { report } from './cost_report.mjs';
 import { pathToFileURL } from 'node:url';
 import { HERE, VAR, TEMPLATE_DIR, SR, log, sha1, clamp, slugify, stamp, run, pool, withRetry, loadKeys, decodeMono, trimSilence, renderVideo, addSfx, writeWavStereo, extractJson, extractCode, launchStage, BANNED } from './lib.mjs';
-import { voiceModel, normVoice, voiceGuide, speak, voiceCacheKey, voiceRate, recordRate, voiceCheck, wordTimes, MUSIC_FEELS, pickMusic, mixReel } from './audio.mjs';
+import { voiceModel, normVoice, castVoices, voiceGuide, speak, voiceCacheKey, voiceRate, recordRate, voiceCheck, wordTimes, MUSIC_FEELS, pickMusic, mixReel } from './audio.mjs';
 import { createWriter, words, numWords, DEVICES, numbersNotInSource, requestOf, padding, shotTimes, silenceOf, rateMoved, lineNoteErrors } from './writer.mjs';
 import { findPhotos, snapQuote } from './photos.mjs';
 import { fetchArticles, fetchPassages } from './reference.mjs';
@@ -307,7 +307,7 @@ async function productionPlan(story) {
 }
 // the shots keep the script's line objects (the voice may already be attaching its clips to them)
 function mergePlan(story, p) {
-  const cast = Object.fromEntries(Object.entries(story.cast).map(([id, c]) => [id, { voice: normVoice(VM, c?.voice, id === 'narrator'), asset: id === 'narrator' ? null : (p.cast?.[id]?.asset || null) }]));
+  const voices = castVoices(VM, story.cast), cast = Object.fromEntries(Object.keys(story.cast).map(id => [id, { voice: voices[id], asset: id === 'narrator' ? null : (p.cast?.[id]?.asset || null) }]));
   const shots = story.shots.map((s, i) => { const q = p.shots[i]; return { ...s, idea: q.idea, background: q.background, uses: q.uses || [], sfx: (q.sfx || []).filter(f => SFX.includes(f.kind) && Number.isInteger(f.line) && f.line < s.lines.length),
     ...(q.demo ? { demo: q.demo } : {}), ...(!D3MODE() && i < p.shots.length - 1 && q.carry?.length ? { carry: q.carry } : {}) }; });
   const evidence = PHOTOMODE() ? { photos: (p.photos || []).map(x => ({ id: x.id, shot: +x.shot, shows: x.shows, search: x.search, also: x.also, label: x.label })), quotes: (p.quotes || []).map(q => ({ id: q.id, shot: +q.shot, text: q.text, mark: q.mark, source: q.source })) } : {};
@@ -378,7 +378,7 @@ function mouthEnv(pcm) {
 let speechUsd = 0, voiceStats = null;
 async function voiceAll(plan) {
   const cacheDir = path.join(VAR, 'cache', 'voice'); fs.mkdirSync(cacheDir, { recursive: true });
-  for (const [id, c] of Object.entries(plan.cast || {})) c.voice = normVoice(VM, c.voice, id === 'narrator'); // a restored plan may name another engine's voices
+  const voices = castVoices(VM, plan.cast); for (const [id, c] of Object.entries(plan.cast || {})) c.voice = voices[id]; // a restored plan may name another engine's voices
   const all = plan.shots.flatMap(s => s.lines);
   const clips = await pool(all.map(ln => async () => {
     const voice = plan.cast[ln.who]?.voice || normVoice(VM, null, ln.who === 'narrator'), file = path.join(cacheDir, `${sha1(voiceCacheKey(VM, voice, ln.tone, ln.text))}.mp3`);

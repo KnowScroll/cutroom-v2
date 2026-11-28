@@ -65,8 +65,9 @@ const FROM_KOKORO = {
     am_puck: 'English_Comedian', am_adam: 'English_magnetic_voiced_man', am_echo: 'English_Gentle-voiced_man', am_eric: 'English_Trustworth_Man', am_fenrir: 'English_ManWithDeepVoice',
     am_liam: 'English_Gentle-voiced_man', am_michael: 'English_Trustworth_Man', am_onyx: 'English_ManWithDeepVoice', af_heart: 'English_Upbeat_Woman', af_bella: 'English_radiant_girl',
     af_nicole: 'English_CalmWoman', af_sarah: 'English_ConfidentWoman', af_sky: 'English_PlayfulGirl', bf_emma: 'English_Wiselady', bf_isabella: 'English_CalmWoman' },
+  // am_onyx (the countryball narrator) is gareth, not bram: bram measured 3.39 st as a narrator in QC3 Norway, under the gate of 4
   heygen: { bm_george: 'lucian', bm_fable: 'weston', bm_daniel: 'gareth', bm_lewis: 'vincent', am_puck: 'weston', am_adam: 'gareth', am_echo: 'vincent', am_eric: 'lucian',
-    am_fenrir: 'bram', am_liam: 'weston', am_michael: 'gareth', am_onyx: 'bram', af_heart: 'sabrina', af_bella: 'tabitha', af_nicole: 'noelle', af_sarah: 'nadine',
+    am_fenrir: 'bram', am_liam: 'weston', am_michael: 'gareth', am_onyx: 'gareth', af_heart: 'sabrina', af_bella: 'tabitha', af_nicole: 'noelle', af_sarah: 'nadine',
     af_sky: 'meredith', bf_emma: 'nadine', bf_isabella: 'noelle' },
   gemini: { bm_george: 'Charon', bm_fable: 'Iapetus', bm_daniel: 'Rasalgethi', bm_lewis: 'Algieba', am_puck: 'Puck', am_adam: 'Orus', am_echo: 'Umbriel', am_eric: 'Achird',
     am_fenrir: 'Fenrir', am_liam: 'Zubenelgenubi', am_michael: 'Alnilam', am_onyx: 'Algenib', af_heart: 'Sulafat', af_bella: 'Aoede', af_nicole: 'Achernar', af_sarah: 'Kore',
@@ -86,6 +87,21 @@ export function normVoice(modelKey, v, narrator) {
   if (v && FROM_KOKORO[fam]?.[v]) return FROM_KOKORO[fam][v];
   const ci = v && Object.keys(list).find(k => k.toLowerCase() === String(v).toLowerCase());
   return ci || (narrator ? NARRATOR[fam] : OTHER[fam]);
+}
+// a cast's voices after that mapping, one voice per speaker: 19 Kokoro voices fall on 10 HeyGen ones, so two speakers could share
+// one (QC3 Norway: the narrator and Sweden both spoke as bram, Norway and Carl as gareth). The narrator keeps its voice; a speaker
+// whose voice is taken gets the next free one of the same sex (a Kokoro id's second letter), else any free one
+const KOKORO_ID = /^[ab][fm]_/;
+const sexOf = (fam, raw, v) => (KOKORO_ID.test(raw || '') ? raw[1] : KOKORO_ID.test(v) ? v[1] : Object.entries(FROM_KOKORO[fam] || {}).find(([, x]) => x === v)?.[0][1] || null);
+export function castVoices(modelKey, cast) {
+  const fam = voiceModel(modelKey).family, used = new Set(), out = {};
+  const kin = sex => (fam === 'kokoro' ? Object.keys(VOICES.kokoro).filter(k => k[1] === sex) : Object.entries(FROM_KOKORO[fam]).filter(([k]) => k[1] === sex).map(([, x]) => x));
+  for (const id of Object.keys(cast || {}).sort((a, b) => (b === 'narrator') - (a === 'narrator'))) {
+    const raw = cast[id]?.voice; let v = normVoice(modelKey, raw, id === 'narrator');
+    if (used.has(v)) { const sex = sexOf(fam, raw, v); v = [...(sex ? kin(sex) : []), ...Object.keys(VOICES[fam])].find(x => !used.has(x)) || v; }
+    used.add(v); out[id] = v;
+  }
+  return out;
 }
 export function voiceGuide(modelKey) {
   const fam = voiceModel(modelKey).family;
