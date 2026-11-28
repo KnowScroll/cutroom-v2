@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 
-// Engine --voice-model keys: VOICE_MODELS in fastreel engine/audio.mjs lines 19-33 (fastreel as of 2026-11-27).
+// Engine --voice-model keys: VOICE_MODELS in engine/audio.mjs ('local' added for #85).
 // The orchestrator checks this list against the imported engine/audio.mjs (issue #2).
 export const VOICE_MODEL_KEYS = [
   'eleven-v4',
@@ -13,6 +13,7 @@ export const VOICE_MODEL_KEYS = [
   'heygen',
   'heygen-paid',
   'gemini-tts',
+  'local',
 ] as const;
 export type VoiceModelKey = (typeof VOICE_MODEL_KEYS)[number];
 

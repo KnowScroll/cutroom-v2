@@ -34,6 +34,10 @@ await test('a missing key is an error that names the key, not a value', () => {
 await test('CUTROOM_VOICE_MODELS is an ordered list checked against the engine keys', () => {
   const c = parseConfig({ MINIMAX_API_KEY: KEY, CUTROOM_VOICE_MODELS: 'heygen, minimax ,kokoro' });
   assert.deepEqual(c.voiceModels, ['heygen', 'minimax', 'kokoro']);
+  assert.deepEqual(
+    parseConfig({ MINIMAX_API_KEY: KEY, CUTROOM_VOICE_MODELS: 'local' }).voiceModels,
+    ['local'],
+  );
   assert.throws(
     () => parseConfig({ MINIMAX_API_KEY: KEY, CUTROOM_VOICE_MODELS: 'heygen,nope' }),
     /unknown voice model "nope"/,
