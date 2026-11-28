@@ -506,7 +506,11 @@ export function createWriter(E) {
       const lacks = String(f.missing || '').trim();
       if (!added || lacks) {
         const f3 = await ask('facts-general', system(), [{ role: 'user', content: `Brief: ${briefFor(brief)}\nReturn only the JSON object.` }, { role: 'assistant', content: JSON.stringify(f) }, { role: 'user', content: `The REFERENCE does not give what you asked for (${names})${added ? '' : ': the fetch found nothing'}${lacks ? `, and the sheet says it is missing: ${lacks}` : ''}. If it is a well-known standard value (a size, a distance, a date every textbook gives), add it as a "general" fact with its usual value, use it where the answer and the yardstick need it, and empty "missing"; if it is not one you are certain of, keep the sheet and say what is still missing in "missing". Return the complete JSON object, with "need" empty.` }], check);
-        if (f3) { const had = new Set(f.facts.map(x => x.text)); f = clean(f3); log(`facts: asked for ${names} as a general value: ${f.facts.filter(x => x.source === 'general' && !had.has(x.text)).map(x => `${x.id} "${x.text}"`).join(', ') || 'no general fact added'}`); }
+        if (f3) {
+          const had = new Set(f.facts.map(x => x.text)); f = clean(f3);
+          log(`facts: asked for ${names} as a general value: ${f.facts.filter(x => x.source === 'general' && !had.has(x.text)).map(x => `${x.id} "${x.text}"`).join(', ') || 'no general fact added'}`);
+          if (lacks && !String(f.missing || '').trim() && f.facts.every(x => had.has(x.text))) f.missing = lacks; // no new fact: the gap stays reported
+        }
       }
     }
     if (E.hasRef()) for (const x of f.facts.filter(x => x.source === 'reference')) { const q = quoteErrors(x, E.refBlock()); if (q.length) x.quote_check = q.join('; '); } // for the fact checker
@@ -665,9 +669,9 @@ export function createWriter(E) {
   // a small call that rewrites only some shots' lines ({shots: [{shot, lines}]}), and their "see" where the request sends one; a
   // shot's new lines are taken only if they have no digits, keep the cast, still say the cue word and pass `accept(old shot, new
   // lines, shot index, new see)`. moveCue: lines that no longer say the cue word move it to the word the answer's "cue" names
-  // (or one they say), so a claim that holds the cue word can still be cut
-  async function editShots(step, promptName, req, cur, accept, context = '', moveCue = false) {
-    const text = await E.m3(step, `${E.prompt(promptName)}${context}`, [{ role: 'user', content: `${JSON.stringify({ shots: req }, null, 1)}\n\nReturn only the JSON object.` }], 8000);
+  // (or one they say), so a claim that holds the cue word can still be cut. efforts: thinking for this call (none by default)
+  async function editShots(step, promptName, req, cur, accept, context = '', moveCue = false, efforts = null) {
+    const text = await E.m3(step, `${E.prompt(promptName)}${context}`, [{ role: 'user', content: `${JSON.stringify({ shots: req }, null, 1)}\n\nReturn only the JSON object.` }], efforts ? 32000 : 8000, ...(efforts ? [efforts] : []));
     let r; try { r = E.extractJson(text); } catch { return cur; }
     const asked = new Set(req.map(q => q.shot - 1)), seeAsked = new Set(req.filter(q => q.see != null).map(q => q.shot - 1)), next = { ...cur, shots: cur.shots.map(s => ({ ...s })) };
     for (const x of r?.shots || []) {
@@ -743,7 +747,9 @@ export function createWriter(E) {
     }
     return { o: cur, dropped };
   }
-  // pass 2: the fit again on the cut script, when the first left it more than 20% over
+  // pass 2: the fit again on the cut script, when the first left it more than 20% over: one call with low thinking. Without thinking
+  // M3 returned every shot of the q-t13-norway script (181 words for 112) unchanged, also when told how many words to cut; with low
+  // thinking it met every shot's target (109 words), at about 17,000 thinking tokens and 230 s for the call
   async function fitWords(o, sp, f, pass = 1) {
     if (SCRIPT()) return o;
     const withHolds = x => x.shots.map((s, i) => ({ ...s, hold: sp ? sp.shots[i].hold : s.hold }));
@@ -751,7 +757,7 @@ export function createWriter(E) {
     if (total0 <= allowed0 * 1.05) return o;
     const harder = pass > 1 ? `\n\nAN EARLIER CUT LEFT THIS SCRIPT ${Math.round((total0 / allowed0 - 1) * 100)}% OVER ITS LENGTH: meet each shot's target exactly; cut a whole detail or sentence, or merge two lines, rather than single words.` : '';
     let cur = o;
-    for (let round = 1; round <= 3; round++) {
+    for (let round = 1; round <= (pass > 1 ? 1 : 3); round++) {
       const shots = withHolds(cur), allowed = budgetFor(shots, cur.cast), total = shots.reduce((a, s) => a + countWords(s), 0);
       if (total <= allowed * 1.05) break;
       // every shot over 6 words gives words in proportion, so the story keeps its shape (cutting the longest shots to the average
@@ -759,7 +765,7 @@ export function createWriter(E) {
       const long = shots.map((s, i) => [i, countWords(s)]).filter(([, n]) => n > 6), pool = long.reduce((a, [, n]) => a + n, 0), share = Math.max(0, pool - (total - allowed)) / pool;
       const req = long.map(([i, n]) => [i, n, Math.max(4, Math.floor(n * share))]).filter(([, n, t]) => t < n).map(([i, n, t]) => ({ shot: i + 1, target_words: t, now_words: n, keep: [shots[i].cue?.word].filter(Boolean), lines: shots[i].lines.map(l => ({ who: l.who, text: l.text, tone: l.tone })) }));
       if (!req.length) break;
-      cur = await editShots(`${step}#${round}`, 'fit', req, cur, (s, lines) => lines.reduce((a, l) => a + words(l.text), 0) < countWords(s) && !newNumbers(lines, f, s).length, `${sp?.idea ? `\n\nWHAT THE STORY IS FOR: ${sp.idea}\nThe viewer should come away with: ${sp.takeaway}` : ''}${harder}`);
+      cur = await editShots(`${step}#${round}`, 'fit', req, cur, (s, lines) => lines.reduce((a, l) => a + words(l.text), 0) < countWords(s) && !newNumbers(lines, f, s).length, `${sp?.idea ? `\n\nWHAT THE STORY IS FOR: ${sp.idea}\nThe viewer should come away with: ${sp.takeaway}` : ''}${harder}`, false, pass > 1 ? ['low', 'off'] : null);
     }
     // a shot whose cut breaks a hard check (a hook that lost its question) gets its draft back; the other shots keep their cuts
     const hard = x => scriptErrors(x, sp, f).filter(e => !e.soft).length;

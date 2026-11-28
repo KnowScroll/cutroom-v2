@@ -203,6 +203,18 @@ await test('the subject is the thing the reel shows: an action or event in its n
       `${name}: ${E.join(' | ')}`,
     );
   }
+  // a name that opens a sentence is a name too: an Earth globe for "Venus and Earth" still fails
+  const opens = subjectErrors(
+    plan(
+      { name: 'Venus and Earth', asset: 'globe' },
+      { id: 'globe', kind: 'scenery', description: 'A blue Earth globe with white clouds.' },
+    ),
+    'Venus spins slower than Earth. Why is its day so long?',
+  );
+  assert.ok(
+    opens.some((e) => /the asset "globe" that should draw it never names "venus"/.test(e)),
+    opens.join(' | '),
+  );
   // a subject with no name of the request in it is still checked word by word
   const atom = {
     id: 'atom',

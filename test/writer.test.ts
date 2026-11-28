@@ -859,7 +859,11 @@ await test('a draft over the word budget is cut to length by the fit step, not s
     ),
     stuck.logs.join('\n'),
   );
-  assert.ok(!stuck.calls.some((c) => c.step.startsWith('script-fit-3')), 'it fits again only once');
+  assert.equal(steps(stuck.calls, 'script-fit-2#1'), 1);
+  assert.ok(
+    !stuck.calls.some((c) => c.step === 'script-fit-2#2' || c.step.startsWith('script-fit-3')),
+    'it fits again once, in one call',
+  );
 
   // QC3 Norway: the fit left 162 words for 106 (53% over). More than 20% over is fitted once more, from the cut script
   const half = long.map((l, i): [string, string] => (i < 2 ? (LINES[i] ?? l) : l));
@@ -875,10 +879,11 @@ await test('a draft over the word budget is cut to length by the fit step, not s
     again.logs.join('\n'),
   );
   assert.ok(again.logs.includes('script-fit-2: 78 -> 55 words (budget 60)'), again.logs.join('\n'));
-  assert.match(
-    again.calls.find((c) => c.step === 'script-fit-2#1')?.system ?? '',
-    /AN EARLIER CUT LEFT THIS SCRIPT 30% OVER ITS LENGTH/,
-  );
+  const fit2 = again.calls.find((c) => c.step === 'script-fit-2#1');
+  assert.match(fit2?.system ?? '', /AN EARLIER CUT LEFT THIS SCRIPT 30% OVER ITS LENGTH/);
+  // without thinking M3 returned the q-t13-norway shots unchanged; the second fit thinks (low effort)
+  assert.deepEqual(fit2?.efforts, ['low', 'off']);
+  assert.equal(again.calls.find((c) => c.step === 'script-fit#1')?.efforts, undefined);
   assert.deepEqual(
     again.story.shots.map((s) => s.lines[0]?.text),
     LINES.map(([text]) => text),
@@ -1425,6 +1430,13 @@ await test('a missing fact whose fetch comes back empty is asked for once as a g
   assert.equal(none.story.missing, NO_GRAIN.missing);
   assert.equal(steps(none.calls, 'facts-general#1'), 1, 'asked once');
   assert.equal(steps(none.calls, 'facts-general#2'), 0, 'asked once');
+  // an answer that empties "missing" without adding a fact leaves the gap reported
+  const emptied = await runWriter({
+    ...passed(),
+    facts: lacking,
+    'facts-general': { ...lacking, missing: '' },
+  });
+  assert.equal(emptied.story.missing, NO_GRAIN.missing);
 
   // the fetch found text, but the sheet built on it still lacks the value: asked for the same way
   const fetched = await runWriter(

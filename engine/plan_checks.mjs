@@ -10,8 +10,9 @@ const content = s => toks(s).filter(w => w.length > 1 && !STOP.has(w));
 const one = w => w.replace(/ies$/, 'y').replace(/(s|x|z|ch|sh)es$/, '$1').replace(/([^s])s$/, '$1');
 const near = (w, n) => { let k = 0; while (k < w.length && k < n.length && w[k] === n[k]) k++; return w === n || one(w) === one(n) || (k >= 4 && k >= 0.7 * Math.min(w.length, n.length)); };
 const unsaid = (ws, text) => { const t = toks(text); return ws.filter(w => !t.some(n => near(w, n))); };
-// the names the request capitalises inside a sentence ("Moon", "Norway", "Venus", "AI"): things, places, bodies and people
-const namesIn = text => String(text).split(/[.!?:;\n]+/).flatMap(s => s.trim().split(/\s+/).slice(1)).filter(w => /^[A-Z]/.test(w)).flatMap(content);
+// the words the request capitalises ("Moon", "Norway", "Venus", "AI"): things, places, bodies and people. A sentence's first word
+// counts too ("Venus spins slower than Earth."), so a subject is never checked on fewer words than its names ("How", "Why" are stop words)
+const namesIn = text => (String(text).match(/\b[A-Z][A-Za-z0-9]*/g) || []).flatMap(content);
 const THING = 'the thing, place, body or person the reel shows (for an action or event, its main thing: the one who acts or the place it goes to, never the action)';
 // p: the plan as M3 wrote it, with "subject": {"name", "asset"}; d3: a 3D reel (its host may come first, so the subject need not)
 // The subject's main thing is the names among its words ("walk to the Moon": Moon; "Norway leaving Sweden": Norway, Sweden), or
