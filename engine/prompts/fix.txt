@@ -2,7 +2,7 @@ You correct wrong claims in a narration script. You get some shots of a short re
 
 OUTPUT: one JSON object and nothing else.
 
-{ "shots": [ {"shot": n, "lines": [ {"who": "same speaker", "text": "the corrected line", "tone": "same tone"} ], "see": "the corrected on-screen sentence, only when a problem is in it"} ] }
+{ "shots": [ {"shot": n, "lines": [ {"who": "same speaker", "text": "the corrected line", "tone": "same tone"} ], "see": "the corrected on-screen sentence, only when a problem is in it", "cue": "only when the shot gives \"cue_word\" and your lines no longer say it: the word of your lines the picture now lands on"} ] }
 
 RULES
 - Fix every listed problem: say the claim the way its fix says it, or cut the claim when the fix says "cut" or no correct version fits.
@@ -12,4 +12,5 @@ RULES
 - The fact sheet can be wrong as well: when the fix restates standard textbook knowledge or the REFERENCE and the sheet fact contradicts it (a cause that would produce the opposite result, an everyday observation stated backwards), the true claim wins: apply the fix.
 - Every number you say or put on screen is one the FACT SHEET states (rounded no further than 2%, and never so far that a stated comparison breaks). The engine does not take a line with any other number: when the true number is not on the sheet, cut the claim instead.
 - Change nothing else: keep the other words, the words that tie a line to the one before, every word listed under "keep" (the cue word), the same speakers in the same order and the same tone.
+- A shot that gives "cue_word" instead of "keep" may lose it: cut the claim even when the cue word is in it, and name in "cue" a word your lines still say.
 - Stay within "max_words" for the shot. Numbers written as words in the lines (digits are fine in "see"). No new claims.

@@ -501,6 +501,13 @@ export function createWriter(E) {
       const added = await E.addArticles(need);
       log(`facts: fetched ${names} (${added} chars) for missing facts`);
       if (added) { const f2 = await ask('facts-more', system(), [{ role: 'user', content: `Brief: ${briefFor(brief)}\nThe REFERENCE now also holds what you asked for: ${names}. Return only the JSON object, with "need" empty.` }], check); if (f2) f = clean(f2); }
+      // nothing came back, or the sheet still lacks it: asked once as a well-known standard value before it is reported missing
+      // (QC3 atom: "Grain" fetched 0 chars, and the reel never said how big the grain of sand it was compared with is)
+      const lacks = String(f.missing || '').trim();
+      if (!added || lacks) {
+        const f3 = await ask('facts-general', system(), [{ role: 'user', content: `Brief: ${briefFor(brief)}\nReturn only the JSON object.` }, { role: 'assistant', content: JSON.stringify(f) }, { role: 'user', content: `The REFERENCE does not give what you asked for (${names})${added ? '' : ': the fetch found nothing'}${lacks ? `, and the sheet says it is missing: ${lacks}` : ''}. If it is a well-known standard value (a size, a distance, a date every textbook gives), add it as a "general" fact with its usual value, use it where the answer and the yardstick need it, and empty "missing"; if it is not one you are certain of, keep the sheet and say what is still missing in "missing". Return the complete JSON object, with "need" empty.` }], check);
+        if (f3) { const had = new Set(f.facts.map(x => x.text)); f = clean(f3); log(`facts: asked for ${names} as a general value: ${f.facts.filter(x => x.source === 'general' && !had.has(x.text)).map(x => `${x.id} "${x.text}"`).join(', ') || 'no general fact added'}`); }
+      }
     }
     if (E.hasRef()) for (const x of f.facts.filter(x => x.source === 'reference')) { const q = quoteErrors(x, E.refBlock()); if (q.length) x.quote_check = q.join('; '); } // for the fact checker
     E.ckSave('facts.json', f);
@@ -653,10 +660,13 @@ export function createWriter(E) {
   // cut is taken only if it is shorter, has no digits, keeps its speakers and still says its cue word, and the whole cut script is
   // kept only if it passes every hard check
   const countWords = s => s.lines.reduce((a, l) => a + words(l.text), 0);
+  // a word for a shot's cue to land on when its own word is cut: the first longer word its lines say that is not a stop word
+  const cueIn = lines => { const ws = lines.flatMap(l => String(l.text).match(/[A-Za-z][A-Za-z'’-]*/g) || []); return ws.find(w => w.length >= 5 && !STOP.has(w.toLowerCase())) || ws.find(w => !STOP.has(w.toLowerCase())) || ws[0]; };
   // a small call that rewrites only some shots' lines ({shots: [{shot, lines}]}), and their "see" where the request sends one; a
   // shot's new lines are taken only if they have no digits, keep the cast, still say the cue word and pass `accept(old shot, new
-  // lines, shot index, new see)`
-  async function editShots(step, promptName, req, cur, accept, context = '') {
+  // lines, shot index, new see)`. moveCue: lines that no longer say the cue word move it to the word the answer's "cue" names
+  // (or one they say), so a claim that holds the cue word can still be cut
+  async function editShots(step, promptName, req, cur, accept, context = '', moveCue = false) {
     const text = await E.m3(step, `${E.prompt(promptName)}${context}`, [{ role: 'user', content: `${JSON.stringify({ shots: req }, null, 1)}\n\nReturn only the JSON object.` }], 8000);
     let r; try { r = E.extractJson(text); } catch { return cur; }
     const asked = new Set(req.map(q => q.shot - 1)), seeAsked = new Set(req.filter(q => q.see != null).map(q => q.shot - 1)), next = { ...cur, shots: cur.shots.map(s => ({ ...s })) };
@@ -665,8 +675,13 @@ export function createWriter(E) {
       if (!s || !asked.has(i)) continue;
       const lines = Array.isArray(x.lines) && x.lines.length ? x.lines.filter(l => l?.text).map((l, k) => ({ ...(s.lines[k] || {}), who: l.who || s.lines[0].who, text: String(l.text).trim(), ...(l.tone ? { tone: l.tone } : {}) })) : s.lines;
       const see = seeAsked.has(i) && typeof x.see === 'string' && x.see.trim() ? x.see.trim() : s.see;
-      const ok = lines.length && lines.every(l => !/[0-9]/.test(l.text) && cur.cast?.[l.who]) && (!s.cue?.word || lines.some(l => says(l.text, s.cue.word)));
-      if (ok && (lines !== s.lines || see !== s.see) && accept(s, lines, i, see)) { s.lines = lines; s.see = see; }
+      const said = w => typeof w === 'string' && !!w.trim() && lines.some(l => says(l.text, w));
+      const cue = !s.cue?.word || said(s.cue.word) ? s.cue?.word : moveCue ? [x.cue, cueIn(lines)].find(said) : null;
+      const ok = lines.length && lines.every(l => !/[0-9]/.test(l.text) && cur.cast?.[l.who]) && (!s.cue?.word || cue);
+      if (ok && (lines !== s.lines || see !== s.see) && accept(s, lines, i, see)) {
+        if (cue !== s.cue?.word) { log(`${step}: shot ${i + 1}'s cue moved from "${s.cue.word}" to "${cue}"`); s.cue = { ...s.cue, word: cue }; }
+        s.lines = lines; s.see = see;
+      }
     }
     return next;
   }
@@ -690,9 +705,10 @@ export function createWriter(E) {
   }
   // fix the claims a fact check flagged, shot by shot (a whole-script revision kept the wrong claim), keeping the length; returns
   // the script and the problems no taken fix touched (the harness reports those)
-  async function fixClaims(o, sp, f, problems, step = 'script-fix', note = '') {
+  // moveCue: the claim may take the cue word with it (the fixer names the new one in "cue")
+  async function fixClaims(o, sp, f, problems, step = 'script-fix', note = '', moveCue = false) {
     const byShot = {}; for (const p of problems || []) for (const i of shotsOf(p, o, sp)) (byShot[i] ||= []).push({ claim: p.claim, problem: `${o.shots[+p.shot - 1] ? p.problem : `the sheet fact this shot uses is wrong: ${p.problem}`}${note}`, fix: p.fix });
-    const req = Object.entries(byShot).map(([i, ps]) => ({ shot: +i + 1, max_words: countWords(o.shots[i]) + 2, keep: [o.shots[i].cue?.word].filter(Boolean), problems: ps, lines: o.shots[i].lines.map(l => ({ who: l.who, text: l.text, tone: l.tone })), see: o.shots[i].see || '' }));
+    const req = Object.entries(byShot).map(([i, ps]) => ({ shot: +i + 1, max_words: countWords(o.shots[i]) + 2, keep: moveCue ? [] : [o.shots[i].cue?.word].filter(Boolean), ...(moveCue && o.shots[i].cue?.word ? { cue_word: o.shots[i].cue.word } : {}), problems: ps, lines: o.shots[i].lines.map(l => ({ who: l.who, text: l.text, tone: l.tone })), see: o.shots[i].see || '' }));
     const left = (x, ps) => stillFlagged(o, x, ps, sp);
     if (!req.length) return { o, left: problems || [] };
     // the fixer sees the sheet (with each derived fact's calc) and the reference: the fact checker once reversed who paid whom, and
@@ -700,33 +716,40 @@ export function createWriter(E) {
     const cur = await editShots(step, 'fix', req, o, (s, lines, i, see) => {
       const n = [...newNumbers(lines, f), ...untraced(see || '', [...f.facts, { text: s.see || '' }])]; if (n.length) { log(`${step}: shot ${i + 1}'s fix says ${quoted(n)}, which no fact on the sheet states; not taken`); return false; }
       return lines.reduce((a, l) => a + words(l.text), 0) <= countWords(s) + 3;
-    }, `\n\nFACT SHEET\n${calcList(f)}${E.refBlock()}`);
+    }, `\n\nFACT SHEET\n${calcList(f)}${E.refBlock()}`, moveCue);
     const changed = req.map(q => q.shot).filter(n => !sameLines(cur.shots[n - 1], o.shots[n - 1]));
     if (!changed.length) { log(`${step}: no fix was taken for shots ${req.map(q => q.shot).join(', ')}; keeping the script`); return { o, left: problems || [] }; }
     if (scriptErrors(cur, sp, f).some(e => !e.soft)) { log(`${step}: the fix broke a check; keeping the script`); return { o, left: problems || [] }; }
     log(`${step}: rewrote shots ${changed.join(', ')} for the fact check`);
     return { o: cur, left: left(cur, problems || []) };
   }
-  // the last resort for a line still flagged after two fix passes: drop it when its shot keeps another line, the cue word and every
-  // hard check (the quit hook's "almost none do" for 12% stayed in the final script); otherwise it stays, reported
+  // the last resort for a line still flagged after two fix passes: the claim is dropped, its own sentence or else its whole line, when
+  // the shot keeps another sentence and every hard check (the quit hook's "almost none do" for 12% stayed in the final script); a cue
+  // word that goes with it moves to a word the shot still says (QC3 Norway: "That night, Oscar renounced his Norwegian throne rather
+  // than fight." stayed because it held the cue word). Only a shot's one sentence stays, reported
+  const sentences = t => String(t).split(/(?<=[.!?])\s+/).filter(Boolean);
   function dropFlagged(o, problems, sp, f) {
     let cur = o; const dropped = [];
     for (const p of problems) {
       const i = +p.shot - 1, s = cur.shots[i]; if (!s) continue;
-      const want = toks(p.claim).filter(w => !STOP.has(w)), score = l => (says(l.text, p.claim) ? 1 : want.length ? want.filter(w => toks(l.text).some(x => sameWord(x, w))).length / want.length : 0);
-      const k = s.lines.length > 1 ? s.lines.map((l, j) => [j, score(l)]).filter(([, v]) => v >= 0.6).sort((a, b) => b[1] - a[1])[0]?.[0] : undefined;
-      const keepsCue = j => !s.cue?.word || s.lines.some((l, m) => m !== j && says(l.text, s.cue.word));
-      const next = k == null || !keepsCue(k) ? null : { ...cur, shots: cur.shots.map((x, m) => (m === i ? { ...x, lines: x.lines.filter((_, n) => n !== k) } : x)) };
-      if (!next || scriptErrors(next, sp, f).some(e => !e.soft)) { log(`script-fix: shot ${i + 1}'s line stays flagged (${k == null ? 'no other line, or no line says the claim' : 'it holds the cue word or the shot needs it'}): "${p.claim}"`); continue; }
-      log(`script-fix: dropped shot ${i + 1}'s line "${s.lines[k].text}", still flagged: ${p.problem}`); cur = next; dropped.push(p);
+      const want = toks(p.claim).filter(w => !STOP.has(w)), score = t => (says(t, p.claim) ? 1 : want.length ? want.filter(w => toks(t).some(x => sameWord(x, w))).length / want.length : 0);
+      const parts = s.lines.flatMap((l, j) => { const ss = sentences(l.text); return [...(ss.length > 1 ? ss.map((t, k) => ({ j, k, t })) : []), { j, k: -1, t: l.text }]; });
+      const best = parts.map(x => ({ ...x, v: score(x.t) })).filter(x => x.v >= 0.6).sort((a, b) => b.v - a.v || a.t.length - b.t.length)[0];
+      const lines = !best ? [] : s.lines.map((l, j) => (j !== best.j ? l : best.k < 0 ? null : { ...l, text: sentences(l.text).filter((_, k) => k !== best.k).join(' ') })).filter(Boolean);
+      const cue = !lines.length || !s.cue?.word || lines.some(l => says(l.text, s.cue.word)) ? s.cue : { ...s.cue, word: cueIn(lines) };
+      const next = lines.length ? { ...cur, shots: cur.shots.map((x, m) => (m === i ? { ...x, lines, cue } : x)) } : null;
+      if (!next || scriptErrors(next, sp, f).some(e => !e.soft)) { log(`script-fix: WARNING: shot ${i + 1}'s line stays flagged (${!best ? 'no line or sentence says the claim' : !next ? 'it is the shot\'s only sentence' : 'dropping it breaks a check'}): "${p.claim}"`); continue; }
+      log(`script-fix: dropped shot ${i + 1}'s ${best.k < 0 ? 'line' : 'sentence'} "${best.t}", still flagged: ${p.problem}${cue !== s.cue ? `; its cue moved from "${s.cue.word}" to "${cue.word}"` : ''}`); cur = next; dropped.push(p);
     }
     return { o: cur, dropped };
   }
-  async function fitWords(o, sp, f) {
+  // pass 2: the fit again on the cut script, when the first left it more than 20% over
+  async function fitWords(o, sp, f, pass = 1) {
     if (SCRIPT()) return o;
     const withHolds = x => x.shots.map((s, i) => ({ ...s, hold: sp ? sp.shots[i].hold : s.hold }));
-    const total0 = o.shots.reduce((a, s) => a + countWords(s), 0);
-    if (total0 <= budgetFor(withHolds(o), o.cast) * 1.05) return o;
+    const total0 = o.shots.reduce((a, s) => a + countWords(s), 0), step = pass > 1 ? 'script-fit-2' : 'script-fit', allowed0 = budgetFor(withHolds(o), o.cast);
+    if (total0 <= allowed0 * 1.05) return o;
+    const harder = pass > 1 ? `\n\nAN EARLIER CUT LEFT THIS SCRIPT ${Math.round((total0 / allowed0 - 1) * 100)}% OVER ITS LENGTH: meet each shot's target exactly; cut a whole detail or sentence, or merge two lines, rather than single words.` : '';
     let cur = o;
     for (let round = 1; round <= 3; round++) {
       const shots = withHolds(cur), allowed = budgetFor(shots, cur.cast), total = shots.reduce((a, s) => a + countWords(s), 0);
@@ -736,14 +759,17 @@ export function createWriter(E) {
       const long = shots.map((s, i) => [i, countWords(s)]).filter(([, n]) => n > 6), pool = long.reduce((a, [, n]) => a + n, 0), share = Math.max(0, pool - (total - allowed)) / pool;
       const req = long.map(([i, n]) => [i, n, Math.max(4, Math.floor(n * share))]).filter(([, n, t]) => t < n).map(([i, n, t]) => ({ shot: i + 1, target_words: t, now_words: n, keep: [shots[i].cue?.word].filter(Boolean), lines: shots[i].lines.map(l => ({ who: l.who, text: l.text, tone: l.tone })) }));
       if (!req.length) break;
-      cur = await editShots(`script-fit#${round}`, 'fit', req, cur, (s, lines) => lines.reduce((a, l) => a + words(l.text), 0) < countWords(s) && !newNumbers(lines, f, s).length, sp?.idea ? `\n\nWHAT THE STORY IS FOR: ${sp.idea}\nThe viewer should come away with: ${sp.takeaway}` : '');
+      cur = await editShots(`${step}#${round}`, 'fit', req, cur, (s, lines) => lines.reduce((a, l) => a + words(l.text), 0) < countWords(s) && !newNumbers(lines, f, s).length, `${sp?.idea ? `\n\nWHAT THE STORY IS FOR: ${sp.idea}\nThe viewer should come away with: ${sp.takeaway}` : ''}${harder}`);
     }
     // a shot whose cut breaks a hard check (a hook that lost its question) gets its draft back; the other shots keep their cuts
     const hard = x => scriptErrors(x, sp, f).filter(e => !e.soft).length;
     for (let i = 0; i < cur.shots.length && hard(cur); i++) if (!sameLines(cur.shots[i], o.shots[i])) { const back = { ...cur, shots: cur.shots.map((s, k) => (k === i ? o.shots[i] : s)) }; if (hard(back) < hard(cur)) cur = back; }
-    if (hard(cur)) { log(`script-fit: the cut broke a check; keeping the ${total0}-word script`); cur = o; }
+    if (hard(cur)) { log(`${step}: the cut broke a check; keeping the ${total0}-word script`); cur = o; }
     const total1 = cur.shots.reduce((a, s) => a + countWords(s), 0), allowed = budgetFor(withHolds(cur), cur.cast);
-    log(total1 === total0 ? `script-fit: no cut was taken; ${total0} words (budget ${allowed})` : `script-fit: ${total0} -> ${total1} words (budget ${allowed})`);
+    log(total1 === total0 ? `${step}: no cut was taken; ${total0} words (budget ${allowed})` : `${step}: ${total0} -> ${total1} words (budget ${allowed})`);
+    // more than about 20% over: fit once more from the cut script, whose cuts stay where the next pass breaks a check (QC3 Norway:
+    // 285 -> 162 words for a budget of 106, and the reel ran 73.6 s for 45 s)
+    if (pass === 1 && total1 > allowed * 1.2) { log(`script-fit: ${Math.round((total1 / allowed - 1) * 100)}% over the budget of ${allowed}; fitting once more`); return fitWords(cur, sp, f, 2); }
     // length never ends a run (a template's fixed 14 shots left 208 words for 96, and stopping lost the whole cut): the shortest
     // fitted script is kept, and the overrun is logged; the harness reports the length against the target
     if (total1 > allowed * 1.3) log(`script-fit: WARNING: ${total1} words after the fit, ${Math.round((total1 / allowed - 1) * 100)}% over the budget of ${allowed}; the reel will run long`);
@@ -867,9 +893,9 @@ export function createWriter(E) {
         for (const p of todo) if (!shotsOf(p, o, sp).length && p.shot === 'sheet') p.unused = true;
         const active = todo.filter(p => !p.unused), o0 = o;
         let fx = active.length ? await fixClaims(o, sp, f, active) : { o, left: active };
-        // a flagged line must not survive: what stays goes to the fixer once more, then a line still flagged is dropped where its shot
-        // can lose it; whatever is left after that stays reported
-        if (fx.left.some(p => shotsOf(p, fx.o, sp).length)) { const again = await fixClaims(fx.o, sp, f, fx.left, 'script-fix-2', ' (an earlier fix was not taken: its numbers were not the sheet\'s within 2%, or it ran too long; say the sheet\'s own number or cut the claim)'); fx = { o: again.o, left: stillFlagged(o0, again.o, active, sp) }; }
+        // a flagged line must not survive: what stays goes to the fixer once more, now free to cut the claim with its cue word (the cue
+        // moves), then a claim still flagged is dropped where its shot can lose it; only what is left after that stays reported
+        if (fx.left.some(p => shotsOf(p, fx.o, sp).length)) { const again = await fixClaims(fx.o, sp, f, fx.left, 'script-fix-2', ' (an earlier fix was not taken: its numbers were not the sheet\'s within 2%, or it ran too long; say the sheet\'s own number or cut the claim, even when it holds the cue word)', true); fx = { o: again.o, left: stillFlagged(o0, again.o, active, sp) }; }
         const drop = dropFlagged(fx.o, fx.left, sp, f);
         o = drop.o; fx = { o, left: fx.left.filter(p => !drop.dropped.includes(p)) };
         for (const p of drop.dropped) p.dropped = true;

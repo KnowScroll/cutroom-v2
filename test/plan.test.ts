@@ -123,6 +123,102 @@ await test('the subject must be the brief’s own, stated, and drawn by the firs
   );
 });
 
+// QC3 (var/runs/qc3-moon and qc3-norway, 2026-11-28): the subject check rejected the real hero for never naming the action
+// ("walk", "leaving"), and the next plans made a composite of the event the hero (walk_to_the_moon, norway_leaving_sweden). The
+// subjects and asset ids are the logged ones (calls.json keeps no answers); the descriptions are the runs' final ones, shortened
+const MOON_BRIEF = `How long would it take to walk to the Moon?
+
+Audience: General viewers with no science background, roughly school age and up, who know the Moon is far away.
+Goal: The viewer should grasp that walking to the Moon would take on the order of a human lifetime or more.
+Tone: Curious, awe-struck, lightly playful, deadpan-funny`;
+const NORWAY_BRIEF = `How did Norway break away from Sweden in 1905 without firing a shot?
+
+Audience: General history viewers who know the basic outline of European nationalism.
+Goal: The viewer should understand that the Storting’s decision to dissolve the union with Sweden produced independence without armed conflict.
+Tone: Wry, clear, lightly dramatic`;
+const MOON = {
+  id: 'moon',
+  kind: 'scenery',
+  description:
+    'A pale grey sphere with darker grey maria and a few bright rayed craters, lit from the right with a soft terminator.',
+};
+const BODIES = {
+  id: 'bodies',
+  kind: 'prop',
+  description:
+    'Each named comparison body at a true 272-pixel radius: Earth a round blue globe, the walker an upright figure.',
+};
+const BALL = {
+  id: 'ball',
+  kind: 'character',
+  description:
+    "A large circular country-body painted in the country's exact horizontal flag bands and crossed by its real Nordic cross.",
+};
+const SIGN = {
+  id: 'sign',
+  kind: 'prop',
+  description: 'A simple wooden roadside marker on a post.',
+};
+
+await test('the subject is the thing the reel shows: an action or event in its name does not push the hero to a composite', () => {
+  // qc3-moon plan#1: "walk to the Moon" drawn by "moon"
+  assert.deepEqual(
+    subjectErrors(plan({ name: 'walk to the Moon', asset: 'moon' }, MOON, BODIES), MOON_BRIEF),
+    [],
+  );
+  // qc3-norway plan#2: "Norway leaving Sweden" drawn by the ball the cast norway, sweden and carl share
+  const norway: DraftPlan = {
+    subject: { name: 'Norway leaving Sweden', asset: 'ball' },
+    assets: [BALL, SIGN],
+    cast: { norway: { asset: 'ball' }, sweden: { asset: 'ball' }, carl: { asset: 'ball' } },
+  };
+  assert.deepEqual(subjectErrors(norway, NORWAY_BRIEF), []);
+  assert.deepEqual(
+    subjectErrors({ ...norway, subject: { name: 'Norway', asset: 'ball' } }, NORWAY_BRIEF),
+    [],
+  );
+  assert.deepEqual(subjectErrors(plan({ name: 'the Moon', asset: 'moon' }, MOON), MOON_BRIEF), []);
+  // the thing itself must still be drawn: a hero that is only the walker, or a sign, fails
+  const walker = subjectErrors(
+    plan({ name: 'walk to the Moon', asset: 'bodies' }, BODIES, MOON),
+    MOON_BRIEF,
+  );
+  assert.ok(
+    walker.some((e) => /the asset "bodies" that should draw it never names "moon"/.test(e)),
+    walker.join(' | '),
+  );
+  const sign = subjectErrors(
+    { ...norway, subject: { name: 'Norway', asset: 'sign' } },
+    NORWAY_BRIEF,
+  );
+  assert.ok(
+    sign.some((e) => /the asset "sign" that should draw it never names "norway"/.test(e)),
+    sign.join(' | '),
+  );
+  // findings §A still fails however the subject is worded: an Earth globe for a Venus reel
+  for (const name of ['Venus', 'Venus globe', 'a day on Venus', 'Venus spinning']) {
+    const E = subjectErrors(plan({ name, asset: 'globe' }, GLOBE, MARKER), VENUS_BRIEF);
+    assert.ok(
+      E.some((e) => /the asset "globe" that should draw it never names "venus"/.test(e)),
+      `${name}: ${E.join(' | ')}`,
+    );
+  }
+  // a subject with no name of the request in it is still checked word by word
+  const atom = {
+    id: 'atom',
+    kind: 'prop',
+    description: 'A tiny nucleus inside an electron cloud.',
+  };
+  const sand = subjectErrors(
+    plan({ name: 'grain of sand', asset: 'atom' }, atom),
+    'How small is an atom compared to a grain of sand?',
+  );
+  assert.ok(
+    sand.some((e) => /never names "grain", "sand"/.test(e)),
+    sand.join(' | '),
+  );
+});
+
 // Venus cut 4, shot 2 (its idea as saved), and the Point Nemo plan's measured shot
 const VENUS_SHOT =
   'CAMERA: from [0.0, 0.0, 0.95] to Venus [0.0, 0.0] at 0 s over 1.2 s. OVERLAYS: MARKER at Venus [0.0, 0.0] (pole on land, buoy at sea); LABEL "VENUS" at Venus [0.0, 0.0] (place). TOP: TITLE "VENUS".';

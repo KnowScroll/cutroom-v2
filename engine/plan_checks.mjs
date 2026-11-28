@@ -10,20 +10,27 @@ const content = s => toks(s).filter(w => w.length > 1 && !STOP.has(w));
 const one = w => w.replace(/ies$/, 'y').replace(/(s|x|z|ch|sh)es$/, '$1').replace(/([^s])s$/, '$1');
 const near = (w, n) => { let k = 0; while (k < w.length && k < n.length && w[k] === n[k]) k++; return w === n || one(w) === one(n) || (k >= 4 && k >= 0.7 * Math.min(w.length, n.length)); };
 const unsaid = (ws, text) => { const t = toks(text); return ws.filter(w => !t.some(n => near(w, n))); };
+// the names the request capitalises inside a sentence ("Moon", "Norway", "Venus", "AI"): things, places, bodies and people
+const namesIn = text => String(text).split(/[.!?:;\n]+/).flatMap(s => s.trim().split(/\s+/).slice(1)).filter(w => /^[A-Z]/.test(w)).flatMap(content);
+const THING = 'the thing, place, body or person the reel shows (for an action or event, its main thing: the one who acts or the place it goes to, never the action)';
 // p: the plan as M3 wrote it, with "subject": {"name", "asset"}; d3: a 3D reel (its host may come first, so the subject need not)
+// The subject's main thing is the names among its words ("walk to the Moon": Moon; "Norway leaving Sweden": Norway, Sweden), or
+// all its words when it holds none of the request's names; the hero must name that thing (QC3: "moon" was rejected for never
+// naming "walk", and the hero became a composite "walk_to_the_moon" with no Moon in the hook)
 export function subjectErrors(p, brief, { d3 = false } = {}) {
   const sub = p?.subject, assets = Array.isArray(p?.assets) ? p.assets : [], ids = assets.map(a => a?.id);
-  if (!sub || typeof sub !== 'object' || !String(sub.name || '').trim() || !sub.asset) return ['state the brief\'s subject: "subject": {"name": "<the thing, place, body, person or event the brief is about, in the brief\'s own words>", "asset": "<the id of the asset that draws it>"}'];
+  if (!sub || typeof sub !== 'object' || !String(sub.name || '').trim() || !sub.asset) return [`state the brief's subject: "subject": {"name": "<${THING}, in the brief's own words>", "asset": "<the id of the asset that draws it>"}`];
   const name = String(sub.name).trim(), ws = content(name), E = [];
-  if (!ws.length) return [`"subject" "name" must name the brief's subject in its own words (one to four words, such as the thing or place itself), not "${name}"`];
-  const notInBrief = unsaid(ws, requestOf(brief));
-  if (notInBrief.length) E.push(`the subject "${name}" is not the brief's subject: the brief never says ${notInBrief.map(w => `"${w}"`).join(', ')}. Name the subject in the brief's own words`);
+  if (!ws.length) return [`"subject" "name" must name the brief's subject in its own words (one to four words: ${THING}), not "${name}"`];
+  const names = namesIn(requestOf(brief)), things = ws.filter(w => names.some(n => near(w, n))), main = things.length ? things : ws;
+  const notInBrief = unsaid(main, requestOf(brief));
+  if (notInBrief.length) E.push(`the subject "${name}" is not the brief's subject: the brief never says ${notInBrief.map(w => `"${w}"`).join(', ')}. Name ${THING}, in the brief's own words`);
   const a = assets.find(x => x?.id === sub.asset);
   if (!a) return [...E, `"subject" "asset" "${sub.asset}" is not one of the assets (${ids.join(', ')}): name the asset that draws the subject`];
   // what the asset says it is: its id, description, params and states, and the cast ids it shows
   const cast = Object.entries(p.cast || {}).filter(([, c]) => c?.asset === a.id).map(([k]) => k);
-  const missing = unsaid(ws, `${String(a.id).replace(/[_-]+/g, ' ')} ${a.description || ''} ${JSON.stringify(a.params || [])} ${JSON.stringify(a.states || [])} ${cast.join(' ')}`);
-  if (missing.length) E.push(`the brief's subject is "${name}", but the asset "${a.id}" that should draw it never names ${missing.map(w => `"${w}"`).join(', ')} (its id and description describe something else): the hero draws the subject itself, never a stand-in (a reel about a planet draws that planet, not Earth). Make the hero asset that very thing, described as it really looks; a place is drawn by the scenery it lies in (a globe, a map), whose description names it`);
+  const missing = unsaid(main, `${String(a.id).replace(/[_-]+/g, ' ')} ${a.description || ''} ${JSON.stringify(a.params || [])} ${JSON.stringify(a.states || [])} ${cast.join(' ')}`);
+  if (missing.length) E.push(`the brief's subject is "${name}", but the asset "${a.id}" that should draw it never names ${missing.map(w => `"${w}"`).join(', ')} (its id and description describe something else): the hero draws the subject itself, never a stand-in (a reel about a planet draws that planet, not Earth) and never a scene of an action or event (a walk to a place draws that place; a country that acts draws that country). The subject is ${THING}; make the hero that very thing, described as it really looks; a place is drawn by the scenery it lies in (a globe, a map), whose description names it`);
   if (!d3 && ids[0] !== a.id) E.push(`the subject's asset "${a.id}" must be the hero, FIRST in "assets" (the shots treat the first asset as the subject); it is listed after ${ids.slice(0, ids.indexOf(a.id)).map(x => `"${x}"`).join(', ')}`);
   return E;
 }
