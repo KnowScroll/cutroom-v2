@@ -30,6 +30,10 @@ export const VOICE_MODELS = {
   // Gemini 3.8 Flash TTS through OpenRouter (text-to-speech rank 1 on its benchmark): needs OpenRouter credits; cost per char estimated from
   // its audio-token price ($9 per million, about 25 tokens a second of speech). Not measured yet.
   'gemini-tts': { id: 'google/gemini-3.8-flash-tts', family: 'gemini', usdPerChar: 0.000016 },
+  // Windows' built-in speech (System.Speech, offline, free): a stand-in so QC can run when no voice model answers (#85: heygen free
+  // at its daily limit, no OpenRouter credit). David at rate 0 spoke 39 words in 12.6 s (3.1 words/s, 2026-11-28); SSML pitch x-low
+  // and x-high move his median pitch from 98 to 87 and 110 Hz (about 2 semitones), so two voices make six. Windows only.
+  local: { id: 'windows-sapi', family: 'local', usdPerChar: 0 },
 };
 const VOICES = {
   eleven: { george: 'warm British narrator', brian: 'deep American narrator', chris: 'casual American storyteller', daniel: 'authoritative British newsreader',
@@ -55,6 +59,8 @@ const VOICES = {
     Erinome: 'clear', Algenib: 'gravelly', Rasalgethi: 'informative', Laomedeia: 'upbeat', Achernar: 'soft', Alnilam: 'firm', Schedar: 'even',
     Gacrux: 'mature', Pulcherrima: 'forward', Achird: 'friendly', Zubenelgenubi: 'casual', Vindemiatrix: 'gentle', Sadachbia: 'lively',
     Sadaltager: 'knowledgeable', Sulafat: 'warm' },
+  local: { zira: 'American woman', david: 'American man', david_deep: 'deeper American man', zira_bright: 'brighter American woman',
+    david_bright: 'higher American man', zira_deep: 'lower American woman' },
 };
 // templates and old checkpoints name Kokoro voices: each maps to a distinct voice of the same kind in the other families
 const FROM_KOKORO = {
@@ -72,13 +78,16 @@ const FROM_KOKORO = {
   gemini: { bm_george: 'Charon', bm_fable: 'Iapetus', bm_daniel: 'Rasalgethi', bm_lewis: 'Algieba', am_puck: 'Puck', am_adam: 'Orus', am_echo: 'Umbriel', am_eric: 'Achird',
     am_fenrir: 'Fenrir', am_liam: 'Zubenelgenubi', am_michael: 'Alnilam', am_onyx: 'Algenib', af_heart: 'Sulafat', af_bella: 'Aoede', af_nicole: 'Achernar', af_sarah: 'Kore',
     af_sky: 'Leda', bf_emma: 'Gacrux', bf_isabella: 'Vindemiatrix' },
+  local: { bm_george: 'david', bm_fable: 'david_deep', bm_daniel: 'david', bm_lewis: 'david_deep', am_puck: 'david', am_adam: 'david', am_echo: 'david_deep', am_eric: 'david',
+    am_fenrir: 'david_deep', am_liam: 'david', am_michael: 'david', am_onyx: 'david_deep', af_heart: 'zira', af_bella: 'zira_bright', af_nicole: 'zira', af_sarah: 'zira',
+    af_sky: 'zira_bright', bf_emma: 'zira', bf_isabella: 'zira_bright' },
 };
-const NARRATOR = { eleven: 'george', kokoro: 'bm_george', minimax: 'English_expressive_narrator', heygen: 'meredith', gemini: 'Charon' };
-const OTHER = { eleven: 'chris', kokoro: 'am_adam', minimax: 'English_magnetic_voiced_man', heygen: 'lucian', gemini: 'Puck' };
+const NARRATOR = { eleven: 'george', kokoro: 'bm_george', minimax: 'English_expressive_narrator', heygen: 'meredith', gemini: 'Charon', local: 'zira' };
+const OTHER = { eleven: 'chris', kokoro: 'am_adam', minimax: 'English_magnetic_voiced_man', heygen: 'lucian', gemini: 'Puck', local: 'david' };
 // words per second per CLIP (each line trimmed of silence), used until a voice has 30 s measured in cache/voice/rates.json.
 // Kokoro from past reels; eleven-v4 george measured 3.11 on 3 tagged lines (2026-11-19). cutroom's 2.2-2.4 for ElevenLabs are whole takes WITH pauses,
 // so they would make a per-line reel about 30% short; MiniMax is unmeasured here.
-const RATE = { kokoro: { bm_george: 2.05, bf_emma: 2.8, '*': 2.7 }, eleven: { george: 3.1, '*': 2.9 }, minimax: { '*': 2.8 }, heygen: { '*': 3.1 }, gemini: { '*': 2.9 } };
+const RATE = { kokoro: { bm_george: 2.05, bf_emma: 2.8, '*': 2.7 }, eleven: { george: 3.1, '*': 2.9 }, minimax: { '*': 2.8 }, heygen: { '*': 3.1 }, gemini: { '*': 2.9 }, local: { '*': 3.1 } };
 
 export const voiceModel = key => VOICE_MODELS[key] || (() => { throw new Error(`unknown --voice-model "${key}": use ${Object.keys(VOICE_MODELS).join(', ')}`); })();
 export function normVoice(modelKey, v, narrator) {
@@ -151,6 +160,7 @@ export async function speak(key, modelKey, text, voice, tone) {
     if (ts) { const j = await res.json(); return { buf: Buffer.from(j.audio_base64, 'base64'), usd: input.length * m.usdPerChar, input, align: j.alignment || j.normalized_alignment || null }; }
     return { buf: Buffer.from(await res.arrayBuffer()), usd: input.length * m.usdPerChar, input };
   }
+  if (m.family === 'local') return { buf: await sapi(text, voice), usd: 0, input };
   const body = { model: m.id, input, voice, response_format: m.format || 'mp3', ...(m.provider ? { provider: m.provider } : {}) };
   const res = await fetch('https://openrouter.ai/api/v1/audio/speech', {
     method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(120000),
@@ -160,6 +170,27 @@ export async function speak(key, modelKey, text, voice, tone) {
   const ct = res.headers.get('content-type') || '', raw = Buffer.from(await res.arrayBuffer());
   const pcm = /audio\/(l16|pcm)/i.test(ct), rate = +(ct.match(/rate=(\d+)/) || [])[1] || 24000, ch = +(ct.match(/channels=(\d+)/) || [])[1] || 1;
   return { buf: pcm ? pcmToWav(raw, rate, ch) : raw, usd: input.length * m.usdPerChar, input };
+}
+// Windows PowerShell's System.Speech; the line goes in as base64, so nothing in it is read as a command
+const SAPI = { zira: ['Microsoft Zira Desktop', 'medium'], david: ['Microsoft David Desktop', 'medium'], david_deep: ['Microsoft David Desktop', 'x-low'], zira_bright: ['Microsoft Zira Desktop', 'x-high'],
+  david_bright: ['Microsoft David Desktop', 'x-high'], zira_deep: ['Microsoft Zira Desktop', 'x-low'] };
+let sapiN = 0;
+function sapi(text, voice) {
+  if (process.platform !== 'win32') return Promise.reject(Object.assign(new Error('--voice-model local is Windows speech (System.Speech): it runs on Windows only'), { noRetry: true }));
+  const [name, pitch] = SAPI[voice] || SAPI.zira, out = path.join(CACHE, 'voice', `sapi-${process.pid}-${sapiN++}.wav`);
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  const ps = `Add-Type -AssemblyName System.Speech; $t = [Security.SecurityElement]::Escape([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${Buffer.from(text, 'utf8').toString('base64')}'))); `
+    + `$s = New-Object System.Speech.Synthesis.SpeechSynthesizer; $s.SelectVoice('${name}'); $s.SetOutputToWaveFile('${out}'); `
+    + `$s.SpeakSsml("<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'><prosody pitch='${pitch}'>$t</prosody></speak>"); $s.Dispose()`;
+  return new Promise((resolve, reject) => {
+    const p = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], { stdio: ['ignore', 'ignore', 'pipe'] });
+    let err = ''; p.stderr.on('data', d => { err += d; });
+    p.on('error', reject);
+    p.on('close', code => {
+      try { if (code || !fs.existsSync(out)) throw Object.assign(new Error(`Windows speech (${name}) exit ${code}: ${err.slice(0, 300)}`), { noRetry: true }); resolve(fs.readFileSync(out)); }
+      catch (e) { reject(e); } finally { fs.rmSync(out, { force: true }); }
+    });
+  });
 }
 function pcmToWav(pcm, rate, ch) {
   const h = Buffer.alloc(44);
