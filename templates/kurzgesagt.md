@@ -107,7 +107,7 @@ A flat-vector science and scale explainer in a Kurzgesagt-like look: every objec
   - Number tag: kit.tag(ctx, number, ...h.label(t, 'below', 108), {k}) (palette.accent, white text); for a height, kit.tag(ctx, number, ...h.label(t, 'right', 60), {align: 'left', k}).
   - A distance between two things: const m = h.measure(a, b); kit.measure(ctx, m.from[0], m.from[1], m.to[0], m.to[1], {k, lt}); its number tag at (m.mid[0], m.mid[1] - 90).
   - A thing under R 30 gets no measuring line under it: its number tag sits on its right (h.label(t, 'right', 30), align 'left').
-  - A thing under R 3 at the shot's scale is a dot with a callout, never drawn bigger than a dot: h.asset at R 3 (the smallest dot that reads; its number tag gives its real size), a ring around it (ctx.arc radius R + 22, lineWidth 3, its tag colour), and its tags placed from the ring's box: const ring = {x0: x - R - 22, y0: y - R - 22, x1: x + R + 22, y1: y + R + 22}; kit.tag(ctx, name, ...h.label(ring, 'above', 50), {color}).
+  - A thing under R 3 at the shot's scale is a dot with a callout: draw it with h.asset at its true R (never bigger, and no ring of your own); the engine draws it as a bright dot with a ring of R 25, and the box h.asset returns is that ring's, so its tags go beside the ring, never on the dot: kit.tag(ctx, name, ...h.label(t, 'above', 50), {color}).
   - Where two tags would touch, move one to the 'left' or 'right' of its own thing (align 'right' or 'left'), never to a row away from it; 24 px between pills, inside x 60 to 1020.
 - Composition: the stage centre is (540, 1000), a little below the middle of the frame. The picture's weight sits in the middle of the frame, its tags above and its numbers below, and the band above the caption (y 1100 to 1440) holds measuring lines, numbers, a horizon or a ground line, never nothing. Keep it there: the engine's frame audit rejects a reel whose picture sits high (it wants at least a third of the detail in the lower half and the detail's centre between 42% and 62% of the height), so a row of tags near the top of the frame or things centred high fail it. A thing with its tags fits y 200 to 1440: R 280 at most at the stage centre.
 - Views (the idea's VIEW line):
@@ -132,6 +132,7 @@ shots: 5-10
 beats: hook, yardstick, step, turn, answer, close
 required beats: hook, answer, close
 hook: number or question
+numbers: said
 reference analysis: studio/refs/kurzgesagt
 gate flat: info
 gate static_band: info
